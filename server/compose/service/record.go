@@ -120,6 +120,7 @@ type (
 
 		Report(ctx context.Context, namespaceID, moduleID uint64, metrics, dimensions, filter string) (any, error)
 		Find(ctx context.Context, filter types.RecordFilter) (set types.RecordSet, f types.RecordFilter, err error)
+		FindN(ctx context.Context, filter types.RecordFilter) (set types.RecordSet, stats map[string]types.RecordSummary, f types.RecordFilter, err error)
 		SearchSensitive(ctx context.Context) (set []types.SensitiveRecordSet, err error)
 		SearchRevisions(ctx context.Context, namespaceID, moduleID, recordID uint64) (dal.Iterator, error)
 		RecordExport(context.Context, types.RecordFilter) error
@@ -408,6 +409,41 @@ func (svc record) Find(ctx context.Context, filter types.RecordFilter) (set type
 	}()
 
 	return set, f, svc.recordAction(ctx, aProps, RecordActionSearch, err)
+}
+
+func (svc record) FindN(ctx context.Context, filter types.RecordFilter) (set types.RecordSet, stats map[string]types.RecordSummary, f types.RecordFilter, err error) {
+	var (
+		m      *types.Module
+		aProps = &recordActionProps{filter: &filter}
+	)
+
+	err = func() error {
+		if m, err = loadModule(ctx, svc.store, filter.NamespaceID, filter.ModuleID); err != nil {
+			return err
+		}
+
+		if !svc.ac.CanSearchRecordsOnModule(ctx, m) {
+			return RecordErrNotAllowedToSearch()
+		}
+
+		filter.Check = ComposeRecordFilterChecker(ctx, svc.ac, m)
+
+		if set, stats, f, err = dalutils.ComposeRecordsListN(ctx, svc.dal, m, filter); err != nil {
+			return err
+		}
+
+		_ = set.Walk(func(r *types.Record) error {
+			r.SetModule(m)
+			r.Values = svc.sanitizer.RunXSS(m, r.Values)
+			return nil
+		})
+
+		ComposeRecordFilterAC(ctx, svc.ac, m, set...)
+
+		return nil
+	}()
+
+	return set, stats, f, svc.recordAction(ctx, aProps, RecordActionSearch, err)
 }
 
 // SearchSensitive returns stripped down records for all namespaces/modules where fields define a sensitivity level

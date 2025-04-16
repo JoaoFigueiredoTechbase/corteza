@@ -73,6 +73,11 @@ type (
 		// Module ID
 		ModuleID uint64 `json:",string"`
 
+		// Summaries GET parameter
+		//
+		// Record summaries
+		Summaries string
+
 		// Query GET parameter
 		//
 		// Record filtering query
@@ -613,6 +618,7 @@ func (r RecordList) Auditable() map[string]interface{} {
 	return map[string]interface{}{
 		"namespaceID":       r.NamespaceID,
 		"moduleID":          r.ModuleID,
+		"summaries":         r.Summaries,
 		"query":             r.Query,
 		"meta":              r.Meta,
 		"deleted":           r.Deleted,
@@ -632,6 +638,11 @@ func (r RecordList) GetNamespaceID() uint64 {
 // Auditable returns all auditable/loggable parameters
 func (r RecordList) GetModuleID() uint64 {
 	return r.ModuleID
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordList) GetSummaries() string {
+	return r.Summaries
 }
 
 // Auditable returns all auditable/loggable parameters
@@ -681,6 +692,12 @@ func (r *RecordList) Fill(req *http.Request) (err error) {
 		// GET params
 		tmp := req.URL.Query()
 
+		if val, ok := tmp["summaries"]; ok && len(val) > 0 {
+			r.Summaries, err = val[0], nil
+			if err != nil {
+				return err
+			}
+		}
 		if val, ok := tmp["query"]; ok && len(val) > 0 {
 			r.Query, err = val[0], nil
 			if err != nil {

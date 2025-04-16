@@ -1049,6 +1049,7 @@ endpoints:
     path: "/"
     parameters:
       get:
+      - { name: summaries,         type: "string",         title: Record summaries }
       - { name: query,             type: "string",         title: "Record filtering query" }
       - { name: meta,              type: "map[string]any", title: "Record meta data", parser: payload.ParseMeta }
       - { name: deleted,           type: "uint",           title: "Exclude (0, default), include (1) or return only (2) deleted records" }

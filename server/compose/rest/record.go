@@ -57,8 +57,9 @@ type (
 	}
 
 	recordSetPayload struct {
-		Filter *types.RecordFilter `json:"filter,omitempty"`
-		Set    []*recordPayload    `json:"set"`
+		Filter    *types.RecordFilter            `json:"filter,omitempty"`
+		Summaries map[string]types.RecordSummary `json:"summaries,omitempty"`
+		Set       []*recordPayload               `json:"set"`
 	}
 
 	Record struct {
@@ -115,6 +116,16 @@ func (ctrl *Record) List(ctx context.Context, r *request.RecordList) (interface{
 		}
 	)
 
+	if r.Summaries != "" {
+		var aux []types.RecordSummaryReq
+		err = json.Unmarshal([]byte(r.Summaries), &aux)
+		if err != nil {
+			return nil, err
+		}
+
+		f.Summaries = aux
+	}
+
 	if err = f.Sort.Set(r.Sort); err != nil {
 		return nil, err
 	}
@@ -145,9 +156,9 @@ func (ctrl *Record) List(ctx context.Context, r *request.RecordList) (interface{
 		return nil, err
 	}
 
-	rr, filter, err := ctrl.record.Find(ctx, f)
+	rr, smr, filter, err := ctrl.record.FindN(ctx, f)
 
-	return ctrl.makeFilterPayload(ctx, m, rr, &filter, err)
+	return ctrl.makeFilterPayloadN(ctx, m, rr, smr, &filter, err)
 }
 
 func (ctrl *Record) Read(ctx context.Context, r *request.RecordRead) (interface{}, error) {
@@ -904,12 +915,12 @@ func (ctrl Record) makePayload(ctx context.Context, m *types.Module, r *types.Re
 	}, nil
 }
 
-func (ctrl Record) makeFilterPayload(ctx context.Context, m *types.Module, rr types.RecordSet, f *types.RecordFilter, err error) (*recordSetPayload, error) {
+func (ctrl Record) makeFilterPayloadN(ctx context.Context, m *types.Module, rr types.RecordSet, smr map[string]types.RecordSummary, f *types.RecordFilter, err error) (*recordSetPayload, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	modp := &recordSetPayload{Filter: f, Set: make([]*recordPayload, len(rr))}
+	modp := &recordSetPayload{Filter: f, Summaries: smr, Set: make([]*recordPayload, len(rr))}
 
 	for i := range rr {
 		modp.Set[i], _ = ctrl.makePayload(ctx, m, rr[i], nil, nil)
