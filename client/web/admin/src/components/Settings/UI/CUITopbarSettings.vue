@@ -83,7 +83,7 @@
                   :fields="links.fields"
                   :items="topbarSettings.helpLinks"
                   thead-tr-class="text-primary"
-                  responsive="sm"
+                  responsive
                   small
                 >
                   <template #cell(handle)="data">
@@ -164,7 +164,7 @@
                   :fields="links.fields"
                   :items="topbarSettings.profileLinks"
                   thead-tr-class="text-primary"
-                  responsive="sm"
+                  responsive
                   small
                 >
                   <template #cell(handle)="data">

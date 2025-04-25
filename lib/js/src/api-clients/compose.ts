@@ -2395,6 +2395,7 @@ export default class Compose {
     const {
       namespaceID,
       moduleID,
+      summaries,
       query,
       meta,
       deleted,
@@ -2418,6 +2419,7 @@ export default class Compose {
       }),
     }
     cfg.params = {
+      summaries,
       query,
       meta,
       deleted,

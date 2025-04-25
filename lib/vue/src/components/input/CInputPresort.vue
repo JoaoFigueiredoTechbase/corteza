@@ -12,7 +12,7 @@
       <b-table-simple
         borderless
         small
-        responsive="lg"
+        responsive
         class="mb-0"
       >
         <draggable

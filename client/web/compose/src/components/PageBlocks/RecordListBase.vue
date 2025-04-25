@@ -98,7 +98,7 @@
                   v-if="!f.roles"
                   show-icon
                   class="mr-1"
-                  @confirmed="removeStorageRecordListFilterPreset(f.name)"
+                  @confirmed="removeRecordListFilterPreset(f.name)"
                 />
               </li>
             </b-dropdown>
@@ -695,35 +695,64 @@
           </div>
         </b-table-simple>
       </div>
-
-      <!-- Modal for inline editing -->
-      <bulk-edit-modal
-        v-if="options.inlineRecordEditEnabled"
-        :namespace="namespace"
-        :module="recordListModule"
-        :selected-fields="inlineEdit.fields"
-        :initial-record="inlineEdit.record"
-        :query="inlineEdit.query"
-        :modal-title="$t('recordList.inlineEdit.modal.title')"
-        open-on-select
-        :allow-add-field="options.inlineRecordEditAllowAddField"
-        @save="onInlineEdit()"
-        @close="onInlineEditClose()"
-      />
-
-      <!-- Modal for naming custom filter -->
-      <custom-filter-preset
-        :visible="showCustomPresetFilterModal"
-        @save="setStorageRecordListFilterPreset"
-        @close="showCustomPresetFilterModal = false"
-      />
     </template>
 
     <template
       v-if="showFooter"
       #footer
     >
-      <div class="record-list-footer d-flex align-items-center flex-wrap justify-content-between px-3 py-2 gap-1">
+      <div
+        v-if="listSummaries.length || options.customSummaries"
+        class="d-flex flex-wrap align-items-center"
+      >
+        <div
+          v-for="(summary, index) in listSummaries"
+          :key="index"
+          class="d-flex flex-wrap align-items-center border-right border-bottom p-1"
+        >
+          <div
+            class="d-flex align-items-center px-3 py-2 mb-0"
+            :class="{ 'custom-summary': !!summary.custom }"
+            @click="openCustomSummaryModal(summary)"
+          >
+            {{ summary.label }}:
+            <label
+              v-if="!isProcessing"
+              class="ml-2 mb-0"
+            >
+              {{ summary.value }}
+            </label>
+            <b-spinner
+              v-else
+              variant="secondary"
+              small
+              class="ml-1"
+            />
+          </div>
+        </div>
+
+        <div
+          v-if="options.customSummaries"
+          class="d-flex align-items-center flex-fill border-bottom"
+        >
+          <b-button
+            v-b-tooltip.noninteractive.hover="{ title: $t('recordList.summaries.customSummaries.add.tooltip'), delay: 500 }"
+            variant="outline-extra-light"
+            class="text-secondary border-0 py-2 m-1"
+            @click="openCustomSummaryModal()"
+          >
+            <font-awesome-icon
+              :icon="['fas', 'plus']"
+            />
+            {{ $t('recordList.summaries.customSummaries.add.label') }}
+          </b-button>
+        </div>
+      </div>
+
+      <div
+        v-if="showPagination"
+        class="record-list-footer d-flex align-items-center flex-wrap justify-content-between px-3 py-2 gap-1"
+      >
         <div class="d-flex align-items-center flex-wrap gap-3 gap-col-3">
           <div
             v-if="options.showTotalCount"
@@ -763,7 +792,7 @@
 
         <div
           v-if="showPageNavigation"
-          class="d-flex align-items-center justify-content-end "
+          class="d-flex align-items-center justify-content-end"
         >
           <b-pagination
             v-if="options.fullPageNavigation"
@@ -843,6 +872,41 @@
           </b-button-group>
         </div>
       </div>
+
+      <!-- Modal for inline editing -->
+      <bulk-edit-modal
+        v-if="options.inlineRecordEditEnabled"
+        :namespace="namespace"
+        :module="recordListModule"
+        :selected-fields="inlineEdit.fields"
+        :initial-record="inlineEdit.record"
+        :query="inlineEdit.query"
+        :modal-title="$t('recordList.inlineEdit.modal.title')"
+        open-on-select
+        :allow-add-field="options.inlineRecordEditAllowAddField"
+        @save="onInlineEdit()"
+        @close="onInlineEditClose()"
+      />
+
+      <!-- Modal for naming custom filter -->
+      <custom-filter-preset
+        v-if="options.customFilterPresets"
+        :visible="showCustomPresetFilterModal"
+        @save="setStorageRecordListFilterPreset"
+        @close="showCustomPresetFilterModal = false"
+      />
+
+      <!-- Modal for custom summaries -->
+      <custom-summary
+        v-if="options.customSummaries"
+        :visible="showCustomSummariesModal"
+        :module="recordListModule"
+        :summary="customSummary"
+        :summary-index="customSummaryIndex"
+        @save="onCustomSummarySave"
+        @delete="onCustomSummaryDelete"
+        @close="onCustomSummaryClose"
+      />
     </template>
   </wrap>
 </template>
@@ -866,7 +930,8 @@ import draggable from 'vuedraggable'
 import RecordListFilter from 'corteza-webapp-compose/src/components/Common/RecordListFilter'
 import ColumnPicker from 'corteza-webapp-compose/src/components/Admin/Module/Records/ColumnPicker'
 import BulkEditModal from 'corteza-webapp-compose/src/components/Public/Record/BulkEdit'
-import CustomFilterPreset from 'corteza-webapp-compose/src/components/Public/Record/CustomFilterPreset'
+import CustomFilterPreset from 'corteza-webapp-compose/src/components/PageBlocks/RecordList/CustomFilterPreset'
+import CustomSummary from 'corteza-webapp-compose/src/components/PageBlocks/RecordList/CustomSummary'
 
 const { CInputSearch } = components
 
@@ -887,6 +952,7 @@ export default {
     CInputSearch,
     BulkEditModal,
     CustomFilterPreset,
+    CustomSummary,
   },
 
   extends: base,
@@ -943,6 +1009,16 @@ export default {
       sortBy: undefined,
       sortDirecton: undefined,
 
+      summaries: [],
+      customSummaries: [],
+      showCustomSummariesModal: false,
+      customSummaryIndex: -1,
+      customSummary: {
+        metric: '',
+        field: '',
+        label: '',
+      },
+
       // This counter helps us generate unique ID's for the lifetime of this
       // component
       ctr: 0,
@@ -972,8 +1048,12 @@ export default {
       return Object.keys(this.recordListModule.labels || {}).includes('federation')
     },
 
-    showFooter () {
+    showPagination () {
       return this.showPageNavigation || this.options.showTotalCount || this.options.showRecordPerPageOption
+    },
+
+    showFooter () {
+      return this.showPagination || this.options.customSummaries
     },
 
     perPageOptions () {
@@ -1199,6 +1279,30 @@ export default {
           return groupFilter
         }).filter(({ filter }) => filter.length)
     },
+
+    listSummaries () {
+      return [
+        ...this.options.summaries.filter(s => s.metric && s.field && this.isUserRoleMember(s.roles)),
+        ...this.customSummaries.filter(s => s.metric && s.field).map(s => {
+          return {
+            ...s,
+            custom: true,
+          }
+        }),
+      ].map(s => {
+        const name = `${s.metric} ${s.field}`
+        const { value } = this.summaries[name] || {}
+
+        return {
+          custom: s.custom,
+          name,
+          label: s.label,
+          field: s.field,
+          metric: s.metric,
+          value,
+        }
+      })
+    },
   },
 
   watch: {
@@ -1220,6 +1324,7 @@ export default {
       immediate: true,
       handler () {
         this.createEvents()
+        this.getCustomSummaries()
         this.getStorageRecordListFilter()
         this.getStorageRecordListFilterPreset()
         this.getStorageRecordListConfiguredFields()
@@ -1815,6 +1920,8 @@ export default {
       const { moduleID, namespaceID } = this.recordListModule
 
       let paginationOptions = {}
+      let summaries = []
+
       if (resetPagination) {
         this.filter.pageCursor = undefined
         const { fullPageNavigation = false, showTotalCount = false } = this.options
@@ -1822,6 +1929,13 @@ export default {
           incPageNavigation: fullPageNavigation,
           incTotal: showTotalCount,
         }
+
+        console.log(this.listSummaries)
+
+        summaries = JSON.stringify(this.listSummaries.map(s => ({
+          name: s.metric,
+          field: s.field,
+        })))
       } else if (this.filter.pageCursor) {
         this.filter.sort = ''
       }
@@ -1829,55 +1943,56 @@ export default {
       // Filter's out deleted records when filter.deleted is 2, and undeleted records when filter.deleted is 0
       this.showingDeletedRecords ? this.filter.deleted = 2 : this.filter.deleted = 0
 
-      const { response, cancel } = this.$ComposeAPI.recordListCancellable({ ...this.filter, moduleID, namespaceID, query, ...paginationOptions })
+      const { response, cancel } = this.$ComposeAPI.recordListCancellable({ ...this.filter, moduleID, namespaceID, query, ...paginationOptions, summaries })
       this.abortableRequests.push(cancel)
 
-      return response()
-        .then(({ set, filter }) => {
-          const records = set.map(r => new compose.Record(r, this.recordListModule))
+      return response().then(({ set, filter, summaries = {} }) => {
+        const records = set.map(r => new compose.Record(r, this.recordListModule))
 
-          this.filter = { ...this.filter, ...filter }
-          this.filter.nextPage = filter.nextPage
-          this.filter.prevPage = filter.prevPage
+        this.filter = { ...this.filter, ...filter }
+        this.filter.nextPage = filter.nextPage
+        this.filter.prevPage = filter.prevPage
 
-          if (resetPagination) {
-            let count = this.pagination.count || 0
+        if (resetPagination) {
+          this.summaries = summaries
 
-            if (paginationOptions.incTotal) {
-              count = filter.total || 0
-              this.filter.incTotal = false
-            }
+          let count = this.pagination.count || 0
 
-            if (paginationOptions.incPageNavigation) {
-              const pages = filter.pageNavigation || []
-              this.pagination.pages = pages
-
-              if (!paginationOptions.incTotal) {
-                if (pages.length > 1) {
-                  const lastPageCount = pages[pages.length - 1].items
-                  count = ((pages.length - 1) * this.recordsPerPage) + lastPageCount
-                } else {
-                  count = records.length
-                }
-              }
-
-              this.filter.incPageNavigation = false
-            }
-
-            this.pagination.count = count
-            this.pagination.page = 1
+          if (paginationOptions.incTotal) {
+            count = filter.total || 0
+            this.filter.incTotal = false
           }
 
-          // Extract user IDs from record values and load all users
-          const fields = this.fields.filter(f => f.moduleField).map(f => f.moduleField)
+          if (paginationOptions.incPageNavigation) {
+            const pages = filter.pageNavigation || []
+            this.pagination.pages = pages
 
-          return Promise.all([
-            this.fetchUsers(fields, records),
-            this.fetchRecords(namespaceID, fields, records),
-          ]).then(() => {
-            this.items = records.map(r => this.wrapRecord(r))
-          })
+            if (!paginationOptions.incTotal) {
+              if (pages.length > 1) {
+                const lastPageCount = pages[pages.length - 1].items
+                count = ((pages.length - 1) * this.recordsPerPage) + lastPageCount
+              } else {
+                count = records.length
+              }
+            }
+
+            this.filter.incPageNavigation = false
+          }
+
+          this.pagination.count = count
+          this.pagination.page = 1
+        }
+
+        // Extract user IDs from record values and load all users
+        const fields = this.fields.filter(f => f.moduleField).map(f => f.moduleField)
+
+        return Promise.all([
+          this.fetchUsers(fields, records),
+          this.fetchRecords(namespaceID, fields, records),
+        ]).then(() => {
+          this.items = records.map(r => this.wrapRecord(r))
         })
+      })
         .catch((e) => {
           if (!axios.isCancel(e)) {
             this.toastErrorHandler(this.$t('notification:record.listLoadFailed'))(e)
@@ -1911,6 +2026,14 @@ export default {
       }
     },
 
+    getCustomSummaries () {
+      try {
+        this.customSummaries = getItem(`record-list-custom-summaries-${this.uniqueID}`)
+      } catch (e) {
+        console.warn(this.$t('notification:record-list.corrupted-summaries'))
+      }
+    },
+
     getStorageRecordListFilterPreset () {
       try {
         // Get record list filters from localStorage
@@ -1938,6 +2061,14 @@ export default {
       }
     },
 
+    setStorageCustomSummaries () {
+      try {
+        setItem(`record-list-custom-summaries-${this.uniqueID}`, this.customSummaries)
+      } catch (e) {
+        console.warn(this.$t('notification:record-list.corrupted-summaries'))
+      }
+    },
+
     setStorageRecordListFilterPreset ({ name }) {
       this.showCustomPresetFilterModal = false
 
@@ -1954,18 +2085,14 @@ export default {
       }
     },
 
-    removeStorageRecordListFilterPreset (name) {
+    removeRecordListFilterPreset (name) {
       this.customPresetFilters = this.customPresetFilters.filter(f => f.name !== name)
 
       if (this.$refs.filterPresets) {
         this.$refs.filterPresets.hide(true)
       }
 
-      try {
-        setItem(`record-list-preset-${this.uniqueID}`, this.customPresetFilters)
-      } catch (e) {
-        console.warn(this.$t('notification:record-list.corrupted-filter'))
-      }
+      this.setStorageRecordListFilterPreset()
     },
 
     onImportSuccessful () {
@@ -2209,6 +2336,55 @@ export default {
       return roles.some(roleID => this.authUserRoles.includes(roleID))
     },
 
+    openCustomSummaryModal (summary) {
+      const { custom, metric, field } = summary || {}
+
+      if (summary && !custom) {
+        return
+      }
+
+      this.customSummaryIndex = this.customSummaries.findIndex(s => s.field === field && s.metric === metric)
+
+      if (this.customSummaryIndex === -1) {
+        this.customSummary = {
+          custom: true,
+          label: '',
+          field: '',
+          metric: '',
+        }
+      } else {
+        this.customSummary = { ...this.customSummaries[this.customSummaryIndex] }
+      }
+
+      this.showCustomSummariesModal = true
+    },
+
+    onCustomSummarySave (summary) {
+      if (this.customSummaryIndex === -1) {
+        this.customSummaries.push(summary)
+      } else {
+        this.$set(this.customSummaries, this.customSummaryIndex, summary)
+      }
+
+      this.onCustomSummaryClose()
+      this.setStorageCustomSummaries()
+      this.pullRecords(true)
+    },
+
+    onCustomSummaryDelete () {
+      this.customSummaries.splice(this.customSummaryIndex, 1)
+
+      this.onCustomSummaryClose()
+      this.setStorageCustomSummaries()
+      this.pullRecords(true)
+    },
+
+    onCustomSummaryClose () {
+      this.customSummaryIndex = -1
+      this.customSummary = {}
+      this.showCustomSummariesModal = false
+    },
+
     setDefaultValues () {
       this.uniqueID = undefined
       this.processing = false
@@ -2229,6 +2405,11 @@ export default {
       this.showCustomPresetFilterModal = false
       this.selectedAllRecords = false
       this.abortableRequests = []
+      this.summaries = []
+      this.customSummaries = []
+      this.customSummaryIndex = -1
+      this.customSummary = {}
+      this.showCustomSummariesModal = false
     },
 
     abortRequests () {
@@ -2376,6 +2557,19 @@ tr:hover .inline-actions {
 
   button:hover {
     color: var(--primary) !important;
+  }
+}
+
+.custom-summary {
+  cursor: pointer !important;
+  border-radius: 0.25rem;
+
+  > label {
+    cursor: pointer !important;
+  }
+
+  &:hover {
+    background-color: var(--extra-light);
   }
 }
 </style>

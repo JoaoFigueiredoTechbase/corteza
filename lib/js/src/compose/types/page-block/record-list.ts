@@ -12,6 +12,25 @@ interface FilterPreset {
   roles: string[];
 }
 
+enum SummaryMetric {
+  Min = 'min',
+  Max = 'max',
+  Avg = 'avg',
+  Sum = 'sum',
+  EmptyCount = 'emptyCount',
+  NotEmptyCount = 'notEmptyCount',
+  UniqueCount = 'uniqueCount',
+  Earliest = 'earliest',
+  Latest = 'latest',
+}
+
+interface Summary {
+  label: string;
+  field: string[];
+  metric: SummaryMetric;
+  roles: string[];
+}
+
 export interface Options {
   moduleID: string;
   prefilter: string;
@@ -71,6 +90,10 @@ export interface Options {
   filterPresets: FilterPreset[];
   showRecordPerPageOption: boolean;
   openRecordInEditMode: boolean;
+
+  // Summaries
+  customSummaries: boolean;
+  summaries: Summary[];
 
   textStyles: {
     wrappedFields: Array<string>
@@ -132,6 +155,9 @@ const defaults: Readonly<Options> = Object.freeze({
   filterPresets: [],
   showRecordPerPageOption: false,
   openRecordInEditMode: false,
+
+  customSummaries: false,
+  summaries: [],
 
   textStyles: {
     wrappedFields: [],
@@ -214,10 +240,15 @@ export class PageBlockRecordList extends PageBlock {
       'inlineValueFiltering',
       'showRecordPerPageOption',
       'openRecordInEditMode',
+      'customSummaries',
     )
 
     if (o.selectionButtons) {
       this.options.selectionButtons = o.selectionButtons.map(b => new Button(b))
+    }
+
+    if (o.summaries) {
+      this.options.summaries = o.summaries
     }
 
     if (o.textStyles) {

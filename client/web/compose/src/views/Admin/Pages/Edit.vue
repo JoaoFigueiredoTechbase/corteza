@@ -243,7 +243,7 @@
               >
                 <b-table-simple
                   v-if="layouts.length > 0"
-                  responsive="lg"
+                  responsive
                   borderless
                   small
                 >

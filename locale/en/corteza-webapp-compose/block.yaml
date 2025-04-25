@@ -574,7 +574,6 @@ recordList:
     addRecordOptions: On add record click
     textStyles: Text Styles
     configureWrappedFields: Select fields that will be wrapped
-    showFullText: Show full text
   recordPage: record page
   refField:
     footnote: Field that links records with the parent record
@@ -589,6 +588,42 @@ recordList:
   showRecords:
     deleted: Show deleted records
     existing: Show existing records
+  summaries:
+    label: Summaries
+    customSummaries:
+      label: Custom Summaries
+      description: Users will be able to set custom summaries
+      add:
+        label: Add
+        tooltip: Add a custom summary
+    param:
+      label:
+        label: Label
+        placeholder: Summary Label
+      field:
+        label: Field
+        placeholder: Module Field
+      metric:
+        label: Metric
+        placeholder: Summary Metric
+      role:
+        label: Role
+        placeholder: Roles that will be able to see the summary
+    metrics:
+      sum:
+        label: Sum
+      min:
+        label: Min
+      max:
+        label: Max
+      avg:
+        label: Avg
+      emptyCount:
+        label: Empty count
+      notEmptyCount:
+        label: Not empty count
+      uniqueCount:
+        label: Unique count
 recordOrganizer:
   onRecordClick: Record display mode
   openInSameTab: Open in the same tab
