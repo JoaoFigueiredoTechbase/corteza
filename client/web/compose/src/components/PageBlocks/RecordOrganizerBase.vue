@@ -368,8 +368,11 @@ export default {
 
       const route = {
         name: 'page.record.create',
-        params: { pageID },
-        values,
+        params: {
+          pageID,
+          values,
+          refRecord: this.record,
+        },
         query: null,
         edit: true,
       }
@@ -379,6 +382,7 @@ export default {
           recordID: NoID,
           recordPageID: pageID,
           values,
+          refRecord: this.record,
           edit: true,
         })
       } else if (this.options.displayOption === 'newTab') {
