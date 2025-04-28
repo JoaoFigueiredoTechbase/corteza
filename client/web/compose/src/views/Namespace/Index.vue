@@ -33,6 +33,7 @@
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex'
 import NamespaceSidebar from 'corteza-webapp-compose/src/components/Namespaces/NamespaceSidebar'
 import Reminders from 'corteza-webapp-compose/src/components/Namespaces/Reminders'
 import { components } from '@cortezaproject/corteza-vue'
@@ -54,18 +55,22 @@ export default {
       loaded: false,
 
       query: '',
-      namespaces: [],
 
       remindersVisible: false,
     }
   },
 
+  computed: {
+    ...mapGetters({
+      namespaces: 'namespace/set',
+    }),
+  },
+
   created () {
     // Preload first 500 users
-    this.$store.dispatch('user/load', { limit: 500 })
+    this.loadUsers({ limit: 500 })
 
-    this.$store.dispatch('namespace/load', { force: true }).then(namespaces => {
-      this.namespaces = namespaces
+    this.loadNamespaces({ force: true }).then(namespaces => {
       this.loaded = true
     }).catch(this.toastErrorHandler(this.$t('notification:general.composeAccessNotAllowed')))
 
@@ -79,10 +84,14 @@ export default {
   },
 
   methods: {
+    ...mapActions({
+      loadUsers: 'user/load',
+      loadNamespaces: 'namespace/load',
+    }),
+
     setDefaultValues () {
       this.loaded = false
       this.query = ''
-      this.namespaces = []
       this.remindersVisible = false
     },
   },
