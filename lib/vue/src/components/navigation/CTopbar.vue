@@ -54,9 +54,11 @@
             </span>
           </div>
         </template>
+
         <div>
           <slot name="help-dropdown" />
         </div>
+
         <b-dropdown-item
           v-for="(helpLink, index) in helpLinks"
           :key="index"
@@ -65,6 +67,7 @@
         >
           {{ helpLink.handle }}
         </b-dropdown-item>
+
         <b-dropdown-item
           v-if="!settings.hideForumLink"
           data-test-id="dropdown-helper-forum"
@@ -73,6 +76,7 @@
         >
           {{ labels.helpForum }}
         </b-dropdown-item>
+
         <b-dropdown-item
           v-if="!settings.hideDocumentationLink"
           data-test-id="dropdown-helper-docs"
@@ -81,6 +85,7 @@
         >
           {{ labels.helpDocumentation }}
         </b-dropdown-item>
+
         <b-dropdown-item
           v-if="!settings.hideFeedbackLink"
           data-test-id="dropdown-helper-feedback"
@@ -89,6 +94,7 @@
         >
           {{ labels.helpFeedback }}
         </b-dropdown-item>
+
         <b-dropdown-divider
           v-if="!onlyVersion"
         />

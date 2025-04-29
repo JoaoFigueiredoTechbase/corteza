@@ -79,15 +79,14 @@
             />
           </template>
 
-          <b-dropdown-item-button v-if="a.authClientID && canGrant">
-            <c-permissions-button
-              :title="a.meta.name || a.handle || a.authClientID"
-              :target="a.meta.name || a.handle || a.authClientID"
-              :resource="`corteza::system:auth-client/${a.authClientID}`"
-              :button-label="$t('permissions')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="canGrant"
+            :title="a.meta.name || a.handle || a.authClientID"
+            :target="a.meta.name || a.handle || a.authClientID"
+            :resource="`corteza::system:auth-client/${a.authClientID}`"
+            :button-label="$t('permissions')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="!a.isDefault && a.canDeleteAuthClient"

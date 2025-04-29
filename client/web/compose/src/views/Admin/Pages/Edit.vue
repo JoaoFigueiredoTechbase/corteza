@@ -67,7 +67,7 @@
             data-test-id="dropdown-permissions"
             size="lg"
             variant="light"
-            class="permissions-dropdown mr-1"
+            class="mr-1"
           >
             <template #button-content>
               <font-awesome-icon :icon="['fas', 'lock']" />
@@ -76,28 +76,26 @@
               </span>
             </template>
 
-            <b-dropdown-item-button>
-              <c-permissions-button
-                v-if="namespace.canGrant"
-                :title="page.title || page.handle || page.pageID"
-                :target="page.title || page.handle || page.pageID"
-                :resource="`corteza::compose:page/${namespace.namespaceID}/${page.pageID}`"
-                :button-label="$t('general:label.page')"
-                :show-button-icon="false"
-              />
-            </b-dropdown-item-button>
+            <c-permissions-button
+              v-if="namespace.canGrant"
+              :title="page.title || page.handle || page.pageID"
+              :target="page.title || page.handle || page.pageID"
+              :resource="`corteza::compose:page/${namespace.namespaceID}/${page.pageID}`"
+              :button-label="$t('general:label.page')"
+              :show-button-icon="false"
+              class="dropdown-item"
+            />
 
-            <b-dropdown-item-button>
-              <c-permissions-button
-                v-if="page.canGrant"
-                :title="page.title || page.handle || page.pageID"
-                :target="page.title || page.handle || page.pageID"
-                :resource="`corteza::compose:page-layout/${namespace.namespaceID}/${page.pageID}/*`"
-                :button-label="$t('general:label.pageLayout')"
-                :show-button-icon="false"
-                all-specific
-              />
-            </b-dropdown-item-button>
+            <c-permissions-button
+              v-if="page.canGrant"
+              :title="page.title || page.handle || page.pageID"
+              :target="page.title || page.handle || page.pageID"
+              :resource="`corteza::compose:page-layout/${namespace.namespaceID}/${page.pageID}/*`"
+              :button-label="$t('general:label.pageLayout')"
+              :show-button-icon="false"
+              all-specific
+              class="dropdown-item"
+            />
           </b-dropdown>
         </template>
 

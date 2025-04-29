@@ -87,15 +87,14 @@
             />
           </template>
 
-          <b-dropdown-item-button v-if="t.templateID && canGrant">
-            <c-permissions-button
-              :title="t.meta.short || t.handle || t.templateID"
-              :target="t.meta.short || t.handle || t.templateID"
-              :resource="`corteza::system:template/${t.templateID}`"
-              :button-label="$t('permissions')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="canGrant"
+            :title="t.meta.short || t.handle || t.templateID"
+            :target="t.meta.short || t.handle || t.templateID"
+            :resource="`corteza::system:template/${t.templateID}`"
+            :button-label="$t('permissions')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="t.canDeleteTemplate"

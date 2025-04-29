@@ -4,6 +4,7 @@
     :size="size"
     @click="jsonExport(workflows)"
   >
+    <slot />
     {{ $t('general:export') }}
   </b-button>
 </template>

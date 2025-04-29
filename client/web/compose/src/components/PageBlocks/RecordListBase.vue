@@ -634,15 +634,14 @@
                       {{ $t('recordList.record.tooltip.reminder') }}
                     </b-dropdown-item-button>
 
-                    <b-dropdown-item-button v-if="isRecordPermissionButtonVisible(item.r)">
-                      <c-permissions-button
-                        :resource="`corteza::compose:record/${item.r.namespaceID}/${item.r.moduleID}/${item.r.recordID}`"
-                        :target="item.r.recordID"
-                        :title="item.r.recordID"
-                        :button-label="$t('recordList.record.tooltip.permissions')"
-                        button-variant="dropdown-item p-0"
-                      />
-                    </b-dropdown-item-button>
+                    <c-permissions-button
+                      v-if="isRecordPermissionButtonVisible(item.r)"
+                      :resource="`corteza::compose:record/${item.r.namespaceID}/${item.r.moduleID}/${item.r.recordID}`"
+                      :target="item.r.recordID"
+                      :title="item.r.recordID"
+                      :button-label="$t('recordList.record.tooltip.permissions')"
+                      class="dropdown-item"
+                    />
 
                     <c-input-confirm
                       v-if="isDeleteActionVisible(item.r)"

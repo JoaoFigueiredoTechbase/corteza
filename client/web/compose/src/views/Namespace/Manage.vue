@@ -99,16 +99,15 @@
             />
           </template>
 
-          <b-dropdown-item v-if="n.canGrant">
-            <c-permissions-button
-              :title="n.name || n.slug || n.namespaceID"
-              :target="n.name || n.slug || n.namespaceID"
-              :resource="`corteza::compose:namespace/${n.namespaceID}`"
-              :tooltip="$t('permissions:resources.compose.namespace.tooltip')"
-              :button-label="$t('permissions:ui.label')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item>
+          <c-permissions-button
+            v-if="n.canGrant"
+            :title="n.name || n.slug || n.namespaceID"
+            :target="n.name || n.slug || n.namespaceID"
+            :resource="`corteza::compose:namespace/${n.namespaceID}`"
+            :tooltip="$t('permissions:resources.compose.namespace.tooltip')"
+            :button-label="$t('permissions:ui.label')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="n.canDeleteNamespace"

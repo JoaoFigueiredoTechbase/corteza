@@ -93,16 +93,15 @@
             />
           </template>
 
-          <b-dropdown-item-button v-if="c.canGrant">
-            <c-permissions-button
-              :title="c.name || c.handle || c.chartID"
-              :target="c.name || c.handle || c.chartID"
-              :resource="`corteza::compose:chart/${namespace.namespaceID}/${c.chartID}`"
-              :tooltip="$t('permissions:resources.compose.chart.tooltip')"
-              :button-label="$t('permissions:ui.label')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="c.canGrant"
+            :title="c.name || c.handle || c.chartID"
+            :target="c.name || c.handle || c.chartID"
+            :resource="`corteza::compose:chart/${namespace.namespaceID}/${c.chartID}`"
+            :tooltip="$t('permissions:resources.compose.chart.tooltip')"
+            :button-label="$t('permissions:ui.label')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="c.canDeleteChart"

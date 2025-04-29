@@ -98,15 +98,14 @@
             />
           </template>
 
-          <b-dropdown-item-button v-if="r.routeID && canGrant">
-            <c-permissions-button
-              :title="r.endpoint || r.routeID"
-              :target="r.endpoint || r.routeID"
-              :resource="`corteza::system:apigw-route/${r.routeID}`"
-              :button-label="$t('permissions')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="r.routeID && canGrant"
+            :title="r.endpoint || r.routeID"
+            :target="r.endpoint || r.routeID"
+            :resource="`corteza::system:apigw-route/${r.routeID}`"
+            :button-label="$t('permissions')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="r.canDeleteApigwRoute"

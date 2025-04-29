@@ -23,20 +23,15 @@
       :key="v.variant"
       @click="dispatchTransaction(v)"
     >
-      <b-button
-        variant="link"
-        class="text-dark font-weight-bold"
-      >
-        <span :class="activeClasses(v.attrs)">
-          <font-awesome-icon
-            v-if="format.icon"
-            :icon="v.icon"
-          />
-          <span v-else>
-            {{ v.label }}
-          </span>
+      <span :class="activeClasses(v.attrs)">
+        <font-awesome-icon
+          v-if="format.icon"
+          :icon="v.icon"
+        />
+        <span v-else>
+          {{ v.label }}
         </span>
-      </b-button>
+      </span>
     </b-dropdown-item-button>
   </b-dropdown>
 </template>
@@ -50,6 +45,7 @@ import { nodeTypes } from '../../lib/formats'
  */
 export default {
   name: 'TNattrAlignment',
+
   extends: base,
 
   props: {

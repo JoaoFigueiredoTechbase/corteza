@@ -326,6 +326,7 @@
             >
               {{ $t('build.saveAsCopy.ref') }}
             </b-dropdown-item-button>
+
             <b-dropdown-item-button
               data-test-id="dropdown-item-saveAsCopy-noRef"
               @click="handleCloneLayout({ ref: false })"

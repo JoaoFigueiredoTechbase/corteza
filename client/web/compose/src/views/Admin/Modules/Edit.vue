@@ -100,7 +100,7 @@
                   data-test-id="dropdown-permissions"
                   size="lg"
                   variant="light"
-                  class="permissions-dropdown mr-1"
+                  class="mr-1"
                 >
                   <template #button-content>
                     <font-awesome-icon :icon="['fas', 'lock']" />
@@ -109,37 +109,34 @@
                     </span>
                   </template>
 
-                  <b-dropdown-item-button>
-                    <c-permissions-button
-                      :title="module.name || module.handle || module.moduleID"
-                      :target="module.name || module.handle || module.moduleID"
-                      :resource="`corteza::compose:module/${namespace.namespaceID}/${module.moduleID}`"
-                      :button-label="$t('general:label.module.single')"
-                      :show-button-icon="false"
-                    />
-                  </b-dropdown-item-button>
+                  <c-permissions-button
+                    :title="module.name || module.handle || module.moduleID"
+                    :target="module.name || module.handle || module.moduleID"
+                    :resource="`corteza::compose:module/${namespace.namespaceID}/${module.moduleID}`"
+                    :button-label="$t('general:label.module.single')"
+                    :show-button-icon="false"
+                    class="dropdown-item"
+                  />
 
-                  <b-dropdown-item-button>
-                    <c-permissions-button
-                      :title="module.name || module.handle || module.moduleID"
-                      :target="module.name || module.handle || module.moduleID"
-                      :resource="`corteza::compose:module-field/${namespace.namespaceID}/${module.moduleID}/*`"
-                      :button-label="$t('general:label.field')"
-                      :show-button-icon="false"
-                      all-specific
-                    />
-                  </b-dropdown-item-button>
+                  <c-permissions-button
+                    :title="module.name || module.handle || module.moduleID"
+                    :target="module.name || module.handle || module.moduleID"
+                    :resource="`corteza::compose:module-field/${namespace.namespaceID}/${module.moduleID}/*`"
+                    :button-label="$t('general:label.field')"
+                    :show-button-icon="false"
+                    all-specific
+                    class="dropdown-item"
+                  />
 
-                  <b-dropdown-item-button>
-                    <c-permissions-button
-                      :title="module.name || module.handle || module.moduleID"
-                      :target="module.name || module.handle || module.moduleID"
-                      :resource="`corteza::compose:record/${namespace.namespaceID}/${module.moduleID}/*`"
-                      :button-label="$t('general:label.record')"
-                      :show-button-icon="false"
-                      all-specific
-                    />
-                  </b-dropdown-item-button>
+                  <c-permissions-button
+                    :title="module.name || module.handle || module.moduleID"
+                    :target="module.name || module.handle || module.moduleID"
+                    :resource="`corteza::compose:record/${namespace.namespaceID}/${module.moduleID}/*`"
+                    :button-label="$t('general:label.record')"
+                    :show-button-icon="false"
+                    all-specific
+                    class="dropdown-item"
+                  />
                 </b-dropdown>
 
                 <related-pages
