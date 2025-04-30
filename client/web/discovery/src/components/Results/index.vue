@@ -17,31 +17,7 @@
     <component
       :is="component"
       v-bind="$props"
-    >
-      <template #header>
-        <span
-          v-if="createdBy"
-          class="text-truncate text-nowrap mr-1"
-        >
-          <b-icon-person />
-          {{ createdBy }}
-        </span>
-        <span
-          v-if="createdAt"
-          class="text-nowrap mr-1"
-        >
-          <b-icon-calendar />
-          {{ createdAt }}
-        </span>
-        <span
-          v-if="updatedAt"
-          class="text-nowrap"
-        >
-          <b-icon-pencil-square />
-          {{ updatedAt }}
-        </span>
-      </template>
-    </component>
+    />
   </b-card>
 </template>
 
@@ -68,21 +44,6 @@ export default {
       const i = keys.map(c => c.toLocaleLowerCase()).findIndex(c => c === type)
 
       return Results[keys[i]]
-    },
-
-    createdBy () {
-      const { by } = this.hit.value.created || {}
-      return by
-    },
-
-    createdAt () {
-      const { at } = this.hit.value.created || {}
-      return at ? new Date(at).toLocaleDateString() : at
-    },
-
-    updatedAt () {
-      const { at } = this.hit.value.updated || {}
-      return at ? new Date(at).toLocaleDateString() : at
     },
   },
 }

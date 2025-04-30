@@ -1,9 +1,9 @@
 <template>
   <b-overlay>
     <b-card-header class="border-bottom">
-      <div class="d-flex align-items-center mb-3 justify-content-between">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h5
-          class="text-primary text-capitalize text-truncate mr-2 mb-0"
+          class="text-primary text-capitalize text-truncate mb-0"
         >
           <span
             v-if="hit.value.namespace.name || hit.value.namespace.handle"
@@ -33,11 +33,11 @@
             {{ $t('general:federated') }}
           </b-badge>
           <b-avatar
-            v-b-tooltip.noninteractive.hover="{ title: $t('types.module'), container: '#body' }"
             size="sm"
             icon="list-ul"
             class="align-center bg-light text-dark"
           />
+          {{ $t('types.module') }}
         </span>
       </div>
 
@@ -46,26 +46,28 @@
       </div>
     </b-card-header>
 
-    <b-card-body class="pb-0">
-      <div
+    <b-card-body
+      class="d-flex flex-wrap"
+      style="gap: 2rem;"
+    >
+      <b-form-group
         v-for="(value, name, i) in limitData()"
         :key="i"
-        class="d-flex flex-column mb-3"
+        label-class="text-capitalize text-primary"
+        class="mb-0"
+        style="min-width: 20rem; max-width: 100%;"
       >
-        <label
-          class="text-capitalize text-primary mb-0"
-        >
+        <template #label>
           {{ name }}
-        </label>
-        <div class="mt-1">
-          <text-highlight
-            :queries="query"
-            highlight-style="padding: 0 0.05rem;"
-          >
-            {{ value }}
-          </text-highlight>
-        </div>
-      </div>
+        </template>
+
+        <text-highlight
+          :queries="query"
+          highlight-style="padding: 0 0.05rem;"
+        >
+          {{ value }}
+        </text-highlight>
+      </b-form-group>
     </b-card-body>
   </b-overlay>
 </template>

@@ -1,43 +1,50 @@
 <template>
   <b-overlay>
     <b-card-header class="border-bottom">
-      <div class="d-flex align-items-center mb-3 justify-content-between">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h5
-          class="text-primary text-capitalize text-truncate mr-2 mb-0"
+          class="text-primary text-capitalize text-truncate mb-0"
         >
           {{ hit.value.name || hit.value.slug }}
         </h5>
-        <b-avatar
-          v-b-tooltip.noninteractive.hover="{ title: $t('types.namespace'), container: '#body' }"
-          size="sm"
-          icon="code-square"
-          class="align-center bg-light text-dark"
-        />
+
+        <span class="text-nowrap">
+          <b-avatar
+            size="sm"
+            icon="code-square"
+            class="align-center bg-light text-dark"
+          />
+          {{ $t('types.namespace') }}
+        </span>
       </div>
       <div class="d-flex justify-content-between small">
         <slot name="header" />
       </div>
     </b-card-header>
 
-    <b-card-body class="pb-0">
+    <b-card-body>
       <div
-        v-for="(item, name, i) in limitData()"
-        :key="i"
-        class="d-flex flex-column mb-3"
+        class="d-flex flex-wrap"
+        style="gap: 2rem;"
       >
-        <label
-          class="text-capitalize text-primary mb-0"
+        <b-form-group
+          v-for="(item, name, i) in limitData()"
+          :key="i"
+          label-class="text-capitalize text-primary"
+          class="mb-0"
+          style="min-width: 20rem; max-width: 100%;"
         >
-          {{ name }}
-        </label>
-        <div class="mt-1">
+          <template #label>
+            {{ name }}
+          </template>
+
           <text-highlight
             :queries="query"
             highlight-style="padding: 0 0.05rem;"
           >
             {{ item }}
           </text-highlight>
-        </div>
+        </b-form-group>
       </div>
     </b-card-body>
   </b-overlay>

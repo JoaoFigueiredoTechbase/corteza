@@ -1,6 +1,7 @@
 import { library } from '@fortawesome/fontawesome-svg-core'
 import {
   faGripHorizontal,
+  faGripLines,
   faThumbtack,
   faBars,
   faChevronUp,
@@ -39,4 +40,5 @@ library.add(
   faBellSlash,
   faEllipsisV,
   faTrashAlt,
+  faGripLines,
 )

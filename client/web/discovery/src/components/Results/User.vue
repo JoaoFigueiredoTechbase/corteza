@@ -1,7 +1,7 @@
 <template>
   <b-overlay>
     <b-card-header class="border-bottom">
-      <div class="d-flex align-items-center mb-3 justify-content-between">
+      <div class="d-flex align-items-center justify-content-between">
         <h5
           class="text-primary text-capitalize text-truncate mr-2 mb-0"
         >
@@ -21,25 +21,24 @@
     </b-card-header>
 
     <b-card-body class="pb-0">
-      <div
+      <b-form-group
         v-for="(value, name, i) in limitData()"
         :key="i"
-        class="d-flex flex-column mb-3"
+        label-class="text-capitalize text-primary"
+        class="mb-0"
+        style="min-width: 200px; max-width: 100%;"
       >
-        <label
-          class="text-capitalize text-primary mb-0"
-        >
+        <template #label>
           {{ name }}
-        </label>
-        <div class="mt-1">
-          <text-highlight
-            :queries="query"
-            highlight-style="padding: 0 0.05rem;"
-          >
-            {{ value }}
-          </text-highlight>
-        </div>
-      </div>
+        </template>
+
+        <text-highlight
+          :queries="query"
+          highlight-style="padding: 0 0.05rem;"
+        >
+          {{ value }}
+        </text-highlight>
+      </b-form-group>
     </b-card-body>
   </b-overlay>
 </template>

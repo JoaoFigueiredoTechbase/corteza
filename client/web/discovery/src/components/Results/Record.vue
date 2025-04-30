@@ -1,9 +1,9 @@
 <template>
   <b-overlay>
     <b-card-header class="border-bottom">
-      <div class="d-flex align-items-center mb-3 justify-content-between">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h5
-          class="text-primary text-capitalize text-truncate mr-2 mb-0"
+          class="text-primary text-capitalize text-truncate mb-0"
         >
           <span
             v-if="hit.value.namespace.name || hit.value.namespace.handle"
@@ -33,11 +33,11 @@
             {{ $t('general:federated') }}
           </b-badge>
           <b-avatar
-            v-b-tooltip.noninteractive.hover="{ title: $t('filters:types.record'), container: '#body' }"
             size="sm"
             icon="file-earmark-text"
             class="align-center bg-light text-dark"
           />
+          {{ $t('types.record') }}
         </span>
       </div>
 
@@ -46,21 +46,24 @@
       </div>
     </b-card-header>
 
-    <b-card-body class="pb-0">
+    <b-card-body>
       <div
         v-if="limitData().length"
+        class="d-flex flex-wrap"
+        style="gap: 2rem;"
       >
-        <div
+        <b-form-group
           v-for="(item, i) in limitData()"
           :key="i"
-          class="d-flex flex-column mb-3"
+          label-class="text-capitalize text-primary"
+          class="mb-0"
+          style="min-width: 20rem; max-width: 100%;"
         >
-          <label
-            class="text-capitalize text-primary mb-0"
-          >
+          <template #label>
             {{ item.label || item.name }}
-          </label>
-          <p class="multiline mt-1 mb-0">
+          </template>
+
+          <p class="multiline mb-0">
             <text-highlight
               :queries="query"
               highlight-style="padding: 0 0.05rem;"
@@ -68,7 +71,7 @@
               {{ item.value }}
             </text-highlight>
           </p>
-        </div>
+        </b-form-group>
       </div>
 
       <p
@@ -84,13 +87,30 @@
 import base from './base'
 
 export default {
+  i18nOptions: {
+    namespaces: 'filters',
+  },
+
   extends: base,
+
+  computed: {
+    recordID () {
+      return this.hit.value.recordID
+    },
+  },
 
   methods: {
     limitData () {
-      const { values = [] } = this.hit.value
+      let { values = [] } = this.hit.value
 
-      return (values || []).map(({ name, label, value = [] }) => {
+      const systemValues = [
+        { name: 'recordID', label: this.$t('general:recordID'), value: this.recordID },
+        { name: 'createdBy', label: this.$t('general:createdBy'), value: this.createdBy },
+        { name: 'createdAt', label: this.$t('general:createdAt'), value: this.createdAt },
+        { name: 'updatedAt', label: this.$t('general:updatedAt'), value: this.updatedAt },
+      ].filter(v => v.value)
+
+      values = (values || []).map(({ name, label, value = [] }) => {
         if (value) {
           value = value.map(v => {
             return v.toString().includes('{"coordinates":[') ? ((JSON.parse(v || '{}') || {}).coordinates || []).join(', ') : v
@@ -99,6 +119,8 @@ export default {
 
         return { name, label, value }
       })
+
+      return [...values, ...systemValues]
     },
   },
 }

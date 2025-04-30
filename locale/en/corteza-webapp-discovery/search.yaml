@@ -1,7 +1,7 @@
 notification:
   search-error: There was problem getting search result
-input-placeholder: Enter search text
-card: 
+input-placeholder: Enter search text, use "text" for exact match
+card:
   button-text: Show more
   type: Type
   handle: Handle

@@ -9010,6 +9010,11 @@ spdy@^4.0.2:
     select-hose "^2.0.0"
     spdy-transport "^3.0.0"
 
+split.js@^1.3.5:
+  version "1.6.5"
+  resolved "https://registry.yarnpkg.com/split.js/-/split.js-1.6.5.tgz#f7f61da1044c9984cb42947df4de4fadb5a3f300"
+  integrity sha512-mPTnGCiS/RiuTNsVhCm9De9cCAUsrNFFviRbADdKiiV+Kk8HKp/0fWu7Kr8pi3/yBmsqLFHuXGT9UUZ+CNLwFw==
+
 split2@^4.0.0:
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/split2/-/split2-4.2.0.tgz#c9c5920904d148bab0b9f67145f245a86aadbfa4"
@@ -9883,6 +9888,13 @@ vue-select@3.20.3:
   version "3.20.3"
   resolved "https://registry.yarnpkg.com/vue-select/-/vue-select-3.20.3.tgz#559b0ba2780171e4eeda455ebce5f3ce708380eb"
   integrity sha512-aDaq4rPBrDavh7NDLgAP8e0G8UNElh6vO3itGWjhf1y9KaGRWtFw21cUkSRHGgj0V5FlCG4EaRb1xdE/C9J+eg==
+
+vue-split-panel@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/vue-split-panel/-/vue-split-panel-1.0.4.tgz#77b75399236bb7610e053598cc33c4988573ad6b"
+  integrity sha512-OGR+2vIHGcXjpXMh7Pv6uG0t6ihL8o8wmHLeKfvArNPJs/Z0GYLplDcUdTg7Z/Et+IsYVlR13f83oiuRVLYOkw==
+  dependencies:
+    split.js "^1.3.5"
 
 vue-style-loader@^4.1.0, vue-style-loader@^4.1.3:
   version "4.1.3"

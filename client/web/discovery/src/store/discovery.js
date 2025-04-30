@@ -1,4 +1,4 @@
-const types = {
+const storeTypes = {
   processing: 'processing',
   types: 'types',
   aggregations: 'aggregations',
@@ -28,50 +28,50 @@ export default function (DiscoveryAPI) {
 
     actions: {
       async fetchData ({ commit }, { query, modules, namespaces, size }) {
-        commit(types.processing, true)
+        commit(storeTypes.processing, true)
 
         return DiscoveryAPI.query({ query, modules, namespaces, size }).then((response = {}) => {
           if (response) {
-            commit(types.aggregations, response.aggregations)
+            commit(storeTypes.aggregations, response.aggregations)
           }
 
           return response
         }).finally(() => {
-          commit(types.processing, false)
+          commit(storeTypes.processing, false)
         })
       },
 
       updateTypes ({ commit }, types) {
-        commit(types.types, types)
+        commit(storeTypes.types, types)
       },
 
       updateModules ({ commit }, modules) {
-        commit(types.modules, modules)
+        commit(storeTypes.modules, modules)
       },
 
       updateNamespaces ({ commit }, namespaces) {
-        commit(types.namespaces, namespaces)
+        commit(storeTypes.namespaces, namespaces)
       },
     },
 
     mutations: {
-      [types.processing] (state, value) {
+      [storeTypes.processing] (state, value) {
         state.processing = value
       },
 
-      [types.types] (state, types) {
+      [storeTypes.types] (state, types) {
         state.types = types
       },
 
-      [types.aggregations] (state, aggs) {
-        state.aggregations = aggs
+      [storeTypes.aggregations] (state, aggregations) {
+        state.aggregations = aggregations
       },
 
-      [types.modules] (state, modules) {
+      [storeTypes.modules] (state, modules) {
         state.modules = modules
       },
 
-      [types.namespaces] (state, namespaces) {
+      [storeTypes.namespaces] (state, namespaces) {
         state.namespaces = namespaces
       },
     },

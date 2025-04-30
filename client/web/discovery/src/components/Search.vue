@@ -3,51 +3,76 @@
     fluid
     class="h-100 mh-100 p-0"
   >
-    <b-row
-      no-gutters
+    <split
+      direction="horizontal"
+      :gutter-size="12"
+      class="h-100 overflow-hidden"
     >
-      <b-col
-        cols="12"
-        :lg="map.show ? '7' : '12'"
-        :xl="map.show ? '8' : '12'"
-        class="results-container pt-3"
-        :class="{ 'with-map': map.show }"
+      <split-area
+        :size="map.show ? 70 : 100"
+        :min-size="300"
+        class="overflow-hidden"
       >
-        <b-form-group class="px-3">
-          <c-input-search
-            :value="query"
-            :placeholder="$t('input-placeholder')"
-            :autocomplete="'off'"
-            :disabled="storeProcessing"
-            submittable
-            @search="onQuerySubmit"
-          />
+        <div class="px-3">
+          <b-form-group class="mb-0">
+            <c-input-search
+              :value="query"
+              :placeholder="$t('input-placeholder')"
+              :autocomplete="'off'"
+              :disabled="storeProcessing"
+              submittable
+              @search="onQuerySubmit"
+            />
+          </b-form-group>
 
           <div
-            class="d-flex align-items-center justify-content-between px-1 mt-1 text-muted"
+            class="d-flex align-items-center px-1 mt-1 mb-2 text-muted"
           >
-            <span
-              :class="{ 'discovering': storeProcessing }"
-            >
-              {{ searchDescription }}
-            </span>
-            <span>
-              Use <samp>"text"</samp> for exact match
-            </span>
-          </div>
-        </b-form-group>
+            <div class="d-flex align-items-center">
+              <span
+                :class="{ 'discovering': storeProcessing }"
+                class="mt-1"
+              >
+                {{ searchDescription }}
+              </span>
+            </div>
 
-        <b-row
-          class="results w-100 m-0 mh-100 overflow-auto"
+            <div class="d-flex align-items-center ml-auto">
+              <font-awesome-icon
+                :icon="['fas', 'grip-lines']"
+                class="mt-2 mr-1 pointer"
+                :class="{ 'text-primary': viewMode === 'list' }"
+                @click="viewMode = 'list'"
+              />
+
+              <b-form-checkbox
+                v-model="viewMode"
+                :value="'grid'"
+                :unchecked-value="'list'"
+                switch
+                class="pointer ml-2"
+              />
+
+              <font-awesome-icon
+                :icon="['fas', 'grip-horizontal']"
+                class="mt-2 ml-1 pointer"
+                :class="{ 'text-primary': viewMode === 'grid' }"
+                @click="viewMode = 'grid'"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="d-flex flex-wrap gap-3 p-3 w-100 h-100 m-0 mh-100 overflow-auto position-relative"
+          :class="{ 'list-view': viewMode === 'list' }"
         >
           <div
             v-if="storeProcessing || !total.actual"
-            class="position-absolute d-flex align-items-center justify-content-center w-100 h-100"
-            style="opacity: 0.8; z-index: 1; background-color: var(--gray-200);"
+            class="position-absolute d-flex align-items-center justify-content-center w-100 h-50"
+            style="opacity: 0.8; z-index: 1; background-color: var(--light);"
           >
-            <h5
-              class="mb-5"
-            >
+            <h5 class="mb-0">
               <b-spinner
                 v-if="storeProcessing"
                 variant="primary"
@@ -61,12 +86,11 @@
             </h5>
           </div>
 
-          <b-col
+          <div
             v-for="(hit, i) in filteredHits"
             :key="i"
-            md="6"
-            :lg="map.show ? '6': '4'"
-            class="py-3"
+            class="result-item w-100"
+            :class="{ 'grid-view': viewMode === 'grid' }"
           >
             <result
               :id="hit.value.recordID || hit.value.moduleID"
@@ -76,8 +100,8 @@
               :class="{ 'border-primary border shadow': map.clickedMarker && [hit.value.recordID, hit.value.moduleID].includes(map.clickedMarker) }"
               @hover="map.hoverIndex = $event"
             />
-          </b-col>
-        </b-row>
+          </div>
+        </div>
 
         <div
           class="position-fixed map-button"
@@ -90,24 +114,25 @@
           >
             <font-awesome-icon
               :icon="['fas', 'map-marked-alt']"
-              class="h3 mb-0"
+              class="h5 mb-0"
             />
           </b-button>
         </div>
-      </b-col>
+      </split-area>
 
-      <b-col
-        v-if="map.show"
-        lg="5"
-        xl="4"
+      <split-area
+        :size="map.show ? 30 : 0"
+        :min-size="300"
       >
         <discovery-map
+          v-if="map.show"
           :markers="map.markers"
           :hover-index="map.hoverIndex"
+          class="pl-3"
           @hover="markerHovered"
         />
-      </b-col>
-    </b-row>
+      </split-area>
+    </split>
   </b-container>
 </template>
 
@@ -116,6 +141,7 @@ import { mapGetters, mapActions } from 'vuex'
 import Result from './Results'
 import DiscoveryMap from './DiscoveryMap.vue'
 import { components } from '@cortezaproject/corteza-vue'
+import { Split, SplitArea } from 'vue-split-panel'
 const { CInputSearch } = components
 
 export default {
@@ -127,6 +153,8 @@ export default {
     Result,
     DiscoveryMap,
     CInputSearch,
+    Split,
+    SplitArea,
   },
 
   data () {
@@ -139,7 +167,7 @@ export default {
       pagination: {
         limit: 50,
         from: 0,
-        size: 250,
+        size: 50,
       },
 
       total: {
@@ -155,6 +183,8 @@ export default {
         clickedMarker: undefined,
         hoverIndex: undefined,
       },
+
+      viewMode: 'list',
     }
   },
 
@@ -206,7 +236,7 @@ export default {
   created () {
     this.initial = true
 
-    const { query = '', modules = [], namespaces = [], size = 250 } = this.$route.query
+    const { query = '', modules = [], namespaces = [], size = 50 } = this.$route.query
 
     this.query = query
     this.pagination.size = size
@@ -240,18 +270,16 @@ export default {
     }),
 
     getSearchData ({ query = this.query, append = false } = {}) {
-      if (!append) {
-        this.map.markers = []
-      }
-
-      // Filters
-      const modules = this.modules
-      const namespaces = this.namespaces
-
-      // Pagination
       if (append) {
         this.pagination.size += this.pagination.limit
+      } else {
+        this.map.markers = []
+        this.hits = []
+        this.filteredHits = []
       }
+
+      const modules = this.storeModules
+      const namespaces = this.storeNamespaces
 
       const { size } = this.pagination
 
@@ -276,7 +304,7 @@ export default {
       }).catch(e => {
         this.toastErrorHandler(this.$t('notification:search.failed'))(e)
         this.hits = []
-        this.filteredHits.splice(0, this.filteredHits.length)
+        this.filteredHits = []
       })
     },
 
@@ -285,6 +313,8 @@ export default {
 
       if (this.storeTypes.length > 0 && this.hits.length) {
         filteredHits = this.hits.filter(hit => this.storeTypes.includes(hit.type))
+      } else {
+        filteredHits = []
       }
 
       this.filteredHits.splice(0, this.filteredHits.length, ...filteredHits)
@@ -294,7 +324,7 @@ export default {
     onQuerySubmit (query) {
       if (!this.storeProcessing) {
         this.query = query
-        this.pagination.size = 250
+        this.pagination.size = 50
         this.getSearchData()
       }
     },
@@ -349,33 +379,13 @@ export default {
 }
 </script>
 
+<style lang="scss">
+.split .gutter {
+  background-color: transparent;
+}
+</style>
+
 <style lang="scss" scoped>
-.results-container {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 64px);
-}
-
-.results-container.with-map {
-  height: calc(60vh - 64px);
-}
-
-@media (min-width: 992px) {
-  .results-container {
-    height: calc(100vh - 64px) !important;
-  }
-}
-
-.results {
-  flex: 1 1 auto;
-}
-
-.clear-query {
-  z-index: 3 !important;
-  right: 52px;
-  top: 2px;
-}
-
 .map-button {
   bottom: 1rem;
   right: 1rem;
@@ -395,5 +405,18 @@ export default {
   50% { content: '..'; }
   75% { content: '...'; }
   100% { content: ''; }
+}
+
+.result-item {
+  &.grid-view {
+    min-width: 30rem;
+    flex: 1;
+  }
+}
+
+.list-view {
+  .result-item {
+    max-width: 100%;
+  }
 }
 </style>

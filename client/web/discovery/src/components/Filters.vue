@@ -18,13 +18,12 @@
           :value="option.value"
           class="ml-2"
         >
-          <div
-            class="d-flex align-items-center mb-0"
-          >
-            <span class="d-inline-block text-truncate mr-3">
-              {{ option.text }}
-            </span>
-          </div>
+          <b-avatar
+            :icon="getFilterIcon(option.value)"
+            size="sm"
+            class="align-center bg-light text-dark"
+          />
+          {{ option.text }}
         </b-form-checkbox>
       </b-form-checkbox-group>
     </div>
@@ -104,7 +103,11 @@ export default {
 
   data () {
     return {
-      types: [],
+      types: [
+        'compose:namespace',
+        'compose:module',
+        'compose:record',
+      ],
       groups: {
         Module: [],
         Namespace: [],
@@ -125,7 +128,6 @@ export default {
         { text: this.$t('types.namespace'), value: 'compose:namespace' },
         { text: this.$t('types.module'), value: 'compose:module' },
         { text: this.$t('types.record'), value: 'compose:record' },
-        { text: this.$t('types.user'), value: 'system:user' },
       ]
     },
 
@@ -194,6 +196,20 @@ export default {
     clearGroup (name) {
       this.groups[name] = []
       this.updateGroup(name)
+    },
+
+    getFilterIcon (type) {
+      if (type === 'compose:namespace') {
+        return 'code-square'
+      } else if (type === 'compose:module') {
+        return 'file-earmark-text'
+      } else if (type === 'compose:record') {
+        return 'file-earmark-text'
+      } else if (type === 'system:user') {
+        return 'person'
+      }
+
+      return 'question-circle'
     },
   },
 }
