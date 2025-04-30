@@ -401,6 +401,8 @@ func (m RecordSummary) MarshalJSON() ([]byte, error) {
 		out["value"] = cast.ToString(m.EmptyCount)
 	case "notEmptyCount":
 		out["value"] = cast.ToString(m.NotEmptyCount)
+	case "count":
+		out["value"] = cast.ToString(m.Count)
 	case "uniqueCount":
 		out["value"] = cast.ToString(m.UniqueCount)
 	case "earliest":

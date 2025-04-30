@@ -358,6 +358,9 @@ func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.M
 		return
 	}
 
+	existing := make(map[any]struct{}, 24)
+	looped := false
+
 	procSummary := func(r *types.Record) (err error) {
 		for _, smDef := range p.Summaries {
 			// Get record value
@@ -381,47 +384,46 @@ func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.M
 
 			bit.NotEmptyCount++
 
+			for _, v := range vv {
+				bit.Count++
+
+				if _, ok := existing[v]; !ok {
+					existing[v] = struct{}{}
+					bit.UniqueCount++
+				}
+			}
+
 			switch smDef.Name {
 			case "min":
 				for _, v := range vv {
-					if bit.Count == 0 {
+					if !looped {
 						bit.Min = cast.ToFloat64(v)
 					} else {
 						bit.Min = math.Min(bit.Min, cast.ToFloat64(v))
 					}
-
-					bit.Count++
 				}
 
 			case "max":
 				for _, v := range vv {
-					if bit.Count == 0 {
+					if !looped {
 						bit.Max = cast.ToFloat64(v)
 					} else {
 						bit.Max = math.Max(bit.Max, cast.ToFloat64(v))
 					}
-
-					bit.Count++
 				}
 
 			case "avg":
 				for _, v := range vv {
-					bit.Count++
-
 					bit.Sum += cast.ToFloat64(v)
 				}
 
 			case "sum":
 				for _, v := range vv {
-					bit.Count++
-
 					bit.Sum += cast.ToFloat64(v)
 				}
 
 			case "earliest":
 				for _, v := range vv {
-					bit.Count++
-
 					if bit.Earliest.IsZero() {
 						bit.Earliest = cast.ToTime(v)
 					} else {
@@ -434,8 +436,6 @@ func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.M
 
 			case "latest":
 				for _, v := range vv {
-					bit.Count++
-
 					if bit.Latest.IsZero() {
 						bit.Latest = cast.ToTime(v)
 					} else {
@@ -447,6 +447,7 @@ func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.M
 				}
 			}
 
+			looped = true
 			summaries[fmt.Sprintf("%s %s", smDef.Name, smDef.Field)] = bit
 		}
 		return
