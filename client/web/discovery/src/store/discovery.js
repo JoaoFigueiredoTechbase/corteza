@@ -12,7 +12,11 @@ export default function (DiscoveryAPI) {
 
     state: {
       processing: false,
-      types: [],
+      types: [
+        'compose:namespace',
+        'compose:module',
+        'compose:record',
+      ],
       aggregations: [],
       modules: [],
       namespaces: [],

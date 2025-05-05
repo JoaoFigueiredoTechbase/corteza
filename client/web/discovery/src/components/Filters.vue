@@ -5,12 +5,12 @@
         {{ $t('types.title') }}
       </h6>
       <b-form-checkbox-group
-        v-model="types"
+        :checked="storeTypes"
         name="types"
         :disabled="storeProcessing"
         stacked
         class="mt-1"
-        @change="updateTypes(types)"
+        @change="updateTypes"
       >
         <b-form-checkbox
           v-for="option in options"
@@ -103,11 +103,6 @@ export default {
 
   data () {
     return {
-      types: [
-        'compose:namespace',
-        'compose:module',
-        'compose:record',
-      ],
       groups: {
         Module: [],
         Namespace: [],
@@ -117,6 +112,7 @@ export default {
 
   computed: {
     ...mapGetters({
+      storeTypes: 'discovery/types',
       storeAggregations: 'discovery/aggregations',
       storeModules: 'discovery/modules',
       storeNamespaces: 'discovery/namespaces',

@@ -64,7 +64,7 @@
         </div>
 
         <div
-          class="d-flex flex-wrap gap-3 p-3 w-100 h-100 m-0 mh-100 overflow-auto position-relative"
+          class="results d-flex flex-wrap gap-3 p-3 w-100 h-100 m-0 mh-100 overflow-auto position-relative"
           :class="{ 'list-view': viewMode === 'list' }"
         >
           <div
@@ -241,8 +241,8 @@ export default {
     this.query = query
     this.pagination.size = size
 
-    this.updateModules(Array.isArray(modules) ? modules : [modules])
     this.updateNamespaces(Array.isArray(namespaces) ? namespaces : [namespaces])
+    this.updateModules(Array.isArray(modules) ? modules : [modules])
 
     this.getSearchData()
 
