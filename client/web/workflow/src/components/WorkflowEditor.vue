@@ -162,6 +162,7 @@
           :text="$t('editor:detected-changes') + `${canUpdateWorkflow ? $t('editor:click-to-save') : ''}`"
           :loading-text="$t('editor:saving')"
           class="rounded py-2 px-3"
+          style="min-width: 20rem;"
           @submit="saveWorkflow()"
         />
 
@@ -480,7 +481,7 @@ import VueJsonEditor from 'v-jsoneditor'
 import Import from '../components/Import'
 import Export from '../components/Export'
 import { NoID } from '@cortezaproject/corteza-js'
-import { handle } from '@cortezaproject/corteza-vue'
+import { handle, components } from '@cortezaproject/corteza-vue'
 
 const {
   mxClient,
@@ -939,7 +940,7 @@ export default {
             } else if (['expressions', 'function', 'prompt', 'iterator', 'exec-workflow'].includes(kind)) {
               let { arguments: args = [], results = [], ref } = vertex.config || {}
 
-              const { meta = {}, results: functionResults = [] } = this.functionTypes.find(f => f.ref === ref) || {}
+              const { meta = {}, results: functionResults = [], parameters = [] } = this.functionTypes.find(f => f.ref === ref) || {}
 
               const functionLabel = meta.short
 
@@ -948,9 +949,16 @@ export default {
               }
 
               if (args.length && kind !== 'expressions') {
-                values.push('<tr class="title"><td><b>Arguments</b></td><td/></tr>')
+                values.push('<tr class="title"><td><b>Arguments</b></td><td/><td/></tr>')
               }
-              args = args.map(({ target = '', type = 'Any', expr = '', value = '' }) => `<tr><td><var>${encodeHTML(target)}</var> <samp>(${type})</samp></td><td><code>${encodeHTML(expr || value)}</code></td></tr>`)
+
+              args = parameters.map(({ name, types = [] }) => {
+                const { type, expr, value } = args.find(({ target }) => target === name) || {}
+                const exprType = type || `${types[0]}`
+                const exprBadge = expr ? '<span title="Expression" class="circle-badge badge-small ml-1">e</span>' : ''
+
+                return `<tr><td><var>${encodeHTML(name)}</var> <samp>(${exprType})</samp></td><td><code>${encodeHTML(expr || value)}</code></td><td>${exprBadge}</td></tr>`
+              })
 
               if (results.length) {
                 args.push('<tr class="title border-top"><td><b>Results</b></td><td /></tr>')
@@ -2604,6 +2612,7 @@ export default {
       return this.$AutomationAPI.functionList()
         .then(({ set }) => {
           this.functionTypes = set
+          this.functionTypes.push(...components.promptDefinitions)
         })
         .catch(this.toastErrorHandler(this.$t('notification:failed-fetch-functions')))
     },

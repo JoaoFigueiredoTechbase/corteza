@@ -27,7 +27,6 @@
           label="title"
           :reduce="f => f.pageID"
           option-value="pageID"
-          option-text="title"
           @input="updateLabelValue"
         />
       </b-form-group>

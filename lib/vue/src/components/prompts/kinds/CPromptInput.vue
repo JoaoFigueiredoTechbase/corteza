@@ -1,7 +1,8 @@
 <template>
-  <div>
+  <div class="d-flex flex-column gap-1">
     <p
       v-if="!!message"
+      class="text-break"
       v-html="message"
     />
 
@@ -15,15 +16,18 @@
         :disabled="loading"
       />
     </b-form-group>
+
     <b-button
       :disabled="loading"
       variant="primary"
+      class="ml-auto"
       @click="$emit('submit', { value: { '@value': value, '@type': 'String' }})"
     >
       {{ pVal('buttonLabel', 'Submit') }}
     </b-button>
   </div>
 </template>
+
 <script lang="js">
 import base from './base.vue'
 

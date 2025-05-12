@@ -1,21 +1,22 @@
 <template>
-  <div>
+  <div class="d-flex flex-column gap-1">
     <p
       v-if="!!message"
+      class="text-break"
       v-html="message"
     />
 
-    <div class="d-flex justify-content-end gap-1">
-      <b-button
-        :variant="pVal('buttonVariant', 'primary')"
-        :disabled="loading"
-        @click="$emit('submit', { confirmed: pRaw('buttonValue', true, 'Boolean') })"
-      >
-        {{ pVal('buttonLabel', 'OK') }}
-      </b-button>
-    </div>
+    <b-button
+      :variant="pVal('buttonVariant', 'primary')"
+      :disabled="loading"
+      class="ml-auto"
+      @click="$emit('submit', { confirmed: pRaw(undefined, true, 'Boolean') })"
+    >
+      {{ pVal('buttonLabel', 'Ok') }}
+    </b-button>
   </div>
 </template>
+
 <script lang="js">
 import base from './base.vue'
 

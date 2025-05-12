@@ -1930,8 +1930,6 @@ export default {
           incTotal: showTotalCount,
         }
 
-        console.log(this.listSummaries)
-
         summaries = JSON.stringify(this.listSummaries.map(s => ({
           name: s.metric,
           field: s.field,

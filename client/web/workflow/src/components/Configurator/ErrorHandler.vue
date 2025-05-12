@@ -11,12 +11,6 @@ export default {
     }
   },
 
-  mounted () {
-    if (!this.workflowOptions.length) {
-      this.searchWorkflows('', () => {})
-    }
-  },
-
   methods: {
     async getFunctionTypes () {
       this.functions = [
