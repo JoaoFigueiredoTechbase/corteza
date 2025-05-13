@@ -130,6 +130,7 @@ export default (options = {}) => {
       'app',
       'layout',
       'navigation',
+      'notification',
       'notifications',
     ),
 
