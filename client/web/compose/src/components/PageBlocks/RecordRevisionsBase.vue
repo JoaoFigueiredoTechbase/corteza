@@ -226,10 +226,7 @@ export default {
   methods: {
     createEvents () {
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
-
-      if (!this.isRecordPage) {
-        this.$root.$on('refetch-records', this.refresh)
-      }
+      this.$root.$on('refetch-records', this.refresh)
     },
 
     refreshOnRelatedRecordsUpdate ({ moduleID } = {}) {
@@ -278,10 +275,7 @@ export default {
 
     destroyEvents () {
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
-
-      if (!this.isRecordPage) {
-        this.$root.$off('refetch-records', this.refresh)
-      }
+      this.$root.$off('refetch-records', this.refresh)
     },
   },
 }

@@ -165,15 +165,11 @@ export default {
     },
 
     createEvents () {
-      if (!this.isRecordPage) {
-        this.$root.$on('refetch-records', this.refresh)
-      }
+      this.$root.$on('refetch-records', this.refresh)
     },
 
     destroyEvents () {
-      if (!this.isRecordPage) {
-        this.$root.$off('refetch-records', this.refresh)
-      }
+      this.$root.$off('refetch-records', this.refresh)
     },
 
     setDefaultValues () {

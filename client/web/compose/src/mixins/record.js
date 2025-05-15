@@ -174,17 +174,17 @@ export default {
                 this.$emit('handle-record-redirect', { recordID: record.recordID, recordPageID: this.page.pageID, edit: false })
 
                 // If we are in a modal we need to refresh blocks/records not in modal
-                this.$root.$emit('refetch-records', { moduleID: this.module.moduleID, recordID: record.recordID })
+                this.$root.$emit('refetch-records', { recordID: record.recordID })
               } else {
+                // Refresh blocks related to the module
+                this.$root.$emit('module-records-updated', { moduleID: this.module.moduleID })
+
                 this.$router.push({ name: route, params: { ...this.$route.params, recordID: record.recordID, edit: false } })
               }
 
               if (this.page.meta.notifications.enabled) {
                 this.toastSuccess(this.$t(`notification:record.${isNew ? 'create' : 'update'}Success`))
               }
-
-              // Refresh blocks related to the module
-              this.$root.$emit('module-records-updated', { moduleID: this.module.moduleID })
             }
           }, 500)
         }).catch(e => {

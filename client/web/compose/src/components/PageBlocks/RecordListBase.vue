@@ -1369,10 +1369,7 @@ export default {
       this.$root.$on(`drill-down-recordList:${this.uniqueID}`, this.setDrillDownFilter)
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$on('refetch-records', this.refreshAndResetPagination)
-      }
+      this.$root.$on('refetch-records', this.refreshAndResetPagination)
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
@@ -2425,10 +2422,7 @@ export default {
       this.$root.$off(`drill-down-recordList:${this.uniqueID}`, this.setDrillDownFilter)
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$off('refetch-records', this.refreshAndResetPagination)
-      }
+      this.$root.$off('refetch-records', this.refreshAndResetPagination)
     },
 
     handleAddRecord () {

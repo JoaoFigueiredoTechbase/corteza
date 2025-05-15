@@ -252,10 +252,7 @@ export default {
     createEvents () {
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$on('refetch-records', this.refresh)
-      }
+      this.$root.$on('refetch-records', this.refresh)
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
@@ -427,10 +424,7 @@ export default {
     destroyEvents () {
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$off('refetch-records', this.refresh)
-      }
+      this.$root.$off('refetch-records', this.refresh)
     },
   },
 }

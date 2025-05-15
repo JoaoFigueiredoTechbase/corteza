@@ -574,7 +574,7 @@ export default {
     },
 
     refetchRecords ({ recordID } = {}) {
-      if (this.inModal || (recordID && recordID !== this.recordID)) {
+      if ((recordID && recordID === this.recordID && this.inModal)) {
         return
       }
 
