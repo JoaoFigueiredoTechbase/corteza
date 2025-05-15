@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="my-2">
+    <!-- <div class="my-2">
       <h6 class="text-primary mb-2">
         {{ $t('types.title') }}
       </h6>
@@ -26,12 +26,12 @@
           {{ option.text }}
         </b-form-checkbox>
       </b-form-checkbox-group>
-    </div>
+    </div> -->
 
     <div
       v-for="agg in aggregationOptions"
       :key="agg.resource"
-      class="mt-4"
+      class="my-2"
     >
       <div
         v-if="agg.items.length"
@@ -75,17 +75,16 @@
           :value="resource.name"
           class="mb-1"
         >
-          <div
-            class="d-flex align-items-center"
-          >
+          <div class="d-flex align-items-center">
             <span class="d-inline-block text-truncate">
               {{ getResourceDisplayName(agg.resource, resource) }}
             </span>
-            <span
+
+            <!-- <span
               class="pl-3 ml-auto text-muted"
             >
               {{ resource.hits }}
-            </span>
+            </span> -->
           </div>
         </b-form-checkbox>
       </b-form-checkbox-group>

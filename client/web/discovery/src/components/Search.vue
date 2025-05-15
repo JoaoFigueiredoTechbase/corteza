@@ -37,28 +37,43 @@
               </span>
             </div>
 
-            <div class="d-flex align-items-center ml-auto">
-              <font-awesome-icon
-                :icon="['fas', 'grip-lines']"
-                class="mt-2 mr-1 pointer"
-                :class="{ 'text-primary': viewMode === 'list' }"
-                @click="viewMode = 'list'"
-              />
+            <div class="d-flex align-items-center ml-auto gap-2">
+              <b-button
+                variant="extra-light"
+                size="sm"
+                class="d-flex align-items-center gap-1 mt-2"
+                @click="toggleMap"
+              >
+                <font-awesome-icon
+                  :icon="['fas', 'map-marked-alt']"
+                  class="mr-1"
+                />
+                {{ !map.show ? $t('search:show-map') : $t('search:hide-map') }}
+              </b-button>
 
-              <b-form-checkbox
-                v-model="viewMode"
-                :value="'grid'"
-                :unchecked-value="'list'"
-                switch
-                class="pointer ml-2"
-              />
+              <div class="d-flex align-items-center">
+                <font-awesome-icon
+                  :icon="['fas', 'grip-lines']"
+                  class="mt-2 mr-1 pointer"
+                  :class="{ 'text-primary': viewMode === 'list' }"
+                  @click="viewMode = 'list'"
+                />
 
-              <font-awesome-icon
-                :icon="['fas', 'grip-horizontal']"
-                class="mt-2 ml-1 pointer"
-                :class="{ 'text-primary': viewMode === 'grid' }"
-                @click="viewMode = 'grid'"
-              />
+                <b-form-checkbox
+                  v-model="viewMode"
+                  :value="'grid'"
+                  :unchecked-value="'list'"
+                  switch
+                  class="pointer ml-2"
+                />
+
+                <font-awesome-icon
+                  :icon="['fas', 'grip-horizontal']"
+                  class="mt-2 ml-1 pointer"
+                  :class="{ 'text-primary': viewMode === 'grid' }"
+                  @click="viewMode = 'grid'"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -67,7 +82,6 @@
           <div
             v-if="(storeProcessing || !total.actual) && !loadingMore"
             class="d-flex align-items-center justify-content-center w-100 my-5"
-            style="opacity: 0.8; z-index: 1; background-color: var(--light);"
           >
             <h5 class="mb-0">
               <b-spinner
@@ -85,7 +99,7 @@
 
           <div
             v-else
-            class="results d-flex flex-wrap gap-3 p-3 overflow-auto"
+            class="results d-flex flex-wrap gap-3 px-4 py-3 overflow-auto"
             :class="{ 'list-view': viewMode === 'list' }"
           >
             <div
@@ -106,37 +120,21 @@
 
             <div
               v-if="total.actual > 0 && total.actual < total.all"
-              class="w-100 text-center py-3"
+              class="d-flex align-items-center justify-content-center py-3 w-100"
             >
               <b-button
                 variant="primary"
                 :disabled="loadingMore"
+                class="d-flex align-items-center justify-content-center gap-1"
                 @click="getSearchData({ append: true })"
               >
                 <b-spinner
                   v-if="loadingMore"
                   small
-                  class="mr-2"
                 />
                 {{ loadingMore ? $t('search:loading-more') : $t('search:show-more') }}
               </b-button>
             </div>
-          </div>
-
-          <div
-            class="position-fixed map-button"
-          >
-            <b-button
-              v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.map'), container: '#body' }"
-              variant="warning"
-              class="rounded-circle p-3"
-              @click="toggleMap"
-            >
-              <font-awesome-icon
-                :icon="['fas', 'map-marked-alt']"
-                class="h5 mb-0"
-              />
-            </b-button>
           </div>
         </div>
       </split-area>
@@ -303,11 +301,10 @@ export default {
 
       const modules = this.storeModules
       const namespaces = this.storeNamespaces
-      const resourceTypes = this.storeResourceTypes
 
       const { size } = this.pagination
 
-      this.updateRouteQuery({ query, modules, namespaces, resourceTypes, size })
+      this.updateRouteQuery({ query, modules, namespaces, size })
 
       this.fetchData({ query, modules, namespaces, size }).then((response = {}) => {
         if (response) {
@@ -384,9 +381,9 @@ export default {
       this.map.show = !this.map.show
     },
 
-    updateRouteQuery ({ query = undefined, modules = [], namespaces = [], resourceTypes = [], size = 0 }) {
-      if (JSON.stringify(this.$route.query) !== JSON.stringify({ query, modules, namespaces, resourceTypes, size })) {
-        this.$router.push({ query: { query: query || undefined, modules, namespaces, resourceTypes, size } })
+    updateRouteQuery ({ query = undefined, modules = [], namespaces = [], size = 0 }) {
+      if (JSON.stringify(this.$route.query) !== JSON.stringify({ query, modules, namespaces, size })) {
+        this.$router.push({ query: { query: query || undefined, modules, namespaces, size } })
       }
     },
   },
@@ -400,12 +397,6 @@ export default {
 </style>
 
 <style lang="scss" scoped>
-.map-button {
-  bottom: 1rem;
-  right: 1rem;
-  z-index: 99999;
-}
-
 // https://stackoverflow.com/a/40991531/17926309
 .discovering::after {
   display: inline-block;

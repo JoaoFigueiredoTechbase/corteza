@@ -48,7 +48,6 @@
 
     <b-card-body>
       <div
-        v-if="limitData().length"
         class="d-flex flex-wrap"
         style="gap: 2rem;"
       >
@@ -65,12 +64,6 @@
           </p>
         </b-form-group>
       </div>
-
-      <p
-        v-else
-      >
-        {{ $t('general:no-values') }}
-      </p>
     </b-card-body>
   </b-overlay>
 </template>
