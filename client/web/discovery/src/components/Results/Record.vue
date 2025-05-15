@@ -2,9 +2,7 @@
   <b-overlay>
     <b-card-header class="border-bottom">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <h5
-          class="text-primary text-capitalize text-truncate mb-0"
-        >
+        <h5 class="text-primary text-capitalize text-truncate mb-0">
           <span
             v-if="hit.value.namespace.name || hit.value.namespace.handle"
           >
@@ -25,13 +23,6 @@
         </h5>
 
         <span class="text-nowrap">
-          <b-badge
-            v-if="Object.keys(hit.value.labels || { }).includes('federation')"
-            variant="light"
-            class="mr-1 h5 p-2 mb-0"
-          >
-            {{ $t('general:federated') }}
-          </b-badge>
           <b-avatar
             size="sm"
             icon="file-earmark-text"
@@ -40,14 +31,20 @@
           {{ $t('types.record') }}
         </span>
       </div>
-
-      <div class="d-flex justify-content-between small">
-        <slot name="header" />
-      </div>
     </b-card-header>
 
-    <b-card-body class="d-flex flex-column flex-wrap gap-3">
+    <b-card-body class="d-flex flex-column flex-wrap gap-2">
+      <div v-if="Object.keys(hit.value.labels || { }).includes('federation')">
+        <b-badge
+          variant="light"
+          class="h6 mb-0"
+        >
+          {{ $t('general:federated') }}
+        </b-badge>
+      </div>
+
       <div
+        v-if="recordValues.length"
         class="d-flex flex-wrap gap-2 flex-grow-1"
       >
         <b-form-group
@@ -62,7 +59,10 @@
         </b-form-group>
       </div>
 
-      <div class="d-flex flex-wrap gap-2 flex-grow-1">
+      <div
+        v-if="systemValues.length"
+        class="d-flex flex-wrap gap-2 flex-grow-1"
+      >
         <b-form-group
           v-for="item in systemValues"
           :key="item.name"

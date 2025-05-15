@@ -1,10 +1,10 @@
 <template>
   <b-card
     no-body
-    class="shadow-sm h-100"
-    :class="{ 'hover-effect': hit.value.url }"
-    @mouseover="$emit('hover', hit.value.recordID)"
-    @mouseleave="$emit('hover', undefined)"
+    class="result shadow-sm h-100"
+    :class="{ 'shadow': hovered }"
+    @mouseover="onHover"
+    @mouseleave="onLeave"
   >
     <a
       v-if="hit.value.url"
@@ -35,6 +35,12 @@ export default {
     },
   },
 
+  data () {
+    return {
+      hovered: false,
+    }
+  },
+
   computed: {
     component () {
       const { type } = this.hit
@@ -46,15 +52,23 @@ export default {
       return Results[keys[i]]
     },
   },
+
+  methods: {
+    onHover () {
+      this.hovered = true
+      this.$emit('hover', this.hit.value.recordID)
+    },
+
+    onLeave () {
+      this.hovered = false
+      this.$emit('hover', undefined)
+    },
+  },
 }
 </script>
 
 <style lang="scss" scoped>
-.hover-effect {
-  &:hover {
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 8px rgba(38, 38, 38, 0.2) !important;
-    top: -2px;
-  }
+.result {
+  transition: all 0.3s ease-in-out;
 }
 </style>

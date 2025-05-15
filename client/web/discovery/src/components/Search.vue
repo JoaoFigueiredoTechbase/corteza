@@ -46,7 +46,6 @@
               >
                 <font-awesome-icon
                   :icon="['fas', 'map-marked-alt']"
-                  class="mr-1"
                 />
                 {{ !map.show ? $t('search:show-map') : $t('search:hide-map') }}
               </b-button>
