@@ -3,12 +3,13 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/microcosm-cc/bluemonday"
-	"github.com/spf13/cast"
 	"html"
 	"reflect"
 	"sort"
 	"time"
+
+	"github.com/microcosm-cc/bluemonday"
+	"github.com/spf13/cast"
 )
 
 type (
@@ -400,7 +401,18 @@ func sanitize(v interface{}) interface{} {
 	case []interface{}:
 		vv := reflect.ValueOf(v)
 		for i, val := range v.([]interface{}) {
-			vv.Index(i).Set(reflect.ValueOf(sanitize(val)))
+			// Wee need to do a failsafe here because we're working with reflect values
+			// In case sanitize returns nil, we'll get a runtime panic
+			sanitized := sanitize(val)
+			var v reflect.Value
+
+			// Since we're working with types, we need the zero value of interface{} over nil
+			if sanitized == nil {
+				v = reflect.Zero(reflect.TypeOf((*any)(nil)).Elem())
+			} else {
+				v = reflect.ValueOf(sanitized)
+			}
+			vv.Index(i).Set(v)
 		}
 	default:
 		return v

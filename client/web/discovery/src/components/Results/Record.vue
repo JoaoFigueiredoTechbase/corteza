@@ -99,7 +99,7 @@ export default {
       return (values || []).map(({ name, label, value = [] }) => {
         if (value) {
           value = value.map(v => {
-            return v.toString().includes('{"coordinates":[') ? ((JSON.parse(v || '{}') || {}).coordinates || []).join(', ') : v
+            return (v !== null ? v : '').toString().includes('{"coordinates":[') ? ((JSON.parse(v || '{}') || {}).coordinates || []).join(', ') : v
           }).join('\n')
         }
 

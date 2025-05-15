@@ -347,7 +347,7 @@ export default {
           const id = value.recordID
           value.values.forEach(({ value = [] }) => {
             const isGeometry = value && value.find(v => {
-              return v.toString().includes('{"coordinates":[')
+              return (v !== null ? v : '').toString().includes('{"coordinates":[')
             })
 
             if (isGeometry) {
