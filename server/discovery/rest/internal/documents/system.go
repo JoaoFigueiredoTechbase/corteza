@@ -84,9 +84,12 @@ func (d systemResources) Users(ctx context.Context, limit uint, cur string, user
 				Name:         u.Name,
 				Handle:       u.Handle,
 				Suspended:    u.SuspendedAt,
-				Created:      makePartialChange(&u.CreatedAt),
-				Updated:      makePartialChange(u.UpdatedAt),
-				Deleted:      makePartialChange(u.DeletedAt),
+
+				CatchAll: []any{u.ID, u.Email, u.Name, u.Handle},
+
+				Created: makePartialChange(&u.CreatedAt),
+				Updated: makePartialChange(u.UpdatedAt),
+				Deleted: makePartialChange(u.DeletedAt),
 			}
 			if len(d.opt.CortezaDomain) > 0 && u.ID > 0 {
 				doc.Url = fmt.Sprintf("%s/admin/system/user/edit/%d", d.opt.CortezaDomain, u.ID)

@@ -2,7 +2,6 @@ package mapping
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/cortezaproject/corteza/server/system/service"
 )
@@ -28,7 +27,7 @@ func SystemMapping() *systemMapping {
 
 func (svc systemMapping) Users(_ context.Context) ([]*Mapping, error) {
 	return []*Mapping{{
-		Index: fmt.Sprintf("users"),
+		Index: "system-users",
 		Mapping: map[string]*property{
 			"resourceType": {Type: "keyword"},
 
@@ -45,6 +44,11 @@ func (svc systemMapping) Users(_ context.Context) ([]*Mapping, error) {
 			"suspendedAt": {Type: "date"},
 
 			"security": security(),
+
+			"catch_all": {
+				Type:     "text",
+				Analyzer: "standard",
+			},
 		},
 	}}, nil
 }

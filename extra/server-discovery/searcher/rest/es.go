@@ -5,15 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-chi/jwtauth"
 	"go.uber.org/zap"
-	"io/ioutil"
-	"os"
-	"strconv"
-	"strings"
 )
 
 type (
@@ -237,7 +238,7 @@ func esSearch(ctx context.Context, log *zap.Logger, esc *elasticsearch.Client, p
 	noNSFilter := len(p.namespaceAggs) == 0
 	// noMFilter := len(p.moduleAggs) == 0
 	sqs := esSimpleQueryString{}
-	sqs.Wrap.Query = p.query
+	sqs.Wrap.Query = strings.TrimSpace(strings.ToLower(p.query))
 
 	query := esSearchParams{}
 	index := esSearchParamsIndex{}
@@ -277,8 +278,12 @@ func esSearch(ctx context.Context, log *zap.Logger, esc *elasticsearch.Client, p
 
 	// Search string filter
 	if !noQ {
-		sqs.Wrap.Query = fmt.Sprintf("%s*", sqs.Wrap.Query)
-		query.Query.Bool.Must = append(query.Query.Bool.Must, sqs)
+		query.Query.Bool.Must = append(query.Query.Bool.Must, map[string]interface{}{
+			"wildcard": map[string]interface{}{
+				"catch_all": map[string]interface{}{
+					"value": fmt.Sprintf("*%s*", sqs.Wrap.Query),
+				},
+			}})
 		// query.Query.DisMax.Queries = append(query.Query.DisMax.Queries, sqs)
 	}
 

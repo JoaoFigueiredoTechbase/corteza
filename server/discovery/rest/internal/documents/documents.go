@@ -45,6 +45,7 @@ type (
 		Handle       string            `json:"handle,omitempty"`
 		Suspended    *time.Time        `json:"suspendedAt,omitempty"`
 		Url          string            `json:"url,omitempty"`
+		CatchAll     []any             `json:"catch_all"`
 		Updated      *docPartialChange `json:"updated,omitempty"`
 		Created      *docPartialChange `json:"created,omitempty"`
 		Deleted      *docPartialChange `json:"deleted,omitempty"`
@@ -59,6 +60,7 @@ type (
 		Url          string                         `json:"url,omitempty"`
 		Enabled      bool                           `json:"enabled"`
 		Meta         docPartialComposeNamespaceMeta `json:"meta"`
+		CatchAll     []interface{}                  `json:"catch_all"`
 
 		Updated  *docPartialChange `json:"updated,omitempty"`
 		Created  *docPartialChange `json:"created,omitempty"`
@@ -96,6 +98,8 @@ type (
 		// Aggregation update
 		Namespace docPartialComposeNamespace `json:"namespace"`
 		Module    docPartialComposeModule    `json:"module"`
+
+		CatchAll []any `json:"catch_all"`
 	}
 
 	docPartialComposeModuleField struct {
@@ -116,6 +120,7 @@ type (
 		Meta         map[string]any           `json:"labels,omitempty"`
 		ValueLabels  map[string]string        `json:"valueLabels,omitempty"`
 		Values       map[string][]interface{} `json:"values"`
+		CatchAll     []any                    `json:"catch_all"`
 		Updated      *docPartialChange        `json:"updated,omitempty"`
 		Created      *docPartialChange        `json:"created,omitempty"`
 		Deleted      *docPartialChange        `json:"deleted,omitempty"`

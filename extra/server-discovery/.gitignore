@@ -2,6 +2,7 @@
 /coverage.txt
 /*.iml
 /.env-*
+.env
 /.dev*
 /.*cover.out*
 /overalls*
