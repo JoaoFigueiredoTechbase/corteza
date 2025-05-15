@@ -46,22 +46,32 @@
       </div>
     </b-card-header>
 
-    <b-card-body>
+    <b-card-body class="d-flex flex-column flex-wrap gap-3">
       <div
-        class="d-flex flex-wrap"
-        style="gap: 2rem;"
+        class="d-flex flex-wrap gap-2 flex-grow-1"
       >
         <b-form-group
-          v-for="(item, i) in limitData()"
+          v-for="(item, i) in recordValues"
           :key="i"
           :label="item.label || item.name"
           label-class="text-capitalize text-primary"
           class="mb-0"
+          style="min-width: 20rem; max-width: 100%; white-space: pre-line;"
+        >
+          {{ item.value }}
+        </b-form-group>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 flex-grow-1">
+        <b-form-group
+          v-for="item in systemValues"
+          :key="item.name"
+          :label="item.label"
+          label-class="text-capitalize text-primary"
+          class="mb-0"
           style="min-width: 20rem; max-width: 100%;"
         >
-          <p class="multiline mb-0">
-            {{ item.value }}
-          </p>
+          {{ item.value }}
         </b-form-group>
       </div>
     </b-card-body>
@@ -82,20 +92,11 @@ export default {
     recordID () {
       return this.hit.value.recordID
     },
-  },
 
-  methods: {
-    limitData () {
-      let { values = [] } = this.hit.value
+    recordValues () {
+      const { values = [] } = this.hit.value
 
-      const systemValues = [
-        { name: 'recordID', label: this.$t('general:recordID'), value: this.recordID },
-        { name: 'createdBy', label: this.$t('general:createdBy'), value: this.createdBy },
-        { name: 'createdAt', label: this.$t('general:createdAt'), value: this.createdAt },
-        { name: 'updatedAt', label: this.$t('general:updatedAt'), value: this.updatedAt },
-      ].filter(v => v.value)
-
-      values = (values || []).map(({ name, label, value = [] }) => {
+      return (values || []).map(({ name, label, value = [] }) => {
         if (value) {
           value = value.map(v => {
             return v.toString().includes('{"coordinates":[') ? ((JSON.parse(v || '{}') || {}).coordinates || []).join(', ') : v
@@ -104,8 +105,15 @@ export default {
 
         return { name, label, value }
       })
+    },
 
-      return [...values, ...systemValues]
+    systemValues () {
+      return [
+        { name: 'recordID', label: this.$t('general:recordID'), value: this.recordID },
+        { name: 'createdBy', label: this.$t('general:createdBy'), value: this.createdBy },
+        { name: 'createdAt', label: this.$t('general:createdAt'), value: this.createdAt },
+        { name: 'updatedAt', label: this.$t('general:updatedAt'), value: this.updatedAt },
+      ].filter(v => v.value)
     },
   },
 }
