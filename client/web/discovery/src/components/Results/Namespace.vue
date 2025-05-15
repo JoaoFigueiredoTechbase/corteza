@@ -30,20 +30,12 @@
         <b-form-group
           v-for="(item, name, i) in limitData()"
           :key="i"
+          :label="name"
           label-class="text-capitalize text-primary"
           class="mb-0"
           style="min-width: 20rem; max-width: 100%;"
         >
-          <template #label>
-            {{ name }}
-          </template>
-
-          <text-highlight
-            :queries="query"
-            highlight-style="padding: 0 0.05rem;"
-          >
-            {{ item }}
-          </text-highlight>
+          {{ item }}
         </b-form-group>
       </div>
     </b-card-body>

@@ -1,11 +1,5 @@
 <script>
-import TextHighlight from 'vue-text-highlight'
-
 export default {
-  components: {
-    TextHighlight,
-  },
-
   props: {
     index: {
       type: Number,

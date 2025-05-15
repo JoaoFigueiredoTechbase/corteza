@@ -55,21 +55,13 @@
         <b-form-group
           v-for="(item, i) in limitData()"
           :key="i"
+          :label="item.label || item.name"
           label-class="text-capitalize text-primary"
           class="mb-0"
           style="min-width: 20rem; max-width: 100%;"
         >
-          <template #label>
-            {{ item.label || item.name }}
-          </template>
-
           <p class="multiline mb-0">
-            <text-highlight
-              :queries="query"
-              highlight-style="padding: 0 0.05rem;"
-            >
-              {{ item.value }}
-            </text-highlight>
+            {{ item.value }}
           </p>
         </b-form-group>
       </div>
