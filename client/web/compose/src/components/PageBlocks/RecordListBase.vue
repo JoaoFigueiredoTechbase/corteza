@@ -1152,6 +1152,13 @@ export default {
       return pageID
     },
 
+    allFields () {
+      return [
+        ...this.recordListModule.fields,
+        ...this.recordListModule.systemFields(),
+      ]
+    },
+
     fields () {
       let fields = []
 
@@ -1250,7 +1257,7 @@ export default {
             filter: group.filter
               .map(f => this.createDefaultFilter(
                 f.condition,
-                { name: f.name, kind: f.kind, isMulti: f.isMulti },
+                f,
                 f.value,
                 f.operator,
               ))
@@ -2094,8 +2101,14 @@ export default {
     },
 
     createDefaultFilter (condition, field = {}, value = undefined, operator = undefined) {
-      const fields = [...this.recordListModule.fields, ...this.recordListModule.systemFields()]
-      const moduleField = { ...(fields.find(({ name }) => name === field.name) || {}), isMulti: false }
+      if (!field.resourceID) {
+        field = this.allFields.find(({ name }) => name === field.name) || field
+      }
+
+      if (field) {
+        field = new compose.ModuleFieldMaker(field)
+        field.isMulti = false
+      }
 
       let record = new compose.Record(this.recordListModule)
 
@@ -2105,45 +2118,43 @@ export default {
           new compose.Record(this.recordListModule),
         ]
 
-        if (moduleField.isSystem) {
-          record[0][moduleField.name] = value.start
-          record[1][moduleField.name] = value.end
+        if (field.isSystem) {
+          record[0][field.name] = value.start
+          record[1][field.name] = value.end
         } else {
-          record[0].values[moduleField.name] = value.start
-          record[1].values[moduleField.name] = value.end
+          record[0].values[field.name] = value.start
+          record[1].values[field.name] = value.end
         }
       } else {
-        if (moduleField.isSystem) {
-          record[moduleField.name] = value
+        if (field.isSystem) {
+          record[field.name] = value
         } else {
-          record.values[moduleField.name] = value
+          record.values[field.name] = value
         }
       }
 
       return {
         condition,
-        name: moduleField.name,
-        operator: operator || (moduleField.isMulti ? 'IN' : '='),
+        name: field.name,
+        operator: operator || (field.isMulti ? 'IN' : '='),
         value,
-        kind: moduleField.kind,
-        label: moduleField.label || moduleField.name,
-        field: moduleField,
+        kind: field.kind,
+        label: field.label || field.name,
+        field,
         record,
       }
     },
 
-    setDrillDownFilter ({ prefilter: drillDownFilter, name: fieldName, value: fieldValue }) {
+    setDrillDownFilter ({ prefilter: drillDownFilter, name, value: fieldValue }) {
       let recordListFilter = this.recordListFilter
 
       if (drillDownFilter) {
-        const field = (this.recordListModule.fields.find(f => f.name === fieldName) || {})
-
         if (!recordListFilter.length) {
           recordListFilter = [
             {
               groupCondition: undefined,
               filter: [
-                this.createDefaultFilter('Where', field, fieldValue, '='),
+                this.createDefaultFilter('Where', { name }, fieldValue, '='),
               ],
             },
           ]
@@ -2153,9 +2164,9 @@ export default {
 
           if (!filter.length || (filter.length && !filter[0].name)) {
             recordListFilter[0].filter = []
-            recordListFilter[0].filter.push(this.createDefaultFilter('Where', field, fieldValue))
+            recordListFilter[0].filter.push(this.createDefaultFilter('Where', { name }, fieldValue))
           } else {
-            recordListFilter[0].filter.push(this.createDefaultFilter('OR', field, fieldValue))
+            recordListFilter[0].filter.push(this.createDefaultFilter('OR', { name }, fieldValue))
           }
         }
 
