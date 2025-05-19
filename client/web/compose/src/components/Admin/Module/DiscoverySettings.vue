@@ -75,15 +75,24 @@ export default {
 
     currentFields: {
       get () {
-        if (this[this.currentScope] && this[this.currentScope].result[this.currentLanguageIndex]) {
-          return this[this.currentScope].result[this.currentLanguageIndex].fields
+        const { result = [] } = this.currentScope || {}
+
+        if (result[this.currentLanguageIndex]) {
+          return result[this.currentLanguageIndex].fields
         }
+
         return []
       },
 
       set (currentFields) {
-        if (this.currentScope && this[this.currentScope].result[this.currentLanguageIndex]) {
-          this[this.currentScope].result[this.currentLanguageIndex].fields = [...currentFields]
+        if (!this.currentScope) {
+          return
+        }
+
+        const { result = [] } = this.currentScope || {}
+
+        if (result[this.currentLanguageIndex]) {
+          result[this.currentLanguageIndex].fields = [...currentFields]
         }
       },
     },
@@ -94,11 +103,29 @@ export default {
     },
 
     currentScope () {
-      return this.currentTabIndex >= 0 ? (this.scopeOptions[this.currentTabIndex] || {}).value : undefined
+      if (this.currentTabIndex < 0) {
+        return undefined
+      }
+
+      const { value } = this.scopeOptions[this.currentTabIndex] || {}
+
+      return this[value]
     },
 
     currentLanguageIndex () {
-      return this.currentScope ? this[this.currentScope].result.findIndex(({ lang }) => lang === this.currentLang) : -1
+      if (!this.currentScope) {
+        return 0
+      }
+
+      const { result = [] } = this.currentScope || {}
+
+      if (!result.length) {
+        return 0
+      }
+
+      const index = result.findIndex(({ lang }) => lang === this.currentLang)
+
+      return index >= 0 ? index : 0
     },
 
     moduleFields () {
@@ -114,37 +141,30 @@ export default {
     },
   },
 
-  watch: {
-    modal: {
-      immediate: true,
-      handler (modal) {
-        if (modal && this.module) {
-          this.currentLang = this.defaultTranslationLanguage
+  mounted () {
+    this.currentLang = this.defaultTranslationLanguage
 
-          this.scopeOptions.forEach(({ value }) => {
-            this[value] = {
-              result: [],
-            }
+    this.scopeOptions.forEach(({ value }) => {
+      this[value] = {
+        result: [],
+      }
 
-            this.languages.forEach(({ tag: lang }) => {
-              let existingFields = new Set()
+      this.languages.forEach(({ tag: lang }) => {
+        let existingFields = new Set()
 
-              if (this.module.config.discovery && this.module.config.discovery[value]) {
-                const indexOfLanguage = this.module.config.discovery[value].result.findIndex(r => r.lang === lang)
-                if (indexOfLanguage >= 0) {
-                  existingFields = new Set(this.module.config.discovery[value].result[indexOfLanguage].fields.filter(name => this.moduleFields.has(name)))
-                }
-              }
-
-              const fields = [...existingFields].map(name => this.module.fields.find(field => field.name === name))
-
-              this[value].result.push({ lang, fields })
-              existingFields.clear()
-            })
-          })
+        if (this.module.config.discovery && this.module.config.discovery[value]) {
+          const indexOfLanguage = this.module.config.discovery[value].result.findIndex(r => r.lang === lang)
+          if (indexOfLanguage >= 0) {
+            existingFields = new Set(this.module.config.discovery[value].result[indexOfLanguage].fields.filter(name => this.moduleFields.has(name)))
+          }
         }
-      },
-    },
+
+        const fields = [...existingFields].map(name => this.module.fields.find(field => field.name === name))
+
+        this[value].result.push({ lang, fields })
+        existingFields.clear()
+      })
+    })
   },
 
   beforeDestroy () {
