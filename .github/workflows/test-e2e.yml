@@ -8,7 +8,8 @@ name: "E2e test on main branch push"
 on:
   push:
     branches:
-      - '202[2-9].[39].x'
+      - '20[0-9][0-9].[0-9].x'
+      - '20[0-9][0-9].[0-9].[0-9]'
 
 env:
   BUILD_OS: linux

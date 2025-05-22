@@ -2,7 +2,8 @@ name: SonarQube
 on:
   push:
     branches:
-      - '202[3-9].[39].x'
+      - '20[0-9][0-9].[0-9].x'
+      - '20[0-9][0-9].[0-9].[0-9]'
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
