@@ -37,12 +37,12 @@ export default {
 
     createdAt () {
       const { at } = this.hit.value.created || {}
-      return at ? new Date(at).toLocaleString() : at
+      return at ? this.$options.filters.locFullDateTime(at) : at
     },
 
     updatedAt () {
       const { at } = this.hit.value.updated || {}
-      return at ? new Date(at).toLocaleString() : at
+      return at ? this.$options.filters.locFullDateTime(at) : at
     },
   },
 

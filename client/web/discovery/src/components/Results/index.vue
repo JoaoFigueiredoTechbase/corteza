@@ -69,6 +69,6 @@ export default {
 
 <style lang="scss" scoped>
 .result {
-  transition: all 0.3s ease-in-out;
+  transition: all 0.3s ease-in;
 }
 </style>

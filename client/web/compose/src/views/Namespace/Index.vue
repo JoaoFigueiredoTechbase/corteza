@@ -70,7 +70,7 @@ export default {
     // Preload first 500 users
     this.loadUsers({ limit: 500 })
 
-    this.loadNamespaces({ force: true }).then(namespaces => {
+    this.loadNamespaces({ force: true }).finally(() => {
       this.loaded = true
     }).catch(this.toastErrorHandler(this.$t('notification:general.composeAccessNotAllowed')))
 

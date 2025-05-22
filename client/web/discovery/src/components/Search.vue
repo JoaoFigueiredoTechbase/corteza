@@ -108,12 +108,13 @@
               :class="{ 'grid-view': viewMode === 'grid' }"
             >
               <result
-                :id="hit.value.recordID || hit.value.moduleID"
+                :id="`result-${i}`"
                 :index="i"
                 :hit="hit"
                 :show-map="map.show"
-                :class="{ 'border-primary border shadow': map.clickedMarker && [hit.value.recordID, hit.value.moduleID].includes(map.clickedMarker) }"
-                @hover="map.hoverIndex = $event"
+                :class="{ 'border-primary border shadow': map.clickedMarker && map.clickedMarker === i }"
+                class="border"
+                @hover="onResultHover(i)"
               />
             </div>
 
@@ -146,8 +147,8 @@
           v-if="map.show"
           :markers="map.markers"
           :hover-index="map.hoverIndex"
-          class="pl-3"
-          @hover="markerHovered"
+          class="pl-2"
+          @marker-clicked="markerClicked"
         />
       </split-area>
     </split>
@@ -296,6 +297,7 @@ export default {
       } else {
         this.map.markers = []
         this.hits = []
+        this.map.hoverIndex = undefined
       }
 
       const modules = this.storeModules
@@ -365,15 +367,26 @@ export default {
       this.map.markers = markers
     },
 
-    markerHovered (ID) {
+    markerClicked (ID) {
       if (ID) {
-        document.getElementById(ID).scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        })
+        const result = document.getElementById(`result-${ID}`)
+
+        if (result) {
+          result.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          })
+        }
       }
 
       this.map.clickedMarker = ID
+      this.map.hoverIndex = undefined
+    },
+
+    onResultHover (index) {
+      if (this.map.show) {
+        this.map.hoverIndex = index
+      }
     },
 
     toggleMap () {
