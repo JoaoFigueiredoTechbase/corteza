@@ -696,6 +696,14 @@ recordRevisions:
 
     show-revisions: Show record revisions ({{ revision }})
     show-changes: "{{ count }} change(s)"
+
+    operations:
+      created: Created
+      updated: Updated
+      soft-deleted: Soft deleted
+      undeleted: Restored
+      hard-deleted: Hard deleted
+
     revisions:
       columns:
         timestamp:

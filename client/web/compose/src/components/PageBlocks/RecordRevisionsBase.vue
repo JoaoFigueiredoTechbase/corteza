@@ -36,53 +36,104 @@
           :fields="columns"
           sticky-header
           hover
+          details-td-class="bg-light"
+          responsive
           class="flex-fill mh-100 mb-0 w-100 rounded"
         >
-          <template #cell(timestamp)="row">
-            {{ row.item.timestamp | locFullDateTime }}
+          <template #cell(revision)="row">
+            {{ row.item.values.revision }}
           </template>
+
+          <template #cell(operation)="row">
+            {{ $t(`operations.${row.item.values.operation}`) }}
+          </template>
+
+          <template #cell(user)="row">
+            <field-viewer
+              value-only
+              :field="getField('userID')"
+              :record="row.item"
+              :module="mockRevisionModule"
+              :namespace="namespace"
+            />
+          </template>
+
+          <template #cell(timestamp)="row">
+            <field-viewer
+              value-only
+              :field="getField('timestamp')"
+              :record="row.item"
+              :module="mockRevisionModule"
+              :namespace="namespace"
+            />
+          </template>
+
           <template
             #cell(adt)="row"
           >
             <b-button
-              v-if="row.item.changes && row.item.changes.length > 0"
-              variant="link"
-              class="py-0 m-0"
+              v-if="row.item.meta.changes.length > 0"
+              variant="outline-extra-light"
+              class="d-flex align-items-center m-0 border-0 text-primary ml-auto"
               @click="row.toggleDetails"
             >
-              {{ row.detailsShowing ? '&times;' : $t(`show-changes`, { count: row.item.changes.length }) }}
+              {{ $t(`show-changes`, { count: row.item.meta.changes.length }) }}
+              <font-awesome-icon
+                :icon="row.detailsShowing ? 'chevron-up' : 'chevron-down'"
+                class="ml-2"
+              />
             </b-button>
           </template>
 
           <template #row-details="row">
-            <div
-              class="pl-5"
-            >
-              <b-table-simple small>
+            <div class="bg-white rounded-lg overflow-hidden">
+              <b-table-simple class="mb-0">
                 <b-thead>
-                  <b-tr class="text-primary">
+                  <b-tr class="text-primary bg-white">
                     <b-th>{{ $t('changes.columns.field.label') }}</b-th>
                     <b-th>{{ $t('changes.columns.old-value.label') }}</b-th>
                     <b-th>{{ $t('changes.columns.new-value.label') }}</b-th>
                   </b-tr>
                 </b-thead>
+
                 <b-tbody
-                  v-for="(change) in row.item.changes"
+                  v-for="(change) in row.item.meta.changes"
                   :key="change.key"
                 >
                   <b-tr>
-                    <b-td :rowspan="Math.max(change.new ? change.new.length : 0, change.old ? change.old.length : 0)">
+                    <b-td>
                       {{ change.key }}
                     </b-td>
-                    <b-td>{{ change.old ? change.old[0] : '-' }}</b-td>
-                    <b-td>{{ change.new ? change.new[0] : '-' }}</b-td>
-                  </b-tr>
-                  <b-tr
-                    v-for="index in Math.max(change.new ? change.new.length - 1 : 0, change.old ? change.old.length - 1 : 0)"
-                    :key="change.key + index"
-                  >
-                    <b-td>{{ change.old && change.old.length > index ? change.old[index]: '-' }}</b-td>
-                    <b-td>{{ change.new && change.new.length > index ? change.new[index]: '-' }}</b-td>
+
+                    <b-td>
+                      <field-viewer
+                        v-if="change.old"
+                        value-only
+                        :field="getField(`${change.key}_old`)"
+                        :record="row.item"
+                        :module="mockRevisionModule"
+                        :namespace="namespace"
+                      />
+
+                      <span v-else>
+                        -
+                      </span>
+                    </b-td>
+
+                    <b-td>
+                      <field-viewer
+                        v-if="change.new"
+                        value-only
+                        :field="getField(`${change.key}_new`)"
+                        :record="row.item"
+                        :module="mockRevisionModule"
+                        :namespace="namespace"
+                      />
+
+                      <span v-else>
+                        -
+                      </span>
+                    </b-td>
                   </b-tr>
                 </b-tbody>
               </b-table-simple>
@@ -105,7 +156,10 @@
 </template>
 <script>
 import base from './base'
-import { NoID } from '@cortezaproject/corteza-js'
+import { compose, NoID } from '@cortezaproject/corteza-js'
+import users from 'corteza-webapp-compose/src/mixins/users'
+import records from 'corteza-webapp-compose/src/mixins/records'
+import FieldViewer from 'corteza-webapp-compose/src/components/ModuleFields/Viewer'
 
 export default {
   i18nOptions: {
@@ -113,9 +167,16 @@ export default {
     keyPrefix: 'recordRevisions.viewer',
   },
 
-  components: {},
+  components: {
+    FieldViewer,
+  },
 
   extends: base,
+
+  mixins: [
+    users,
+    records,
+  ],
 
   data () {
     return {
@@ -136,6 +197,8 @@ export default {
        */
       loadedRevisions: false,
 
+      mockRevisionModule: undefined,
+
       /**
        * List of revisions when loaded
        */
@@ -152,12 +215,7 @@ export default {
           key: 'revision',
           label: '#',
           thClass: 'border-top-0',
-          class: 'text-center',
-        },
-        {
-          key: 'timestamp',
-          label: this.$t('revisions.columns.timestamp.label'),
-          thClass: 'border-top-0',
+          class: 'text-left',
         },
         {
           key: 'operation',
@@ -167,8 +225,14 @@ export default {
         {
           key: 'user',
           label: this.$t('revisions.columns.user.label'),
-          thClass: 'border-top-0',
-          formatter: (u) => u ? (u.name || u.email || u.userID) : '-',
+          thClass: 'border-top-0 text-right',
+          tdClass: 'text-right',
+        },
+        {
+          key: 'timestamp',
+          label: this.$t('revisions.columns.timestamp.label'),
+          thClass: 'border-top-0 text-right',
+          tdClass: 'text-right',
         },
         {
           key: 'adt',
@@ -244,20 +308,78 @@ export default {
         return
       }
 
-      const { $ComposeAPI, $SystemAPI } = this
-
       this.processing = true
 
-      return this.block.fetch($ComposeAPI, this.record)
-        .then(set => {
-          this.revisions = set
+      const fields = [
+        { name: 'revision', kind: 'Number' },
+        { name: 'changeID', kind: 'String' },
+        { name: 'userID', kind: 'User' },
+        { name: 'timestamp', kind: 'DateTime' },
+        { name: 'operation', kind: 'String' },
+      ]
+
+      this.module.fields.forEach(f => {
+        fields.push({
+          ...f,
+          name: `${f.name}_old`,
         })
-        .then(() => this.block.expandReferences({ $ComposeAPI, $SystemAPI }, this.module, this.revisions))
+
+        fields.push({
+          ...f,
+          name: `${f.name}_new`,
+        })
+      })
+
+      this.mockRevisionModule = new compose.Module({
+        ...this.module,
+        fields,
+      })
+
+      return this.block.fetch(this.$ComposeAPI, this.record).then(set => {
+        this.revisions = set.map(r => {
+          const changes = r.changes.reduce((acc, c) => {
+            if (c.old) {
+              acc[`${c.key}_old`] = c.old[0]
+            }
+
+            if (c.new) {
+              acc[`${c.key}_new`] = c.new[0]
+            }
+
+            return acc
+          }, {})
+
+          return new compose.Record(this.mockRevisionModule, {
+            recordID: r.resourceID,
+            values: {
+              revision: r.revision,
+              changeID: r.changeID,
+              operation: r.operation,
+              timestamp: r.timestamp,
+              userID: r.userID,
+              recordID: r.recordID,
+              ...changes,
+            },
+            meta: {
+              changes: r.changes,
+            },
+          })
+        })
+
+        return Promise.all([
+          this.fetchUsers(fields, this.revisions),
+          this.fetchRecords(this.namespace.namespaceID, fields, this.revisions),
+        ])
+      })
         .finally(() => {
           setTimeout(() => {
             this.processing = false
           }, 300)
         })
+    },
+
+    getField (name) {
+      return this.mockRevisionModule.fields.find(f => f.name === name)
     },
 
     refresh () {

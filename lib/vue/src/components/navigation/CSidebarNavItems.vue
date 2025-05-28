@@ -162,17 +162,17 @@ export default {
 <style scoped lang="scss">
 .nav-sidebar {
   .nav-item {
-    transition: background-color 0.25s ease-in-out;
+    transition: background-color 0.2s ease-out;
 
     .icon {
       color: var(--black);
-      transition: color 0.25s;
+      transition: color 0.3s ease-in-out;
     }
 
     .title {
       color: var(--black);
       font-family: var(--font-regular) !important;
-      transition: color 0.25s;
+      transition: color 0.3s ease-in-out;
       text-align: left;
     }
 
