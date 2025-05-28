@@ -177,6 +177,7 @@ export default {
         editable: false,
         eventLimit: true,
         locale: this.locale,
+        firstDay: this.weekStartDay,
         // @todo could be loaded on demand
         plugins: [
           dayGridPlugin,
@@ -209,6 +210,20 @@ export default {
 
       return this.block.reorderViews(this.header.views)
     },
+
+    browserLocale () {
+      return navigator.language || navigator.languages?.[0] || 'en-US'
+    },
+
+    weekStartDay () {
+      const locale = new Intl.Locale(this.browserLocale)
+
+      if (locale.weekInfo && locale.weekInfo.firstDay !== undefined) {
+        return (locale.weekInfo.firstDay % 7)
+      }
+
+      return 0
+    },
   },
 
   watch: {
@@ -235,7 +250,7 @@ export default {
   },
 
   created () {
-    this.changeLocale(this.currentLanguage)
+    this.changeLocale(this.browserLocale)
     this.refreshBlock(this.refresh)
   },
 
@@ -291,12 +306,23 @@ export default {
      * @param {String} lng Locale tag.
      */
     changeLocale (lng = 'en-gb') {
-      // fc doesn't provide a en locale
-      if (lng === 'en') {
-        lng = 'en-gb'
-      }
+      try {
+        // fc doesn't provide a en locale
+        if (lng === 'en') {
+          lng = 'en-gb'
+        } else {
+          // Convert from locale format (e.g. en-US) to fc format (e.g. en-gb)
+          const langParts = lng.split('-')
+          if (langParts.length > 1) {
+            lng = langParts[0].toLowerCase() + '-' + langParts[1].toLowerCase()
+          }
+        }
 
-      this.locale = require(`@fullcalendar/core/locales/${lng}`)
+        this.locale = require(`@fullcalendar/core/locales/${lng}`)
+      } catch (e) {
+        // Fallback to en-gb if locale not found
+        this.locale = require('@fullcalendar/core/locales/en-gb')
+      }
     },
 
     // Proxy to the FC API
