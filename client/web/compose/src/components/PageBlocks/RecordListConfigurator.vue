@@ -1132,7 +1132,9 @@ export default {
 
   methods: {
     fetchRoles () {
-      if (!this.options.filterPresets.length) {
+      const { filterPresets = [], summaries = [] } = this.options || {}
+
+      if (!filterPresets.length && !summaries.length) {
         return
       }
 
@@ -1140,7 +1142,7 @@ export default {
 
       const rolesToResolve = []
 
-      this.options.filterPresets.forEach(preset => {
+      filterPresets.forEach(preset => {
         preset.roles.forEach(r => {
           if (!rolesToResolve.includes(r)) {
             rolesToResolve.push(r)
@@ -1148,7 +1150,7 @@ export default {
         })
       })
 
-      this.options.summaries.forEach(summary => {
+      summaries.forEach(summary => {
         summary.roles.forEach(r => {
           if (!rolesToResolve.includes(r)) {
             rolesToResolve.push(r)
@@ -1176,7 +1178,11 @@ export default {
     },
 
     getResolvedRoles ({ roles = [] }) {
-      return roles.map(roleID => this.resolvedRoles[roleID])
+      return roles.map(roleID => {
+        console.log('roleID', roleID)
+        console.log('resolvedRoles', this.resolvedRoles[roleID])
+        return this.resolvedRoles[roleID]
+      })
     },
 
     isRoleVisible ({ meta }) {

@@ -56,6 +56,7 @@ export default (options = {}) => {
             favicon.href = icon
           }
         })
+
         // switch the page directionality on body based on language
         document.body.setAttribute('dir', this.textDirectionality(user.meta.preferredLanguage))
 
