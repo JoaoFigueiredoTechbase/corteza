@@ -33,6 +33,17 @@ export default (options = {}) => {
       this.websocket()
 
       return this.$auth.vue(this).handle().then(async ({ user }) => {
+        // switch the favicon based on the settings
+        await this.$Settings.init({ api: this.$SystemAPI }).then(() => {
+          const icon = this.$Settings.attachment('ui.iconLogo') || '/icon.svg'
+
+          const favicon = document.getElementById('favicon')
+
+          if (favicon) {
+            favicon.href = icon
+          }
+        })
+
         if (user.meta.preferredLanguage) {
           // After user is authenticated, get his preferred language
           // and instruct i18next to change it
@@ -57,21 +68,19 @@ export default (options = {}) => {
         // Initialize notifications
         this.$store.dispatch('notifications/fetchNotifications')
 
-        this.$Settings.init({ api: this.$SystemAPI }).finally(() => {
-          this.loaded = true
+        this.loaded = true
 
-          // This bit removes code from the query params
-          //
-          // Vue router can't be used here because when on any child route there is no
-          // guarantee that the route has loaded and so it may redirect us to the root page.
-          //
-          // @todo dig a bit deeper if there is a better vue-like solution; atm none were ok.
-          const url = new URL(window.location.href)
-          if (url.searchParams.get('code')) {
-            url.searchParams.delete('code')
-            window.location.replace(url.toString())
-          }
-        })
+        // This bit removes code from the query params
+        //
+        // Vue router can't be used here because when on any child route there is no
+        // guarantee that the route has loaded and so it may redirect us to the root page.
+        //
+        // @todo dig a bit deeper if there is a better vue-like solution; atm none were ok.
+        const url = new URL(window.location.href)
+        if (url.searchParams.get('code')) {
+          url.searchParams.delete('code')
+          window.location.replace(url.toString())
+        }
       }).catch((err) => {
         if (err instanceof Error && err.message === 'Unauthenticated') {
           // user not logged-in,

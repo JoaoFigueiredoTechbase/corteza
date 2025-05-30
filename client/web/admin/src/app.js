@@ -46,6 +46,16 @@ export default (options = {}) => {
       this.websocket()
 
       return this.$auth.vue(this).handle().then(async ({ user }) => {
+        // switch the favicon based on the settings
+        await this.$Settings.init({ api: this.$SystemAPI }).then(() => {
+          const icon = this.$Settings.attachment('ui.iconLogo') || '/icon.svg'
+
+          const favicon = document.getElementById('favicon')
+
+          if (favicon) {
+            favicon.href = icon
+          }
+        })
         // switch the page directionality on body based on language
         document.body.setAttribute('dir', this.textDirectionality(user.meta.preferredLanguage))
 
@@ -77,8 +87,6 @@ export default (options = {}) => {
             authToken: this.$auth.accessToken,
           }),
         }
-
-        await this.$Settings.init({ api: this.$SystemAPI })
 
         // Load all pending prompts:
         this.$store.dispatch('wfPrompts/update')

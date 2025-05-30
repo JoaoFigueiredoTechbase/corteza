@@ -171,18 +171,6 @@ export default {
     },
   },
 
-  watch: {
-    icon: {
-      immediate: true,
-      handler (icon) {
-        if (icon) {
-          const favicon = document.getElementById('favicon')
-          favicon.href = icon
-        }
-      },
-    },
-  },
-
   created () {
     this.$root.$on('alert', this.displayToast)
   },
