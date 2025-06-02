@@ -1596,7 +1596,14 @@ export default {
     // Sanitizes record list config and
     // prepares prefilter
     prepRecordList () {
-      this.recordsPerPage = this.options.perPage
+      const { moduleID, presort, prefilter, editable, refField, positionField, perPage } = this.options
+
+      // Validate props
+      if (!moduleID || !this.recordListModule) {
+        throw Error(this.$t('record.moduleOrPageNotSet'))
+      }
+
+      this.recordsPerPage = perPage
 
       // Legacy support for linkToParent
       if (this.isOnRecordPage && this.options.linkToParent) {
@@ -1605,13 +1612,6 @@ export default {
         } else {
           this.options.refField = (this.recordListModule.fields.find(f => f.kind === 'Record' && f.options.moduleID === this.page.moduleID) || {}).name
         }
-      }
-
-      const { moduleID, presort, prefilter, editable, refField, positionField } = this.options
-
-      // Validate props
-      if (!moduleID) {
-        throw Error(this.$t('record.moduleOrPageNotSet'))
       }
 
       // If there is no current record and we are using recordID/ownerID variable in (pre)filter
