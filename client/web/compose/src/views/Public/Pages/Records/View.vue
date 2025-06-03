@@ -79,7 +79,6 @@
       :to="portalRecordToolbar"
     >
       <record-toolbar
-        v-if="layout"
         :module="module"
         :record="record"
         :labels="recordToolbarLabels"
@@ -314,7 +313,7 @@ export default {
             userID: (this.$auth.user || {}).userID || NoID,
           })
         } catch (e) {
-          return ''
+          return e
         }
       }
 
@@ -598,12 +597,12 @@ export default {
         this.tempRecord = record
 
         return this.determineLayout().then(blocks => {
-          this.record = this.tempRecord
-          this.initialRecordState = this.record.clone()
-
           if (blocks) {
             this.blocks = blocks
           }
+
+          this.record = this.tempRecord
+          this.initialRecordState = this.record.clone()
         })
       }).finally(() => {
         this.tempRecord = undefined

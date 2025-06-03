@@ -166,7 +166,9 @@ export default {
 
         if (!this.isRecordPage) {
           this.determineLayout().then(blocks => {
-            this.blocks = blocks
+            if (blocks) {
+              this.blocks = blocks
+            }
           }).finally(() => {
             this.processing = false
           })

@@ -184,23 +184,15 @@ export default {
         tempBlocks.push(block)
       })
 
-      if (this.isRecordPage) {
-        await new Promise(resolve => setTimeout(resolve, 300))
-      }
-
-      return this.evaluateBlocks(tempBlocks, this.isRecordPage)
+      return this.evaluateBlocks(tempBlocks)
     },
 
-    async evaluateBlocks (blocks = this.page.blocks, async = false) {
+    async evaluateBlocks (blocks = this.page.blocks) {
       const layoutBlocks = this.layout.blocks
       let layoutBlocksExpressions = {}
 
       // Only evaluate expressions if any blocks have visibility expressions
       if (layoutBlocks.some(({ meta = {} }) => (meta.visibility || {}).expression)) {
-        if (async) {
-          await new Promise(resolve => setTimeout(resolve, 300))
-        }
-
         layoutBlocksExpressions = await this.evaluateBlocksExpressions()
       }
 
