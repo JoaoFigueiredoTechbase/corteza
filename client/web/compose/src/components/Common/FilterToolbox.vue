@@ -48,9 +48,9 @@
                   :record="filter.record"
                   @change="onValueChange"
                 />
-                <span class="my-1 text-center w-100">
+                <div class="my-1 text-center w-100">
                   {{ $t("general.label.and") }}
-                </span>
+                </div>
                 <field-editor
                   v-bind="mock"
                   class="mb-0 field-editor"
