@@ -30,7 +30,6 @@
 
     <aside>
       <c-sidebar
-        :expanded.sync="expanded"
         :icon="icon"
         :logo="logo"
         :disabled-routes="['root', 'workflow.list']"

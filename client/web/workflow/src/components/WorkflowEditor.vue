@@ -948,26 +948,32 @@ export default {
                 values.push(`<tr><td><b class="text-primary">${functionLabel}</b></td><td/></tr>`)
               }
 
-              if (args.length && kind !== 'expressions') {
-                values.push('<tr class="title"><td><b>Arguments</b></td><td/><td/></tr>')
+              if (kind === 'expressions') {
+                args = args.map(({ target, expr, type }) => {
+                  return `<tr><td><var>${encodeHTML(target)}</var> <samp>(${type})</samp></td><td><code>${encodeHTML(expr)}</code></td><td/></tr>`
+                })
+              } else {
+                if (args.length) {
+                  values.push('<tr class="title"><td><b>Arguments</b></td><td/><td/></tr>')
+                }
+
+                args = parameters.map(({ name, types = [] }) => {
+                  const { type, expr, value } = args.find(({ target }) => target === name) || {}
+                  const exprType = type || `${types[0]}`
+                  const exprBadge = expr ? '<span title="Expression" class="circle-badge badge-small ml-1">e</span>' : ''
+
+                  return `<tr><td><var>${encodeHTML(name)}</var> <samp>(${exprType})</samp></td><td><code>${encodeHTML(expr || value)}</code></td><td>${exprBadge}</td></tr>`
+                })
               }
 
-              args = parameters.map(({ name, types = [] }) => {
-                const { type, expr, value } = args.find(({ target }) => target === name) || {}
-                const exprType = type || `${types[0]}`
-                const exprBadge = expr ? '<span title="Expression" class="circle-badge badge-small ml-1">e</span>' : ''
-
-                return `<tr><td><var>${encodeHTML(name)}</var> <samp>(${exprType})</samp></td><td><code>${encodeHTML(expr || value)}</code></td><td>${exprBadge}</td></tr>`
-              })
-
               if (results.length) {
-                args.push('<tr class="title border-top"><td><b>Results</b></td><td /></tr>')
+                args.push('<tr class="title border-top"><td><b>Results</b></td><td/><td/></tr>')
               }
 
               results = results.map(({ target = '', expr = '', value = '' }) => {
                 const { types = [] } = functionResults.find(({ name }) => name === expr || name === value) || {}
                 const type = types.length ? `(${types[0]})` : ''
-                return `<tr><td><code>${encodeHTML(target)}</code> <samp>${type}</samp></td><td><var>${encodeHTML(expr || value)}</var></td></tr>`
+                return `<tr><td><code>${encodeHTML(target)}</code> <samp>${type}</samp></td><td><var>${encodeHTML(expr || value)}</var></td><td/></tr>`
               })
 
               values = [...values, ...args, ...results].join('')
