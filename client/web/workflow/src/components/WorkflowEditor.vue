@@ -1003,10 +1003,17 @@ export default {
               values.push(`<tr><td><var>Event</var></td><td/><td><code>${eventType || ''}</code></td></tr>`)
 
               if (constraints.length && eventType && eventType !== 'onManual') {
+                const getConstraintNameLabel = (name) => {
+                  return name
+                    .split('.')
+                    .map(s => s[0].toUpperCase() + s.slice(1).toLowerCase())
+                    .join(' ')
+                }
+
                 constraints = [
                   '<tr class="title"><td><b>Constraints</b></td><td/><td/></tr>',
                   ...constraints.map(({ name = '', op = '', values = '' }) => {
-                    return `<tr><td><samp>${name || eventType.includes('on') ? eventType.replace('on', '') : ''}</var></td><td><samp>${op}</samp></td><td><code>${encodeHTML(values.join(' or '))}</code></td></tr>`
+                    return `<tr><td><samp>${getConstraintNameLabel(name)}</var></td><td><samp>${op}</samp></td><td><code>${encodeHTML(values.join(' or '))}</code></td></tr>`
                   }),
                 ]
               } else {

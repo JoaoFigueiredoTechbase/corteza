@@ -105,10 +105,7 @@
         >
           <template #cell(name)="{ item: c }">
             <samp v-if="c.name">
-              {{ c.name.split('.').map(s => {
-                return s[0].toUpperCase() + s.slice(1).toLowerCase()
-              }).join(' ')
-              }}
+              {{ getConstraintNameLabel(c.name) }}
             </samp>
           </template>
 
@@ -359,9 +356,7 @@ export default {
         if (!name.includes('*')) {
           cons.push({
             value: name,
-            text: name.split('.').map(s => {
-              return s[0].toUpperCase() + s.slice(1).toLowerCase()
-            }).join(' '),
+            text: this.getConstraintNameLabel(name),
           })
         }
 
@@ -504,6 +499,13 @@ export default {
         .replace('on', '')
         .split(/(?=[A-Z])/)
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+    },
+
+    getConstraintNameLabel (name) {
+      return name
+        .split('.')
+        .map(s => s[0].toUpperCase() + s.slice(1).toLowerCase())
         .join(' ')
     },
   },
