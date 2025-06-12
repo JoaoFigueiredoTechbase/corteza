@@ -19,7 +19,7 @@
         :variant="field.options.variant"
         :thresholds="field.options.thresholds"
         :class="{ 'mt-2': i }"
-        style="height: 1.5rem;"
+        style="height: 1.5rem; min-width: 15rem;"
       />
     </template>
 
