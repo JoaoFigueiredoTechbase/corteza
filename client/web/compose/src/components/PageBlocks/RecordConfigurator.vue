@@ -214,9 +214,9 @@
       >
         <code>record.values.fieldName</code>
         <code>user.(userID/email...)</code>
-        <code>user.userID == record.values.createdBy</code>
+        <code>user.userID == record.createdBy</code>
         <code>record.values.fieldName == "value"</code>
-        <code>record.values.ownedBy == user.userID</code>
+        <code>record.ownedBy == user.userID</code>
       </i18next>
 
       <c-form-table-wrapper

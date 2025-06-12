@@ -293,7 +293,7 @@
               <code>user.(userID/email...)</code>
               <code>screen.(width/height)</code>
               <code>isView/isCreate/isEdit</code>
-              <code>user.userID == record.values.createdBy</code>
+              <code>user.userID == record.createdBy</code>
               <code>screen.width &lt; 1024</code>
             </i18next>
 
