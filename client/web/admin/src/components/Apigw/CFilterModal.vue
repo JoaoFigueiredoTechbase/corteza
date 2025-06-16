@@ -63,23 +63,21 @@ export default {
           this.internalFilter = {
             ...this.filter,
             params: this.filter.params.map(p => {
-              if (this.filter.ref === 'response') {
-                let value = p.value || {}
+              let value = p.value || {}
 
+              if (this.filter.ref === 'response') {
                 if (p.type === 'header') {
-                  value = Object.entries(value).map(([name, v = []]) => {
-                    return { name, expr: v.join('') }
-                  })
+                  value = Object.entries(value).map(([name, v = []]) => ({ name, expr: v.join('') }))
                 } else if (p.type === 'input') {
                   value = { type: 'Any', expr: '', ...value }
                 }
-
-                this.$set(p, 'value', value)
               }
 
-              return p
+              return { ...p, value }
             }),
           }
+        } else {
+          this.internalFilter = undefined
         }
       },
     },
@@ -104,10 +102,10 @@ export default {
       }
 
       this.$emit('submit', { ...filter, updated: true })
-      this.internalFilter = undefined
     },
 
     onHidden () {
+      this.internalFilter = undefined
       this.$emit('reset')
     },
   },
