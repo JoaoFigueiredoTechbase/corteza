@@ -193,7 +193,7 @@ func (mssqlDialect) AttributeToColumn(attr *dal.Attribute) (col *ddl.Column, err
 		col.Type.Name = "DATETIME"
 		col.Default = ddl.DefaultValueCurrentTimestamp(t.DefaultCurrentTimestamp)
 
-	case *TypeTime:
+	case *dal.TypeTime:
 		col.Type.Name = "TIME"
 		col.Default = ddl.DefaultValueCurrentTimestamp(t.DefaultCurrentTimestamp)
 
@@ -381,13 +381,13 @@ func attributeCast(attr *dal.Attribute, val exp.Expression) (exp.Expression, err
 		return exp.NewLiteralExpression("TRY_CONVERT(NUMERIC,?)", val), nil
 
 	case *dal.TypeTimestamp:
-		return exp.NewLiteralExpression("TRY_CONVERT(TIMESTAMPTZ,?)", val), nil
+		return exp.NewLiteralExpression("TRY_CONVERT(DATETIMEOFFSET,?)", val), nil
 
 	case *dal.TypeDate:
 		return exp.NewLiteralExpression("TRY_CONVERT(DATE,?)", val), nil
 
 	case *dal.TypeTime:
-		return exp.NewLiteralExpression("TRY_CONVERT(TIMETZ,?)", val), nil
+		return exp.NewLiteralExpression("TRY_CONVERT(TIME,?)", val), nil
 
 	case *dal.
 		TypeBoolean:

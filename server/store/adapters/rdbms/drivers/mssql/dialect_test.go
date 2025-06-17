@@ -122,6 +122,61 @@ func TestColumnFits(t *testing.T) {
 			},
 			expected: false,
 		},
+
+		{
+			name: "datetime exact match",
+			target: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "datetime"},
+			},
+			assert: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "datetime"},
+			},
+			expected: true,
+		},
+
+		{
+			name: "time exact match",
+			target: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "time"},
+			},
+			assert: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "time"},
+			},
+			expected: true,
+		},
+
+		{
+			name: "datetime doesn't fit time",
+			target: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "time"},
+			},
+			assert: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "datetime"},
+			},
+			expected: false,
+		},
+
+		{
+			name: "time doesn't fit datetime",
+			target: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "datetime"},
+			},
+			assert: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "time"},
+			},
+			expected: false,
+		},
+
+		{
+			name: "datetimeoffset exact match",
+			target: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "datetimeoffset"},
+			},
+			assert: &ddl.Column{
+				Type: &ddl.ColumnType{Name: "datetimeoffset"},
+			},
+			expected: true,
+		},
 	}
 
 	d := mssqlDialect{}
