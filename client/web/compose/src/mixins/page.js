@@ -163,9 +163,9 @@ export default {
         this.handleRecordButtons()
       } else {
         const { handle, meta = {} } = this.layout || {}
-        const title = meta.title || this.page.title
-        this.pageTitle = title || handle || this.$t('navigation:noPageTitle')
-        document.title = [title, this.namespace.name, this.$t('general:label.app-name.public')].filter(v => v).join(' | ')
+
+        this.pageTitle = (meta.title || this.page.title) || handle || this.$t('navigation:noPageTitle')
+        document.title = this.pageTitle
       }
 
       return this.prepareBlocks()

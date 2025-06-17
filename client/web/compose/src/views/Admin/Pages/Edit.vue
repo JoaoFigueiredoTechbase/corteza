@@ -1236,6 +1236,8 @@ export default {
         this.page = page.clone()
         this.initialPageState = page.clone()
 
+        document.title = this.$t('general:label.app-name.page.edit', { label: page.title || page.handle, interpolation: { escapeValue: false } })
+
         return this.fetchAttachments()
       }).then(this.fetchLayouts)
         .catch(e => {
@@ -1370,6 +1372,8 @@ export default {
       }).then(page => {
         this.page = page.clone()
         this.initialPageState = page.clone()
+
+        document.title = this.$t('general:label.app-name.page.edit', { label: this.page.title || this.page.handle, interpolation: { escapeValue: false } })
 
         return this.handleSaveLayouts()
       }).then(this.handlePageLayoutReorder)

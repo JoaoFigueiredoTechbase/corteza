@@ -296,6 +296,10 @@ export default {
     },
   },
 
+  mounted () {
+    document.title = this.$t('general:label.app-name.module.list', { label: this.namespace.name, interpolation: { escapeValue: false } })
+  },
+
   methods: {
     ...mapActions({
       createPage: 'page/create',

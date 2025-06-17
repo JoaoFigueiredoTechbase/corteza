@@ -384,6 +384,15 @@ export default {
         }
       },
     },
+
+    title: {
+      immediate: true,
+      handler (title) {
+        if (title) {
+          document.title = title
+        }
+      },
+    },
   },
 
   mounted () {

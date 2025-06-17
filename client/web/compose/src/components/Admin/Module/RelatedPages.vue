@@ -1,11 +1,12 @@
 <template>
-  <div>
+  <div v-if="namespace.canManageNamespace">
     <b-dropdown
       v-if="recordPage"
       :size="size"
       variant="primary"
       :text="$t('related-pages')"
       :boundary="boundary"
+      :disabled="!module.name"
       class="related-pages-dropdown flex-fill"
     >
       <b-dropdown-item
@@ -19,7 +20,6 @@
 
       <b-dropdown-item
         v-if="recordListPage"
-        :disabled="!namespace.canManageNamespace"
         :to="{ name: 'admin.pages.builder', params: { pageID: recordListPage.pageID } }"
       >
         {{ $t('recordListPage.edit') }}
@@ -40,7 +40,7 @@
       data-test-id="button-record-page-create"
       variant="primary"
       :size="size"
-      :disabled="processing"
+      :disabled="processing || !module.name"
       @click.stop.prevent="handleRecordPageCreation"
     >
       {{ $t('recordPage.create') }}
@@ -122,7 +122,7 @@ export default {
         namespaceID,
         moduleID,
         selfID,
-        title: `${this.$t('forModule.recordPage')} "${name || moduleID}"`,
+        title: this.$t('forModule.recordPage', { name, interpolation: { escapeValue: false } }),
         blocks,
       })
 
@@ -153,7 +153,7 @@ export default {
       })]
 
       const page = new compose.Page({
-        title: `${this.$t('forModule.recordList')} "${name || moduleID}"`,
+        title: name,
         namespaceID,
         blocks,
         visible: true,

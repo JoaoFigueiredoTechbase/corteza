@@ -206,6 +206,10 @@ export default {
     },
   },
 
+  mounted () {
+    document.title = this.$t('general:label.app-name.chart.list', { label: this.namespace.name, interpolation: { escapeValue: false } })
+  },
+
   methods: {
     chartList () {
       return this.procListResults(this.$ComposeAPI.chartList(this.encodeListParams()))

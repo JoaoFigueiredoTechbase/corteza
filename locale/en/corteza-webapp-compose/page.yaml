@@ -145,8 +145,8 @@ delete:
 public:
   record:
     create:
-      title: Creating record for module "{{name}}"
+      title: '{{name}} - Creating Record'
     edit:
-      title: Editing record for module "{{name}}"
+      title: '{{name}} - Editing Record'
     view:
-      title: Viewing record for module "{{name}}"
+      title: '{{name}} - Viewing Record'

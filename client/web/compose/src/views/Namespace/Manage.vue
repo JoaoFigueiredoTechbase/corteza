@@ -222,6 +222,10 @@ export default {
     },
   },
 
+  mounted () {
+    document.title = this.$t('general:label.app-name.namespace.list')
+  },
+
   methods: {
     ...mapActions({
       load: 'namespace/load',

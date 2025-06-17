@@ -152,6 +152,10 @@ export default {
     this.setDefaultValues()
   },
 
+  mounted () {
+    document.title = this.$t('general:label.app-name.page.list', { label: this.namespace.name, interpolation: { escapeValue: false } })
+  },
+
   methods: {
     ...mapActions({
       createPage: 'page/create',

@@ -841,6 +841,8 @@ export default {
           this.module = new compose.Module({ ...module }, this.namespace)
           this.initialModuleState = this.module.clone()
 
+          document.title = this.$t('general:label.app-name.module.edit', { label: this.module.name, interpolation: { escapeValue: false } })
+
           this.toastSuccess(this.$t('notification:module.created'))
 
           toggleProcessing(false)
@@ -859,6 +861,8 @@ export default {
         this.updateModule({ ...module, resourceTranslationLanguage }).then(module => {
           this.module = new compose.Module({ ...module }, this.namespace)
           this.initialModuleState = this.module.clone()
+
+          document.title = this.$t('general:label.app-name.module.edit', { label: this.module.name, interpolation: { escapeValue: false } })
 
           this.toastSuccess(this.$t('notification:module.saved'))
 
@@ -892,6 +896,8 @@ export default {
           this.namespace,
         )
         this.initialModuleState = this.module.clone()
+
+        document.title = this.$t('general:label.app-name.module.create')
       } else {
         this.loading = true
         this.processing = true
@@ -907,6 +913,8 @@ export default {
           // Make a copy so that we do not change store item by ref
           this.module = module.clone()
           this.initialModuleState = this.module.clone()
+
+          document.title = this.$t('general:label.app-name.module.edit', { label: this.module.name, interpolation: { escapeValue: false } })
 
           const { moduleID, namespaceID, issues = [] } = this.module
           if (issues.length > 0) {
