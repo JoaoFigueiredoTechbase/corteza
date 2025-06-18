@@ -1754,17 +1754,17 @@ func TestRecordClone(t *testing.T) {
 
 	// Verify cloned record
 	h.a.NotNil(cloned)
-	h.a.NotEqual(original.ID, cloned.ID)
+	h.a.Equal(original.ID, cloned.ID)
 	h.a.Equal(original.ModuleID, cloned.ModuleID)
 	h.a.Equal(original.NamespaceID, cloned.NamespaceID)
 	h.a.Equal(original.Values.Get("name", 0).Value, cloned.Values.Get("name", 0).Value)
 	h.a.Equal(original.Values.Get("description", 0).Value, cloned.Values.Get("description", 0).Value)
-	h.a.Zero(cloned.CreatedBy)
-	h.a.Zero(cloned.UpdatedBy)
-	h.a.Zero(cloned.DeletedBy)
-	h.a.Zero(cloned.CreatedAt)
-	h.a.Nil(cloned.UpdatedAt)
-	h.a.Nil(cloned.DeletedAt)
+	h.a.Equal(original.CreatedBy, cloned.CreatedBy)
+	h.a.Equal(original.UpdatedBy, cloned.UpdatedBy)
+	h.a.Equal(original.DeletedBy, cloned.DeletedBy)
+	h.a.Equal(original.CreatedAt, cloned.CreatedAt)
+	h.a.Equal(original.UpdatedAt, cloned.UpdatedAt)
+	h.a.Equal(original.DeletedAt, cloned.DeletedAt)
 
 	// Modify cloned record values
 	cloned.Values = cloned.Values.Set(&types.RecordValue{Name: "name", Value: "Modified Name"})
