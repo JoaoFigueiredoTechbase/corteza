@@ -2,7 +2,7 @@
   <div class="d-flex flex-column w-100 vh-100 overflow-hidden">
     <header>
       <c-topbar
-        :sidebar-pinned="pinned"
+        :sidebar-expanded="expanded"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
           appMenu: $t('appMenu'),
@@ -27,7 +27,6 @@
     <aside>
       <c-sidebar
         :expanded.sync="expanded"
-        :pinned.sync="pinned"
         :icon="icon"
         :logo="logo"
         expand-on-click
@@ -38,7 +37,7 @@
       </c-sidebar>
     </aside>
 
-    <main class="d-inline-flex h-100">
+    <main class="d-inline-flex overflow-hidden">
       <!--
         Content spacer
         Large and xl screens should push in content when the nav is expanded
@@ -47,12 +46,14 @@
         <div
           class="sidebar-spacer d-print-none"
           :class="{
-            'expanded': expanded && pinned,
+            'expanded': expanded,
           }"
         />
       </template>
 
-      <search />
+      <div class="flex-grow-1 overflow-hidden">
+        <search />
+      </div>
     </main>
 
     <c-extend-session
@@ -63,6 +64,7 @@
         warning: (countdownTime) => $t('general:extendSession.labels.warning', { countdownTime }),
       }"
     />
+    <c-notification-sidebar v-if="!$Settings.get('ui.topbar', {}).hideNotifications" />
   </div>
 </template>
 
@@ -70,7 +72,7 @@
 import Search from '../components/Search.vue'
 import Filters from '../components/Filters.vue'
 import { components } from '@cortezaproject/corteza-vue'
-const { CTopbar, CSidebar, CExtendSession } = components
+const { CTopbar, CSidebar, CExtendSession, CNotificationSidebar } = components
 
 export default {
   i18nOptions: {
@@ -83,12 +85,12 @@ export default {
     Search,
     Filters,
     CExtendSession,
+    CNotificationSidebar,
   },
 
   data () {
     return {
       expanded: undefined,
-      pinned: undefined,
     }
   },
 
@@ -108,34 +110,6 @@ export default {
 
     isAutoLogoutEnabled () {
       return this.$Settings.get('auth.autoLogout.enabled')
-    },
-  },
-
-  watch: {
-    icon: {
-      immediate: true,
-      handler (icon) {
-        if (icon) {
-          const favicon = document.getElementById('favicon')
-          favicon.href = icon
-        }
-      },
-    },
-  },
-
-  created () {
-    this.$root.$on('alert', this.displayToast)
-  },
-
-  methods: {
-    displayToast ({ title, message, variant, countdown }) {
-      this.$bvToast.toast(message, {
-        title,
-        variant,
-        solid: true,
-        autoHideDelay: countdown,
-        toaster: 'b-toaster-bottom-right',
-      })
     },
   },
 }

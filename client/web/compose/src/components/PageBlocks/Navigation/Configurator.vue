@@ -96,7 +96,7 @@
 
                 <b-table-simple
                   borderless
-                  responsive="lg"
+                  responsive
                   small
                 >
                   <thead class="text-primary">

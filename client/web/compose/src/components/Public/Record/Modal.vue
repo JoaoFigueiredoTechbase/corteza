@@ -127,7 +127,7 @@ export default {
           if (this.recordPaginationUsable) {
             this.setRecordPaginationUsable(false)
           } else {
-            this.clearRecordIDs()
+            this.clearRecordPagination()
           }
         }
 
@@ -154,7 +154,7 @@ export default {
   methods: {
     ...mapActions({
       setRecordPaginationUsable: 'ui/setRecordPaginationUsable',
-      clearRecordIDs: 'ui/clearRecordIDs',
+      clearRecordPagination: 'ui/clearRecordPagination',
       pushModalPreviousPage: 'ui/pushModalPreviousPage',
       clearModalPreviousPage: 'ui/clearModalPreviousPage',
       setModalPageHandle: 'ui/setModalPageHandle',

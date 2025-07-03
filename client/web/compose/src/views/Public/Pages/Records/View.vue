@@ -79,7 +79,6 @@
       :to="portalRecordToolbar"
     >
       <record-toolbar
-        v-if="layout"
         :module="module"
         :record="record"
         :labels="recordToolbarLabels"
@@ -235,6 +234,8 @@ export default {
     return {
       inEditing: this.edit,
 
+      loading: false,
+
       layoutButtons: new Set(),
 
       recordNavigation: {
@@ -260,7 +261,7 @@ export default {
     },
 
     isLoading () {
-      return !this.layout || !this.blocks
+      return this.loading || !this.layout || !this.blocks
     },
 
     portalTopbarTitle () {
@@ -312,7 +313,7 @@ export default {
             userID: (this.$auth.user || {}).userID || NoID,
           })
         } catch (e) {
-          return ''
+          return e
         }
       }
 
@@ -350,7 +351,7 @@ export default {
 
         // If page changed, get layouts
         if (pageID && pageID !== NoID && pageID !== oldPageID) {
-          this.layout = undefined
+          this.loading = true
           this.layouts = this.getPageLayouts(this.page.pageID)
         }
 
@@ -383,6 +384,15 @@ export default {
         }
       },
     },
+
+    title: {
+      immediate: true,
+      handler (title) {
+        if (title) {
+          document.title = title
+        }
+      },
+    },
   },
 
   mounted () {
@@ -398,10 +408,10 @@ export default {
   methods: {
     ...mapActions({
       popPreviousPages: 'ui/popPreviousPages',
-      clearRecordSet: 'record/clearSet',
       popModalPreviousPage: 'ui/popModalPreviousPage',
       setLayoutHandle: 'ui/setLayoutHandle',
       setModalLayoutHandle: 'ui/setModalLayoutHandle',
+      updateRecordSet: 'record/updateRecords',
     }),
 
     createEvents () {
@@ -439,8 +449,11 @@ export default {
 
           return response()
             .then(record => {
+              record = new compose.Record(module, record)
+              this.updateRecordSet(record)
+
               return new Promise(resolve => setTimeout(resolve, 300)).then(() => {
-                return new compose.Record(module, record)
+                return record
               })
             })
             .catch(e => {
@@ -451,6 +464,8 @@ export default {
             })
         } else {
           if (this.refRecord) {
+            this.updateRecordSet(this.refRecord)
+
             // Record create form called from a related records block,
             // we'll try to find an appropriate fields and cross-link this new record to ref
 
@@ -566,7 +581,11 @@ export default {
       }, new Set())
     },
 
-    refetchRecords () {
+    refetchRecords ({ recordID } = {}) {
+      if ((recordID && recordID === this.recordID && this.inModal)) {
+        return
+      }
+
       // Don't refresh when creating and prompt user before refreshing when editing
       if (this.isNew || (this.edit && this.compareRecordValues() && !window.confirm(this.$t('notification:record.staleDataRefresh')))) {
         return
@@ -587,17 +606,18 @@ export default {
         this.tempRecord = record
 
         return this.determineLayout().then(blocks => {
-          this.record = this.tempRecord
-          this.initialRecordState = this.record.clone()
-
           if (blocks) {
             this.blocks = blocks
           }
+
+          this.record = this.tempRecord
+          this.initialRecordState = this.record.clone()
         })
       }).finally(() => {
         this.tempRecord = undefined
 
         this.processing = false
+        this.loading = false
         this.loadingRecord = false
       })
     },

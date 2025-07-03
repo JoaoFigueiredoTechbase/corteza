@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/cortezaproject/corteza/extra/server-discovery/searcher"
 	"github.com/cortezaproject/corteza/extra/server-discovery/searcher/rest/request"
 	types2 "github.com/cortezaproject/corteza/server/compose/types"
-	"net/http"
 )
 
 type (
@@ -72,6 +73,7 @@ func (s search) SearchResources(ctx context.Context, r *request.SearchResources)
 		from          = r.GetFrom()
 		namespaceAggs = r.GetNamespaceAggs()
 		moduleAggs    = r.GetModuleAggs()
+		resourceTypes = r.GetResourceTypes()
 		validDumpRaw  = r.GetDumpRaw() != ""
 
 		page          pagination
@@ -100,6 +102,7 @@ func (s search) SearchResources(ctx context.Context, r *request.SearchResources)
 	results, page, err = esSearch(ctx, log, esc, searchParams{
 		title:         "results",
 		query:         searchString,
+		resourceType:  resourceTypes,
 		from:          from,
 		size:          size,
 		moduleAggs:    moduleAggs,

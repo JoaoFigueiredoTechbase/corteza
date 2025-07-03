@@ -5,7 +5,6 @@
     >
       <c-topbar
         hide-app-selector
-        :sidebar-pinned="pinned"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
           appMenu: $t('appMenu'),
@@ -47,6 +46,8 @@
         warning: (countdownTime) => $t('extendSession.labels.warning', { countdownTime }),
       }"
     />
+
+    <c-notification-sidebar v-if="!$Settings.get('ui.topbar', {}).hideNotifications" />
   </div>
 </template>
 
@@ -54,8 +55,7 @@
 import { mapActions } from 'vuex'
 import CAppSelector from '../components/CAppSelector'
 import { components } from '@cortezaproject/corteza-vue'
-
-const { CTopbar, CLoaderLogo, CPrompts, CExtendSession } = components
+const { CTopbar, CLoaderLogo, CPrompts, CExtendSession, CNotificationSidebar } = components
 
 export default {
   i18nOptions: {
@@ -68,13 +68,12 @@ export default {
     CLoaderLogo,
     CPrompts,
     CExtendSession,
+    CNotificationSidebar,
   },
 
   data () {
     return {
       loaded: false,
-
-      pinned: false,
     }
   },
 
@@ -97,18 +96,6 @@ export default {
     },
   },
 
-  watch: {
-    icon: {
-      immediate: true,
-      handler (icon) {
-        if (icon) {
-          const favicon = document.getElementById('favicon')
-          favicon.href = icon
-        }
-      },
-    },
-  },
-
   created () {
     this.preloadApplications()
       .then(() => {
@@ -124,8 +111,4 @@ export default {
     }),
   },
 }
-
 </script>
-<style lang="scss" scoped>
-
-</style>

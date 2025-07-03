@@ -92,6 +92,17 @@
             <samp>{{ a[a.valueType] }}</samp>
           </template>
 
+          <template #cell(expression)="{ item: a }">
+            <span
+              v-if="a.valueType === 'expr'"
+              v-b-tooltip
+              :title="$t('steps:function.configurator.expression')"
+              class="circle-badge"
+            >
+              e
+            </span>
+          </template>
+
           <template #row-details="{ item: a, index }">
             <div class="arrow-up" />
 
@@ -391,6 +402,15 @@ export default {
           thClass: 'pr-3 py-2',
           tdClass: 'text-truncate pointer',
         },
+        {
+          key: 'expression',
+          label: '',
+          thClass: 'text-center',
+          tdClass: 'text-center pointer',
+          thStyle: {
+            width: '3rem',
+          },
+        },
       ]
     },
 
@@ -521,7 +541,7 @@ export default {
             name: param.name,
             target: param.name,
             type: arg.type || this.paramTypes[func.ref][param.name][0],
-            valueType: this.getValueType(arg, arg.type || this.paramTypes[func.ref][param.name][0], input),
+            valueType: arg.expr !== undefined ? 'expr' : 'value',
             value: arg.value || input.default || null,
             expr: arg.expr || arg.source || null,
             required: param.required || false,
@@ -625,14 +645,6 @@ export default {
       }
 
       this.$root.$emit('change-detected')
-    },
-
-    getValueType (item, type, input = {}) {
-      if (['Boolean'].includes(type) || ['select'].includes(input.type) || this.isWhileIterator) {
-        return item.expr ? 'expr' : 'value'
-      } else {
-        return item.value ? 'value' : 'expr'
-      }
     },
 
     rowClass (item, type) {

@@ -33,7 +33,7 @@ export interface RawRevisionPayload {
 
 function isRawRevisionPayload (raw: unknown): raw is RawRevisionPayload {
   if (!raw || typeof raw !== 'object') {
-    console.warn('not  an object', raw)
+    console.warn('not an object', raw)
     return false
   }
 

@@ -52,7 +52,7 @@ export const prompts = Object.freeze([
       { name: 'record', types: ['ID', 'ComposeRecord'] },
       { name: 'edit', types: ['Boolean'] },
       { name: 'delay', types: ['Integer'], meta: { description: 'Redirection delay in seconds' } },
-      { name: 'openMode', types: ['String'], meta: { visual: { input: { type: 'select', properties: { options: [...openModeVariants, { value: 'modal', text: 'Open in a modal' }] }, default: 'sameTab' } } } },
+      { name: 'openMode', types: ['String'], meta: { visual: { input: { type: 'select', properties: { options: [...openModeVariants, { value: 'modal', text: 'Open in a modal' }] }, default: 'modal' } } } },
     ],
   },
   {
@@ -79,7 +79,6 @@ export const prompts = Object.freeze([
       { name: 'message', types: ['String'], required: true },
       { name: 'buttonLabel', types: ['String'] },
       { name: 'buttonVariant', types: ['String'], meta: { visual: { input: { type: 'select', properties: { options: variants }, default: 'primary' } } } },
-      { name: 'buttonValue', types: ['Any'] },
     ],
   },
   {
@@ -112,6 +111,9 @@ export const prompts = Object.freeze([
       { name: 'labelField', types: ['Handle'], required: true },
       { name: 'queryFields', types: ['Array'] },
       { name: 'prefilter', types: ['String'] },
+      { name: 'label', types: ['String'] },
+      { name: 'placeholder', types: ['String'] },
+      { name: 'buttonLabel', types: ['String'] },
     ],
     results: [
       { name: 'value', types: ['ComposeRecord'] },
@@ -150,6 +152,7 @@ export const prompts = Object.freeze([
         },
       },
       { name: 'inputValue', types: ['String'] },
+      { name: 'buttonLabel', types: ['String'] },
     ],
     results: [
       { name: 'value', types: ['Any'] },
@@ -183,8 +186,10 @@ export const prompts = Object.freeze([
         },
       },
       { name: 'value', types: ['String', 'Array'] },
+      { name: 'placeholder', types: ['String'] },
       { name: 'options', types: ['KV'] },
       { name: 'multiselect', types: ['Boolean'] },
+      { name: 'buttonLabel', types: ['String'] },
     ],
     results: [
       { name: 'value', types: ['Any'] },

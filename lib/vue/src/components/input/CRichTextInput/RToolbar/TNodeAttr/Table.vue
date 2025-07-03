@@ -58,6 +58,7 @@ export default {
         const b = (this.isActive[type])
         return b && (b(attrs))
       }
+
       if (ac(an.node.type.name, { ...an.node.attrs, ...attrs })) {
         return ['text-success']
       }

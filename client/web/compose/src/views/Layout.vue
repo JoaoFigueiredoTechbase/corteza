@@ -5,7 +5,7 @@
   >
     <header>
       <c-topbar
-        :sidebar-pinned="pinned"
+        :sidebar-expanded="expanded"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
           appMenu: $t('appMenu'),
@@ -38,7 +38,6 @@
     <aside>
       <c-sidebar
         :expanded.sync="expanded"
-        :pinned.sync="pinned"
         :icon="icon"
         :logo="logo"
         :disabled-routes="disabledRoutes"
@@ -68,7 +67,7 @@
         <div
           class="sidebar-spacer d-print-none"
           :class="{
-            'expanded': expanded && pinned,
+            'expanded': expanded,
           }"
         />
       </template>
@@ -120,6 +119,8 @@
         warning: (countdownTime) => $t('general:extendSession.labels.warning', { countdownTime }),
       }"
     />
+
+    <c-notification-sidebar v-if="!$Settings.get('ui.topbar', {}).hideNotifications" />
   </div>
 </template>
 
@@ -129,7 +130,7 @@ import CTranslationModal from '../components/Translator/CTranslatorModal'
 import { mapGetters, mapActions } from 'vuex'
 import { debounce } from 'lodash'
 import { components } from '@cortezaproject/corteza-vue'
-const { CToaster, CPrompts, CPermissionsModal, CTopbar, CSidebar, CExtendSession } = components
+const { CToaster, CPrompts, CPermissionsModal, CTopbar, CSidebar, CExtendSession, CNotificationSidebar } = components
 
 export default {
   i18nOptions: {
@@ -144,13 +145,12 @@ export default {
     CSidebar,
     CToaster, // Only used for reminders
     CExtendSession,
+    CNotificationSidebar,
   },
 
   data () {
     return {
-      // Sidebar and Topbar
       expanded: false,
-      pinned: false,
 
       toasts: [],
 
@@ -214,16 +214,6 @@ export default {
   },
 
   watch: {
-    icon: {
-      immediate: true,
-      handler (icon) {
-        if (icon) {
-          const favicon = document.getElementById('favicon')
-          favicon.href = icon
-        }
-      },
-    },
-
     '$route.params.slug': {
       immediate: true,
       handler (slug, oldSlug) {
@@ -356,7 +346,6 @@ export default {
 
     setDefaultValues () {
       this.expanded = false
-      this.pinned = false
       this.toasts = []
       this.disabledRoutes = []
     },
@@ -369,3 +358,14 @@ export default {
   },
 }
 </script>
+
+<style lang="scss" scoped>
+.sidebar-spacer {
+  width: 0;
+  transition: width 0.2s ease-in-out;
+
+  &.expanded {
+    width: 240px;
+  }
+}
+</style>

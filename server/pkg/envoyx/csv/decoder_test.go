@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cortezaproject/corteza/server/pkg/envoyx/datasource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,14 +13,14 @@ func TestDecoder(t *testing.T) {
 	req := require.New(t)
 
 	t.Run("init & meta", func(t *testing.T) {
-		dc, err := Decoder(testReader(), "test.csv")
+		dc, err := Decoder(testReader(), "test.csv", nil)
 		req.NoError(err)
 
 		req.Equal(uint64(3), dc.Count())
 	})
 
 	t.Run("fields", func(t *testing.T) {
-		dc, err := Decoder(testReader(), "test.csv")
+		dc, err := Decoder(testReader(), "test.csv", nil)
 		req.NoError(err)
 
 		hh := dc.Fields()
@@ -29,32 +30,32 @@ func TestDecoder(t *testing.T) {
 	})
 
 	t.Run("iterate", func(t *testing.T) {
-		dc, err := Decoder(testReader(), "test.csv")
+		dc, err := Decoder(testReader(), "test.csv", nil)
 		req.NoError(err)
 
-		aux := make(map[string]string)
+		aux := make(datasource.RawRecord)
 		var more bool
 
 		more, err = dc.Next(nil, aux)
 		req.NoError(err)
 		req.True(more)
-		req.Equal("r1f1", aux["f1"])
-		req.Equal("r1f2", aux["f2"])
-		req.Equal("r1f3", aux["f3"])
+		req.Equal("r1f1", aux["f1"].Values[0])
+		req.Equal("r1f2", aux["f2"].Values[0])
+		req.Equal("r1f3", aux["f3"].Values[0])
 
 		more, err = dc.Next(nil, aux)
 		req.NoError(err)
 		req.True(more)
-		req.Equal("r2f1", aux["f1"])
-		req.Equal("r2f2", aux["f2"])
-		req.Equal("r2f3", aux["f3"])
+		req.Equal("r2f1", aux["f1"].Values[0])
+		req.Equal("r2f2", aux["f2"].Values[0])
+		req.Equal("r2f3", aux["f3"].Values[0])
 
 		more, err = dc.Next(nil, aux)
 		req.NoError(err)
 		req.True(more)
-		req.Equal("r3f1", aux["f1"])
-		req.Equal("r3f2", aux["f2"])
-		req.Equal("r3f3", aux["f3"])
+		req.Equal("r3f1", aux["f1"].Values[0])
+		req.Equal("r3f2", aux["f2"].Values[0])
+		req.Equal("r3f3", aux["f3"].Values[0])
 
 		more, err = dc.Next(nil, aux)
 		req.NoError(err)

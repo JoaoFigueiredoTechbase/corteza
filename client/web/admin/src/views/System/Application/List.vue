@@ -78,15 +78,14 @@
             />
           </template>
 
-          <b-dropdown-item-button v-if="a.applicationID && canGrant">
-            <c-permissions-button
-              :title="a.name || a.applicationID"
-              :target="a.name || a.applicationID"
-              :resource="`corteza::system:application/${a.applicationID}`"
-              :button-label="$t('permissions')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="canGrant"
+            :title="a.name || a.applicationID"
+            :target="a.name || a.applicationID"
+            :resource="`corteza::system:application/${a.applicationID}`"
+            :button-label="$t('permissions')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="a.canDeleteApplication"

@@ -105,15 +105,14 @@
             />
           </template>
 
-          <b-dropdown-item-button v-if="canGrant">
-            <c-permissions-button
-              :title="u.name || u.handle || u.email || u.userID"
-              :target="u.name || u.handle || u.email || u.userID"
-              :resource="`corteza::system:user/${u.userID}`"
-              :button-label="$t('permissions')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="canGrant"
+            :title="u.name || u.handle || u.email || u.userID"
+            :target="u.name || u.handle || u.email || u.userID"
+            :resource="`corteza::system:user/${u.userID}`"
+            :button-label="$t('permissions')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="u.canDeleteUser"

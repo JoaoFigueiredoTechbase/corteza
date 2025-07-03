@@ -2,7 +2,7 @@
   <div class="d-flex flex-column w-100 vh-100 overflow-hidden">
     <header>
       <c-topbar
-        :sidebar-pinned="pinned"
+        :sidebar-expanded="expanded"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
           appMenu: $t('navigation:appMenu'),
@@ -30,8 +30,6 @@
 
     <aside>
       <c-sidebar
-        :expanded.sync="expanded"
-        :pinned.sync="pinned"
         :icon="icon"
         :logo="logo"
         :disabled-routes="['root', 'workflow.list']"
@@ -59,7 +57,7 @@
         <div
           class="sidebar-spacer d-print-none"
           :class="{
-            'expanded': expanded && pinned,
+            'expanded': expanded,
           }"
         />
       </template>
@@ -103,12 +101,14 @@
         warning: (countdownTime) => $t('general:extendSession.labels.warning', { countdownTime }),
       }"
     />
+
+    <c-notification-sidebar v-if="!$Settings.get('ui.topbar', {}).hideNotifications" />
   </div>
 </template>
 
 <script>
 import { components } from '@cortezaproject/corteza-vue'
-const { CPermissionsModal, CTopbar, CSidebar, CExtendSession } = components
+const { CPermissionsModal, CTopbar, CSidebar, CExtendSession, CNotificationSidebar } = components
 
 export default {
   components: {
@@ -116,13 +116,13 @@ export default {
     CTopbar,
     CSidebar,
     CExtendSession,
+    CNotificationSidebar,
   },
 
   data () {
     return {
       // Sidebar and Topbar
       expanded: false,
-      pinned: false,
     }
   },
 
@@ -142,18 +142,6 @@ export default {
 
     isAutoLogoutEnabled () {
       return this.$Settings.get('auth.autoLogout.enabled')
-    },
-  },
-
-  watch: {
-    icon: {
-      immediate: true,
-      handler (icon) {
-        if (icon) {
-          const favicon = document.getElementById('favicon')
-          favicon.href = icon
-        }
-      },
     },
   },
 }

@@ -18,6 +18,7 @@
           >
             {{ $t('sort.first.newest') }}
           </b-dropdown-item-button>
+
           <b-dropdown-item-button
             :disabled="!sort.includes('DESC')"
             @click="$emit('sort', 'createdAt')"

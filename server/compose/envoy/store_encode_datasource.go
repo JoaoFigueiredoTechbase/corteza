@@ -10,8 +10,10 @@ import (
 	"github.com/cortezaproject/corteza/server/compose/service"
 	"github.com/cortezaproject/corteza/server/compose/service/values"
 	"github.com/cortezaproject/corteza/server/compose/types"
+	"github.com/cortezaproject/corteza/server/pkg/auth"
 	"github.com/cortezaproject/corteza/server/pkg/dal"
 	"github.com/cortezaproject/corteza/server/pkg/envoyx"
+	"github.com/cortezaproject/corteza/server/pkg/envoyx/datasource"
 	"github.com/cortezaproject/corteza/server/pkg/id"
 	"github.com/cortezaproject/corteza/server/store"
 	systemEnvoy "github.com/cortezaproject/corteza/server/system/envoy"
@@ -56,7 +58,7 @@ func (e StoreEncoder) prepareRecordDatasource(ctx context.Context, p envoyx.Enco
 
 func (e StoreEncoder) prepareRecords(ctx context.Context, p envoyx.EncodeParams, s store.Storer, dl dal.FullService, ds *RecordDatasource, nn envoyx.NodeSet) (err error) {
 	var (
-		aux   = make(map[string]string)
+		aux   = make(datasource.RawRecord)
 		more  bool
 		ident []string
 	)
@@ -96,9 +98,11 @@ func (e StoreEncoder) prepareRecords(ctx context.Context, p envoyx.EncodeParams,
 
 		// Construct a simple record for basic validation/preprocessing
 		rec := types.Record{}
-		for k, v := range aux {
-			// Ignore errors at this point since some values can't yet be properly casted
-			rec.SetValue(k, 0, v)
+		for k, vv := range aux {
+			for i, v := range vv.Values {
+				// Ignore errors at this point since some values can't yet be properly casted
+				rec.SetValue(k, uint(i), v)
+			}
 		}
 
 		// @note defaults and validation will have to happen again when encoding
@@ -129,7 +133,7 @@ func (e StoreEncoder) encodeRecordDatasources(ctx context.Context, p envoyx.Enco
 
 func (e StoreEncoder) encodeRecordDatasource(ctx context.Context, p envoyx.EncodeParams, s store.Storer, dl dal.FullService, n *envoyx.Node, tree envoyx.Traverser) (err error) {
 	var (
-		auxRec = make(map[string]string)
+		auxRec = make(datasource.RawRecord)
 		more   bool
 		ident  []string
 
@@ -190,6 +194,7 @@ func (e StoreEncoder) encodeRecordDatasource(ctx context.Context, p envoyx.Encod
 			rec.ModuleID = mod.ID
 			rec.CreatedAt = time.Now()
 			rec.OwnedBy = service.CalcRecordOwner(0, rec.OwnedBy, p.Encoder.DefaultUserID)
+			rec.CreatedBy = e.getCreatedBy(ctx, rec)
 			rec.ID, err = ds.ResolveRefS(ident...)
 			if err != nil {
 				return err
@@ -261,6 +266,19 @@ func (e StoreEncoder) encodeRecordDatasource(ctx context.Context, p envoyx.Encod
 	return
 }
 
+func (e StoreEncoder) getCreatedBy(ctx context.Context, rec types.Record) uint64 {
+	if rec.CreatedBy > 0 {
+		return rec.CreatedBy
+	}
+
+	idt := auth.GetIdentityFromContext(ctx)
+	if idt == nil {
+		return 0
+	}
+
+	return idt.Identity()
+}
+
 // maceRecordGetters returns a map of getters where the key is the field name
 func (e StoreEncoder) makeRecordGetters(dl dal.FullService, tree envoyx.Traverser, n *envoyx.Node) (getters map[string]*recordGetter) {
 	var (
@@ -318,13 +336,13 @@ func (e StoreEncoder) makeUserGetters(s store.Storer, dl dal.FullService, tree e
 	return
 }
 
-func (e StoreEncoder) recordMaker(ns *types.Namespace, mod *types.Module, recordGetters map[string]*recordGetter, userGetters map[string]*systemEnvoy.UserGetter) func(ctx context.Context, auxRec map[string]string) (r types.Record, err error) {
-	return func(ctx context.Context, auxRec map[string]string) (rec types.Record, err error) {
+func (e StoreEncoder) recordMaker(ns *types.Namespace, mod *types.Module, recordGetters map[string]*recordGetter, userGetters map[string]*systemEnvoy.UserGetter) func(ctx context.Context, auxRec datasource.RawRecord) (r types.Record, err error) {
+	return func(ctx context.Context, auxRec datasource.RawRecord) (rec types.Record, err error) {
 		// Iterate mapified record values and populate the provided values
 		var auxv *types.RecordValue
-		for k, v := range auxRec {
+		for k, vv := range auxRec {
 			if recordGetters[k] != nil {
-				auxv, err = e.resolveRecordRef(ctx, recordGetters, k, v)
+				auxv, err = e.resolveRecordRef(ctx, recordGetters, k, vv)
 				if err != nil {
 					return
 				}
@@ -336,7 +354,7 @@ func (e StoreEncoder) recordMaker(ns *types.Namespace, mod *types.Module, record
 			}
 
 			if userGetters[k] != nil {
-				auxv, err = e.resolveUserRef(ctx, userGetters, k, v)
+				auxv, err = e.resolveUserRef(ctx, userGetters, k, vv)
 				if err != nil {
 					return
 				}
@@ -348,9 +366,11 @@ func (e StoreEncoder) recordMaker(ns *types.Namespace, mod *types.Module, record
 			}
 
 			// Default is regular values
-			err = rec.SetValue(k, 0, v)
-			if err != nil {
-				return
+			for i, v := range vv.Values {
+				err = rec.SetValue(k, uint(i), v)
+				if err != nil {
+					return
+				}
 			}
 		}
 
@@ -358,13 +378,13 @@ func (e StoreEncoder) recordMaker(ns *types.Namespace, mod *types.Module, record
 	}
 }
 
-func (e StoreEncoder) resolveRecordRef(ctx context.Context, getters map[string]*recordGetter, k, v string) (out *types.RecordValue, err error) {
+func (e StoreEncoder) resolveRecordRef(ctx context.Context, getters map[string]*recordGetter, k string, vv datasource.RawRecordValue) (out *types.RecordValue, err error) {
 	if getters[k] == nil {
 		return nil, nil
 	}
 
 	out = &types.RecordValue{Name: k}
-	out.Ref, err = getters[out.Name].resolve(ctx, v)
+	out.Ref, err = getters[out.Name].resolve(ctx, vv.Values[0])
 	if err != nil {
 		return
 	}
@@ -373,14 +393,14 @@ func (e StoreEncoder) resolveRecordRef(ctx context.Context, getters map[string]*
 	return out, nil
 }
 
-func (e StoreEncoder) resolveUserRef(ctx context.Context, getters map[string]*systemEnvoy.UserGetter, k, v string) (out *types.RecordValue, err error) {
+func (e StoreEncoder) resolveUserRef(ctx context.Context, getters map[string]*systemEnvoy.UserGetter, k string, vv datasource.RawRecordValue) (out *types.RecordValue, err error) {
 	k = strings.ToLower(k)
 	if getters[k] == nil {
 		return nil, nil
 	}
 
 	out = &types.RecordValue{Name: k}
-	out.Ref, err = getters[out.Name].Resolve(ctx, v)
+	out.Ref, err = getters[out.Name].Resolve(ctx, vv.Values[0])
 	if err != nil {
 		return
 	}

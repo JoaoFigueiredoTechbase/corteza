@@ -88,34 +88,32 @@
               data-test-id="dropdown-permissions"
               variant="extra-light"
               size="sm"
-              class="permissions-dropdown ml-2"
+              class="ml-2"
             >
               <template #button-content>
                 <font-awesome-icon :icon="['fas', 'lock']" />
               </template>
 
-              <b-dropdown-item-button>
-                <c-permissions-button
-                  v-if="namespace.canGrant"
-                  :title="item.title || item.handle || item.pageID"
-                  :target="item.title || item.handle || item.pageID"
-                  :resource="`corteza::compose:page/${namespace.namespaceID}/${item.pageID}`"
-                  :button-label="$t('general:label.page')"
-                  :show-button-icon="false"
-                />
-              </b-dropdown-item-button>
+              <c-permissions-button
+                v-if="namespace.canGrant"
+                :title="item.title || item.handle || item.pageID"
+                :target="item.title || item.handle || item.pageID"
+                :resource="`corteza::compose:page/${namespace.namespaceID}/${item.pageID}`"
+                :button-label="$t('general:label.page')"
+                :show-button-icon="false"
+                class="dropdown-item"
+              />
 
-              <b-dropdown-item-button>
-                <c-permissions-button
-                  v-if="item.canGrant"
-                  :title="item.title || item.handle || item.pageID"
-                  :target="item.title || item.handle || item.pageID"
-                  :resource="`corteza::compose:page-layout/${namespace.namespaceID}/${item.pageID}/*`"
-                  :button-label="$t('general:label.pageLayout')"
-                  :show-button-icon="false"
-                  all-specific
-                />
-              </b-dropdown-item-button>
+              <c-permissions-button
+                v-if="item.canGrant"
+                :title="item.title || item.handle || item.pageID"
+                :target="item.title || item.handle || item.pageID"
+                :resource="`corteza::compose:page-layout/${namespace.namespaceID}/${item.pageID}/*`"
+                :button-label="$t('general:label.pageLayout')"
+                :show-button-icon="false"
+                all-specific
+                class="dropdown-item"
+              />
             </b-dropdown>
 
             <template v-if="item.canDeletePage">
@@ -376,6 +374,11 @@ $dropping-color: var(--primary);
 
       .actions {
         display: none;
+
+        .dropdown-menu {
+          min-height: initial !important;
+          line-height: initial !important;
+        }
       }
 
       &:hover {

@@ -1,15 +1,17 @@
 package postgres
 
 import (
-	"github.com/cortezaproject/corteza/server/store/adapters/rdbms/ql"
 	"strings"
 	"testing"
+
+	"github.com/cortezaproject/corteza/server/store/adapters/rdbms/ql"
 
 	"github.com/stretchr/testify/require"
 )
 
 // @todo Ql functions should be under store/tests so it can be tested across all drivers along with generated tests.
-// 		for now, Its test coverage is limited per driver.
+//
+//	for now, Its test coverage is limited per driver.
 func TestConverter(t *testing.T) {
 	const SELECT = "SELECT "
 	var (
@@ -22,17 +24,17 @@ func TestConverter(t *testing.T) {
 		}{
 			{
 				qry:  `quarter('2022-07-21')`,
-				sql:  `EXTRACT(QUARTER FROM TIMESTAMP $1)`,
+				sql:  `EXTRACT(QUARTER FROM $1)`,
 				args: []any{"2022-07-21"},
 			},
 			{
 				qry:  `year('2022-07-21')`,
-				sql:  `EXTRACT(YEAR FROM TIMESTAMP $1)`,
+				sql:  `EXTRACT(YEAR FROM $1)`,
 				args: []any{"2022-07-21"},
 			},
 			{
 				qry:  `month('2022-07-21')`,
-				sql:  `EXTRACT(MONTH FROM TIMESTAMP $1)`,
+				sql:  `EXTRACT(MONTH FROM $1)`,
 				args: []any{"2022-07-21"},
 			},
 			{
@@ -47,8 +49,8 @@ func TestConverter(t *testing.T) {
 			},
 			{
 				qry:  `week('2022-07-21')`,
-				sql:  `TO_CHAR($1::TIMESTAMPTZ, $2)`,
-				args: []any{"2022-07-21", "IW"},
+				sql:  `EXTRACT(WEEK FROM $1)`,
+				args: []any{"2022-07-21"},
 			},
 			{
 				qry:  `time('2022-07-21 12:41')`,

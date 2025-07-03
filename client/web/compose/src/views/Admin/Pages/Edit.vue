@@ -67,7 +67,7 @@
             data-test-id="dropdown-permissions"
             size="lg"
             variant="light"
-            class="permissions-dropdown mr-1"
+            class="mr-1"
           >
             <template #button-content>
               <font-awesome-icon :icon="['fas', 'lock']" />
@@ -76,28 +76,26 @@
               </span>
             </template>
 
-            <b-dropdown-item-button>
-              <c-permissions-button
-                v-if="namespace.canGrant"
-                :title="page.title || page.handle || page.pageID"
-                :target="page.title || page.handle || page.pageID"
-                :resource="`corteza::compose:page/${namespace.namespaceID}/${page.pageID}`"
-                :button-label="$t('general:label.page')"
-                :show-button-icon="false"
-              />
-            </b-dropdown-item-button>
+            <c-permissions-button
+              v-if="namespace.canGrant"
+              :title="page.title || page.handle || page.pageID"
+              :target="page.title || page.handle || page.pageID"
+              :resource="`corteza::compose:page/${namespace.namespaceID}/${page.pageID}`"
+              :button-label="$t('general:label.page')"
+              :show-button-icon="false"
+              class="dropdown-item"
+            />
 
-            <b-dropdown-item-button>
-              <c-permissions-button
-                v-if="page.canGrant"
-                :title="page.title || page.handle || page.pageID"
-                :target="page.title || page.handle || page.pageID"
-                :resource="`corteza::compose:page-layout/${namespace.namespaceID}/${page.pageID}/*`"
-                :button-label="$t('general:label.pageLayout')"
-                :show-button-icon="false"
-                all-specific
-              />
-            </b-dropdown-item-button>
+            <c-permissions-button
+              v-if="page.canGrant"
+              :title="page.title || page.handle || page.pageID"
+              :target="page.title || page.handle || page.pageID"
+              :resource="`corteza::compose:page-layout/${namespace.namespaceID}/${page.pageID}/*`"
+              :button-label="$t('general:label.pageLayout')"
+              :show-button-icon="false"
+              all-specific
+              class="dropdown-item"
+            />
           </b-dropdown>
         </template>
 
@@ -243,7 +241,7 @@
               >
                 <b-table-simple
                   v-if="layouts.length > 0"
-                  responsive="lg"
+                  responsive
                   borderless
                   small
                 >
@@ -533,7 +531,7 @@
           <code>user.(userID/email...)</code>
           <code>screen.(width/height)</code>
           <code>isView/isCreate/isEdit</code>
-          <code>user.userID == record.values.createdBy</code>
+          <code>user.userID == record.createdBy</code>
           <code>screen.width &lt; 1024</code>
         </i18next>
 
@@ -1238,6 +1236,8 @@ export default {
         this.page = page.clone()
         this.initialPageState = page.clone()
 
+        document.title = this.$t('general:label.app-name.page.edit', { label: page.title || page.handle, interpolation: { escapeValue: false } })
+
         return this.fetchAttachments()
       }).then(this.fetchLayouts)
         .catch(e => {
@@ -1372,6 +1372,8 @@ export default {
       }).then(page => {
         this.page = page.clone()
         this.initialPageState = page.clone()
+
+        document.title = this.$t('general:label.app-name.page.edit', { label: this.page.title || this.page.handle, interpolation: { escapeValue: false } })
 
         return this.handleSaveLayouts()
       }).then(this.handlePageLayoutReorder)

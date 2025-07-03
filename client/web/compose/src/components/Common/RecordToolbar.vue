@@ -1,5 +1,8 @@
 <template>
-  <c-toolbar :class="{ 'shadow border-top': !inModal }">
+  <c-toolbar
+    :class="{ 'shadow border-top': !inModal }"
+    style="min-height: 73px;"
+  >
     <template #start>
       <b-button
         v-if="!(hideBack || settings.hideBack)"

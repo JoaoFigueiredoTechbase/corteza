@@ -54,7 +54,7 @@ export default {
             this.initialReportState = this.report.clone()
             this.detectStateChange = false
             this.toastSuccess(this.$t('notification:report.created'))
-            this.$router.push({ name: 'report.edit', params: { reportID: report.reportID } })
+            this.$router.push({ name: 'report.builder', params: { reportID: report.reportID } })
           })
           .catch(this.toastErrorHandler(this.$t('notification:report.createFailed')))
           .finally(() => {

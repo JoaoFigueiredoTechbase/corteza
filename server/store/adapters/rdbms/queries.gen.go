@@ -3249,8 +3249,8 @@ var (
 	// This function is auto-generated
 	federationNodeSyncSelectQuery = func(d goqu.DialectWrapper) *goqu.SelectDataset {
 		return d.Select(
-			"node_id",
-			"module_id",
+			"rel_node",
+			"rel_compose_module",
 			"sync_type",
 			"sync_status",
 			"time_of_action",
@@ -3263,11 +3263,11 @@ var (
 	federationNodeSyncInsertQuery = func(d goqu.DialectWrapper, res *federationType.NodeSync) *goqu.InsertDataset {
 		return d.Insert(federationNodeSyncTable).
 			Rows(goqu.Record{
-				"node_id":        res.NodeID,
-				"module_id":      res.ModuleID,
-				"sync_type":      res.SyncType,
-				"sync_status":    res.SyncStatus,
-				"time_of_action": res.TimeOfAction,
+				"rel_node":           res.NodeID,
+				"rel_compose_module": res.ModuleID,
+				"sync_type":          res.SyncType,
+				"sync_status":        res.SyncStatus,
+				"time_of_action":     res.TimeOfAction,
 			})
 	}
 
@@ -3275,16 +3275,17 @@ var (
 	//
 	// This function is auto-generated
 	federationNodeSyncUpsertQuery = func(d goqu.DialectWrapper, res *federationType.NodeSync) *goqu.InsertDataset {
-		var target = `,node_id`
+		var target = ``
 
 		return federationNodeSyncInsertQuery(d, res).
 			OnConflict(
 				goqu.DoUpdate(target[1:],
 					goqu.Record{
-						"module_id":      res.ModuleID,
-						"sync_type":      res.SyncType,
-						"sync_status":    res.SyncStatus,
-						"time_of_action": res.TimeOfAction,
+						"rel_node":           res.NodeID,
+						"rel_compose_module": res.ModuleID,
+						"sync_type":          res.SyncType,
+						"sync_status":        res.SyncStatus,
+						"time_of_action":     res.TimeOfAction,
 					},
 				),
 			)
@@ -3296,10 +3297,11 @@ var (
 	federationNodeSyncUpdateQuery = func(d goqu.DialectWrapper, res *federationType.NodeSync) *goqu.UpdateDataset {
 		return d.Update(federationNodeSyncTable).
 			Set(goqu.Record{
-				"module_id":      res.ModuleID,
-				"sync_type":      res.SyncType,
-				"sync_status":    res.SyncStatus,
-				"time_of_action": res.TimeOfAction,
+				"rel_node":           res.NodeID,
+				"rel_compose_module": res.ModuleID,
+				"sync_type":          res.SyncType,
+				"sync_status":        res.SyncStatus,
+				"time_of_action":     res.TimeOfAction,
 			}).
 			Where(federationNodeSyncPrimaryKeys(res))
 	}
@@ -3322,9 +3324,7 @@ var (
 	//
 	// This function is auto-generated
 	federationNodeSyncPrimaryKeys = func(res *federationType.NodeSync) goqu.Ex {
-		return goqu.Ex{
-			"node_id": res.NodeID,
-		}
+		return goqu.Ex{}
 	}
 
 	// federationSharedModuleTable represents federationSharedModules store table
@@ -3607,6 +3607,110 @@ var (
 			"kind":         res.Kind,
 			"rel_resource": res.ResourceID,
 			"name":         res.Name,
+		}
+	}
+
+	// notificationTable represents notifications store table
+	//
+	// This value is auto-generated
+	notificationTable = goqu.T("notifications")
+
+	// notificationSelectQuery assembles select query for fetching notifications
+	//
+	// This function is auto-generated
+	notificationSelectQuery = func(d goqu.DialectWrapper) *goqu.SelectDataset {
+		return d.Select(
+			"id",
+			"kind",
+			"config",
+			"recipient",
+			"created_by",
+			"read_at",
+			"created_at",
+			"updated_at",
+			"deleted_at",
+		).From(notificationTable)
+	}
+
+	// notificationInsertQuery assembles query inserting notifications
+	//
+	// This function is auto-generated
+	notificationInsertQuery = func(d goqu.DialectWrapper, res *systemType.Notification) *goqu.InsertDataset {
+		return d.Insert(notificationTable).
+			Rows(goqu.Record{
+				"id":         res.ID,
+				"kind":       res.Kind,
+				"config":     res.Config,
+				"recipient":  res.Recipient,
+				"created_by": res.CreatedBy,
+				"read_at":    res.ReadAt,
+				"created_at": res.CreatedAt,
+				"updated_at": res.UpdatedAt,
+				"deleted_at": res.DeletedAt,
+			})
+	}
+
+	// notificationUpsertQuery assembles (insert+on-conflict) query for replacing notifications
+	//
+	// This function is auto-generated
+	notificationUpsertQuery = func(d goqu.DialectWrapper, res *systemType.Notification) *goqu.InsertDataset {
+		var target = `,id`
+
+		return notificationInsertQuery(d, res).
+			OnConflict(
+				goqu.DoUpdate(target[1:],
+					goqu.Record{
+						"kind":       res.Kind,
+						"config":     res.Config,
+						"recipient":  res.Recipient,
+						"created_by": res.CreatedBy,
+						"read_at":    res.ReadAt,
+						"created_at": res.CreatedAt,
+						"updated_at": res.UpdatedAt,
+						"deleted_at": res.DeletedAt,
+					},
+				),
+			)
+	}
+
+	// notificationUpdateQuery assembles query for updating notifications
+	//
+	// This function is auto-generated
+	notificationUpdateQuery = func(d goqu.DialectWrapper, res *systemType.Notification) *goqu.UpdateDataset {
+		return d.Update(notificationTable).
+			Set(goqu.Record{
+				"kind":       res.Kind,
+				"config":     res.Config,
+				"recipient":  res.Recipient,
+				"created_by": res.CreatedBy,
+				"read_at":    res.ReadAt,
+				"created_at": res.CreatedAt,
+				"updated_at": res.UpdatedAt,
+				"deleted_at": res.DeletedAt,
+			}).
+			Where(notificationPrimaryKeys(res))
+	}
+
+	// notificationDeleteQuery assembles delete query for removing notifications
+	//
+	// This function is auto-generated
+	notificationDeleteQuery = func(d goqu.DialectWrapper, ee ...goqu.Expression) *goqu.DeleteDataset {
+		return d.Delete(notificationTable).Where(ee...)
+	}
+
+	// notificationDeleteQuery assembles delete query for removing notifications
+	//
+	// This function is auto-generated
+	notificationTruncateQuery = func(d goqu.DialectWrapper) *goqu.TruncateDataset {
+		return d.Truncate(notificationTable)
+	}
+
+	// notificationPrimaryKeys assembles set of conditions for all primary keys
+	//
+	// This function is auto-generated
+	notificationPrimaryKeys = func(res *systemType.Notification) goqu.Ex {
+		return goqu.Ex{
+			"id": res.ID,
 		}
 	}
 

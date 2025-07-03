@@ -14,6 +14,8 @@ type (
 		// https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-boost.html
 		Boost float32 `json:"boost,omitempty"`
 
+		Analyzer string `json:"analyzer,omitempty"`
+
 		Properties map[string]*property `json:"properties,omitempty"`
 	}
 
@@ -39,7 +41,6 @@ func change() *property {
 
 func security() *property {
 	return &property{
-		Type: "nested",
 		Properties: map[string]*property{
 			"allowedRoles": {Type: "long"},
 			"deniedRoles":  {Type: "long"},

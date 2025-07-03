@@ -321,6 +321,7 @@ record:
   recordSelectorCanAddRecord: Can add records via record selector
   recordSelectorAddRecordDisplayOption: When adding a record via record selector
 recordList:
+  noModule: No module selected
   addRecord: Add
   cancelSelection: Cancel
   customFilter: Custom filter
@@ -362,6 +363,21 @@ recordList:
     allow: Users will be able to export records
     csv: CSV Export
     dateRange: Select date range
+    multiValueDelimiter:
+      label: Multi value delimiter
+
+      semicolon:
+        label: value 1;value 2;...;value n
+      comma:
+        label: value 1,value 2,...,value n
+      pipe:
+        label: value 1|value 2|...|value n
+      semicolonArray:
+        label: "[value 1;value 2;...;value n]"
+      commaArray:
+        label: "[value 1,value 2,...,value n]"
+      pipeArray:
+        label: "[value 1|value 2|...|value n]"
     query:
       label: Search query
       placeholder: Search...
@@ -472,6 +488,21 @@ recordList:
     to: Import to {{modulename}}
     uploadFile: Upload the file you want to import (.csv or JSON format)
     idFieldDescription: Records with matching ID's will be updated.
+    multiValueDelimiter:
+      label: Multi value delimiter
+
+      semicolon:
+        label: value 1;value 2;...;value n
+      comma:
+        label: value 1,value 2,...,value n
+      pipe:
+        label: value 1|value 2|...|value n
+      semicolonArray:
+        label: "[value 1;value 2;...;value n]"
+      commaArray:
+        label: "[value 1,value 2,...,value n]"
+      pipeArray:
+        label: "[value 1|value 2|...|value n]"
     report:
       count: Number of records
       detectedErrors: Detected errors
@@ -574,7 +605,6 @@ recordList:
     addRecordOptions: On add record click
     textStyles: Text Styles
     configureWrappedFields: Select fields that will be wrapped
-    showFullText: Show full text
   recordPage: record page
   refField:
     footnote: Field that links records with the parent record
@@ -589,6 +619,42 @@ recordList:
   showRecords:
     deleted: Show deleted records
     existing: Show existing records
+  summaries:
+    label: Summaries
+    customSummaries:
+      label: Custom Summaries
+      description: Users will be able to set custom summaries
+      add:
+        label: Add
+        tooltip: Add a custom summary
+    param:
+      label:
+        label: Label
+        placeholder: Summary Label
+      field:
+        label: Field
+        placeholder: Module Field
+      metric:
+        label: Metric
+        placeholder: Summary Metric
+      role:
+        label: Role
+        placeholder: Roles that will be able to see the summary
+    metrics:
+      sum:
+        label: Sum
+      min:
+        label: Min
+      max:
+        label: Max
+      avg:
+        label: Avg
+      emptyCount:
+        label: Empty count
+      notEmptyCount:
+        label: Not empty count
+      uniqueCount:
+        label: Unique count
 recordOrganizer:
   onRecordClick: Record display mode
   openInSameTab: Open in the same tab
@@ -631,6 +697,14 @@ recordRevisions:
 
     show-revisions: Show record revisions ({{ revision }})
     show-changes: "{{ count }} change(s)"
+
+    operations:
+      created: Created
+      updated: Updated
+      soft-deleted: Soft deleted
+      undeleted: Restored
+      hard-deleted: Hard deleted
+
     revisions:
       columns:
         timestamp:

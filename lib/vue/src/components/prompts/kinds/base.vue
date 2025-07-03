@@ -30,7 +30,7 @@ export default {
     },
 
     pRaw (k, defValue = undefined, defType = undefined) {
-      if (this.payload && this.payload[k] && this.payload[k] !== undefined) {
+      if (k && this.payload && this.payload[k] && this.payload[k] !== undefined) {
         return this.payload[k]
       }
 

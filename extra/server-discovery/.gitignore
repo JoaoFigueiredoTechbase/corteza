@@ -2,6 +2,7 @@
 /coverage.txt
 /*.iml
 /.env-*
+.env
 /.dev*
 /.*cover.out*
 /overalls*
@@ -13,3 +14,5 @@ profile.coverprofile
 /gin-bin
 /.vscode
 /federation/etc/.env*
+/certs
+

@@ -19,7 +19,7 @@
       <template v-for="field in fields">
         <b-form-group
           v-if="canDisplay(field)"
-          :key="field.id"
+          :key="field.fieldID"
           :data-test-id="getFieldCypressId(field.label || field.name)"
           :label-cols-md="options.horizontalFieldLayoutEnabled && '6'"
           :label-cols-xl="options.horizontalFieldLayoutEnabled && '5'"
@@ -287,6 +287,7 @@ export default {
   methods: {
     ...mapActions({
       findModuleByID: 'module/findByID',
+      updateRecordSet: 'record/updateRecords',
     }),
 
     fetchReferenceModule (moduleID) {
@@ -332,6 +333,7 @@ export default {
       response()
         .then(record => {
           this.referenceRecord = new compose.Record(this.fieldModule, { ...record })
+          this.updateRecordSet(this.referenceRecord)
         })
         .catch(e => {
           if (!axios.isCancel(e)) {

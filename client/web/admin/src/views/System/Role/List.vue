@@ -99,15 +99,14 @@
             />
           </template>
 
-          <b-dropdown-item-button v-if="r.roleID && canGrant">
-            <c-permissions-button
-              :title="r.name || r.handle || r.roleID"
-              :target="r.name || r.handle || r.roleID"
-              :resource="`corteza::system:role/${r.roleID}`"
-              :button-label="$t('permissions')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="canGrant"
+            :title="r.name || r.handle || r.roleID"
+            :target="r.name || r.handle || r.roleID"
+            :resource="`corteza::system:role/${r.roleID}`"
+            :button-label="$t('permissions')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="r.canDeleteRole"

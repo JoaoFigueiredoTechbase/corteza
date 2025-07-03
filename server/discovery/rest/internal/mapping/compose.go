@@ -71,6 +71,11 @@ func (m composeMapping) Namespaces(ctx context.Context) ([]*Mapping, error) {
 					"handle":      {Type: "keyword"},
 				},
 			},
+
+			"catch_all": {
+				Type:     "text",
+				Analyzer: "standard",
+			},
 		},
 	}}, nil
 }
@@ -117,6 +122,11 @@ func (m composeMapping) Modules(ctx context.Context) ([]*Mapping, error) {
 					"name":     {Type: "text"},
 					"handle":   {Type: "keyword"},
 				},
+			},
+
+			"catch_all": {
+				Type:     "text",
+				Analyzer: "standard",
 			},
 		},
 	}}, nil
@@ -187,6 +197,11 @@ func (m composeMapping) records(ctx context.Context, mod *types.Module, mm types
 	mapping.Mapping["values"] = &property{
 		Type:       "nested",
 		Properties: props,
+	}
+
+	mapping.Mapping["catch_all"] = &property{
+		Type:     "text",
+		Analyzer: "standard",
 	}
 
 	// mapping for record is there, add fields for namespace & module

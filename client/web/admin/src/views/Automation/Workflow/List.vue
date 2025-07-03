@@ -77,17 +77,14 @@
             />
           </template>
 
-          <b-dropdown-item-button
-            v-if="w.workflowID && canGrant"
-          >
-            <c-permissions-button
-              :title="w.meta.name || w.handle || w.workflowID"
-              :target="w.meta.name || w.handle || w.workflowID"
-              :resource="`corteza::automation:workflow/${w.workflowID}`"
-              :button-label="$t('permissions')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="canGrant"
+            :title="w.meta.name || w.handle || w.workflowID"
+            :target="w.meta.name || w.handle || w.workflowID"
+            :resource="`corteza::automation:workflow/${w.workflowID}`"
+            :button-label="$t('permissions')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="(w.canDeleteWorkflow && !w.deletedAt) || (w.canUndeleteWorkflow && w.deletedAt)"

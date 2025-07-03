@@ -53,7 +53,7 @@
               data-test-id="dropdown-permissions"
               size="lg"
               variant="light"
-              class="d-flex align-items-center flex-sm-grow-0 flex-sm-shrink-0 flex-fill permissions-dropdown"
+              class="d-flex align-items-center flex-sm-grow-0 flex-sm-shrink-0 flex-fill"
             >
               <template #button-content>
                 <font-awesome-icon :icon="['fas', 'lock']" />
@@ -62,21 +62,19 @@
                 </span>
               </template>
 
-              <b-dropdown-item-button>
-                <c-permissions-button
-                  :resource="`corteza::compose:page/${namespace.namespaceID}/*`"
-                  :button-label="$t('general:label.page')"
-                  :show-button-icon="false"
-                />
-              </b-dropdown-item-button>
+              <c-permissions-button
+                :resource="`corteza::compose:page/${namespace.namespaceID}/*`"
+                :button-label="$t('general:label.page')"
+                :show-button-icon="false"
+                class="dropdown-item"
+              />
 
-              <b-dropdown-item-button>
-                <c-permissions-button
-                  :resource="`corteza::compose:page-layout/${namespace.namespaceID}/*/*`"
-                  :button-label="$t('general:label.pageLayout')"
-                  :show-button-icon="false"
-                />
-              </b-dropdown-item-button>
+              <c-permissions-button
+                :resource="`corteza::compose:page-layout/${namespace.namespaceID}/*/*`"
+                :button-label="$t('general:label.pageLayout')"
+                :show-button-icon="false"
+                class="dropdown-item"
+              />
             </b-dropdown>
           </div>
         </div>
@@ -152,6 +150,10 @@ export default {
   beforeDestroy () {
     this.abortRequests()
     this.setDefaultValues()
+  },
+
+  mounted () {
+    document.title = this.$t('general:label.app-name.page.list', { label: this.namespace.name, interpolation: { escapeValue: false } })
   },
 
   methods: {

@@ -100,7 +100,7 @@
                   data-test-id="dropdown-permissions"
                   size="lg"
                   variant="light"
-                  class="permissions-dropdown mr-1"
+                  class="mr-1"
                 >
                   <template #button-content>
                     <font-awesome-icon :icon="['fas', 'lock']" />
@@ -109,37 +109,34 @@
                     </span>
                   </template>
 
-                  <b-dropdown-item-button>
-                    <c-permissions-button
-                      :title="module.name || module.handle || module.moduleID"
-                      :target="module.name || module.handle || module.moduleID"
-                      :resource="`corteza::compose:module/${namespace.namespaceID}/${module.moduleID}`"
-                      :button-label="$t('general:label.module.single')"
-                      :show-button-icon="false"
-                    />
-                  </b-dropdown-item-button>
+                  <c-permissions-button
+                    :title="module.name || module.handle || module.moduleID"
+                    :target="module.name || module.handle || module.moduleID"
+                    :resource="`corteza::compose:module/${namespace.namespaceID}/${module.moduleID}`"
+                    :button-label="$t('general:label.module.single')"
+                    :show-button-icon="false"
+                    class="dropdown-item"
+                  />
 
-                  <b-dropdown-item-button>
-                    <c-permissions-button
-                      :title="module.name || module.handle || module.moduleID"
-                      :target="module.name || module.handle || module.moduleID"
-                      :resource="`corteza::compose:module-field/${namespace.namespaceID}/${module.moduleID}/*`"
-                      :button-label="$t('general:label.field')"
-                      :show-button-icon="false"
-                      all-specific
-                    />
-                  </b-dropdown-item-button>
+                  <c-permissions-button
+                    :title="module.name || module.handle || module.moduleID"
+                    :target="module.name || module.handle || module.moduleID"
+                    :resource="`corteza::compose:module-field/${namespace.namespaceID}/${module.moduleID}/*`"
+                    :button-label="$t('general:label.field')"
+                    :show-button-icon="false"
+                    all-specific
+                    class="dropdown-item"
+                  />
 
-                  <b-dropdown-item-button>
-                    <c-permissions-button
-                      :title="module.name || module.handle || module.moduleID"
-                      :target="module.name || module.handle || module.moduleID"
-                      :resource="`corteza::compose:record/${namespace.namespaceID}/${module.moduleID}/*`"
-                      :button-label="$t('general:label.record')"
-                      :show-button-icon="false"
-                      all-specific
-                    />
-                  </b-dropdown-item-button>
+                  <c-permissions-button
+                    :title="module.name || module.handle || module.moduleID"
+                    :target="module.name || module.handle || module.moduleID"
+                    :resource="`corteza::compose:record/${namespace.namespaceID}/${module.moduleID}/*`"
+                    :button-label="$t('general:label.record')"
+                    :show-button-icon="false"
+                    all-specific
+                    class="dropdown-item"
+                  />
                 </b-dropdown>
 
                 <related-pages
@@ -513,6 +510,7 @@
 </template>
 
 <script>
+import axios from 'axios'
 import { isEqual } from 'lodash'
 import { mapGetters, mapActions } from 'vuex'
 import draggable from 'vuedraggable'
@@ -843,6 +841,8 @@ export default {
           this.module = new compose.Module({ ...module }, this.namespace)
           this.initialModuleState = this.module.clone()
 
+          document.title = this.$t('general:label.app-name.module.edit', { label: this.module.name, interpolation: { escapeValue: false } })
+
           this.toastSuccess(this.$t('notification:module.created'))
 
           toggleProcessing(false)
@@ -861,6 +861,8 @@ export default {
         this.updateModule({ ...module, resourceTranslationLanguage }).then(module => {
           this.module = new compose.Module({ ...module }, this.namespace)
           this.initialModuleState = this.module.clone()
+
+          document.title = this.$t('general:label.app-name.module.edit', { label: this.module.name, interpolation: { escapeValue: false } })
 
           this.toastSuccess(this.$t('notification:module.saved'))
 
@@ -894,6 +896,8 @@ export default {
           this.namespace,
         )
         this.initialModuleState = this.module.clone()
+
+        document.title = this.$t('general:label.app-name.module.create')
       } else {
         this.loading = true
         this.processing = true
@@ -910,6 +914,8 @@ export default {
           this.module = module.clone()
           this.initialModuleState = this.module.clone()
 
+          document.title = this.$t('general:label.app-name.module.edit', { label: this.module.name, interpolation: { escapeValue: false } })
+
           const { moduleID, namespaceID, issues = [] } = this.module
           if (issues.length > 0) {
             // do not proceed with record search as it's
@@ -918,13 +924,16 @@ export default {
           }
 
           // Count existing records to see what we can do with this module
-          const { response, cancel } = this.$ComposeAPI
-            .recordListCancellable({ moduleID, namespaceID, limit: 1 })
-
+          const { response, cancel } = this.$ComposeAPI.recordListCancellable({ moduleID, namespaceID, limit: 1 })
           this.abortableRequests.push(cancel)
 
-          return response()
-            .then(({ set }) => { this.hasRecords = (set.length > 0) })
+          return response().then(({ set = [] }) => {
+            this.hasRecords = set.length > 0
+          }).catch(e => {
+            if (!axios.isCancel(e)) {
+              console.error(e)
+            }
+          })
         }).catch(e => {
           this.toastErrorHandler(this.$t('notification:module.loadFailed'))(e)
           this.$router.push({ name: 'admin.modules' })

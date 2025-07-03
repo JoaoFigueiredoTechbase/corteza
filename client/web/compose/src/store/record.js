@@ -92,6 +92,8 @@ export default function (ComposeAPI) {
         const existing = new Set(state.set.map(({ recordID }) => recordID))
 
         set.forEach(newItem => {
+          newItem = JSON.parse(JSON.stringify(newItem))
+
           const oldIndex = existing.has(newItem.recordID) ? state.set.findIndex(({ recordID }) => recordID === newItem.recordID) : -1
           if (oldIndex > -1) {
             state.set.splice(oldIndex, 1, newItem)

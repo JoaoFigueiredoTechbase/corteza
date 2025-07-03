@@ -151,11 +151,24 @@
       </div>
 
       <div
-        class="bg-white position-absolute m-2 zoom border border-secondary"
-        style="z-index: 1; width: fit-content;"
+        class="d-flex flex-wrap position-absolute fixed-bottom m-2 gap-2"
+        style="z-index: 1;"
       >
+        <c-button-submit
+          v-if="changeDetected && canUpdateWorkflow"
+          data-test-id="button-save-workflow"
+          variant="primary"
+          :processing="processingSave"
+          :text="$t('editor:detected-changes') + `${canUpdateWorkflow ? $t('editor:click-to-save') : ''}`"
+          :loading-text="$t('editor:saving')"
+          class="rounded py-2 px-3"
+          style="min-width: 20rem;"
+          @submit="saveWorkflow()"
+        />
+
         <div
-          class="d-flex align-items-baseline p-2"
+          class="d-flex align-items-center bg-white border border-secondary py-2 px-3 ml-auto gap-1 rounded"
+          style="z-index: 1;"
         >
           {{ getZoomPercent }}
           <b-button
@@ -186,23 +199,6 @@
             {{ $t('editor:reset') }}
           </b-button>
         </div>
-      </div>
-
-      <div
-        class="d-flex flex-column flex-shrink position-absolute fixed-bottom m-2"
-        style="z-index: 1; width: 20vw;"
-      >
-        <c-button-submit
-          v-if="changeDetected && canUpdateWorkflow"
-          data-test-id="button-save-workflow"
-          variant="primary"
-          block
-          :processing="processingSave"
-          :text="$t('editor:detected-changes') + `${canUpdateWorkflow ? $t('editor:click-to-save') : ''}`"
-          :loading-text="$t('editor:saving')"
-          class="rounded-0 py-2 px-3"
-          @submit="saveWorkflow()"
-        />
       </div>
 
       <div
@@ -485,7 +481,7 @@ import VueJsonEditor from 'v-jsoneditor'
 import Import from '../components/Import'
 import Export from '../components/Export'
 import { NoID } from '@cortezaproject/corteza-js'
-import { handle } from '@cortezaproject/corteza-vue'
+import { handle, components } from '@cortezaproject/corteza-vue'
 
 const {
   mxClient,
@@ -585,8 +581,6 @@ export default {
       runAsUser: undefined,
 
       toolbar: undefined,
-
-      edgeConnected: false,
 
       rendering: false,
 
@@ -946,7 +940,7 @@ export default {
             } else if (['expressions', 'function', 'prompt', 'iterator', 'exec-workflow'].includes(kind)) {
               let { arguments: args = [], results = [], ref } = vertex.config || {}
 
-              const { meta = {}, results: functionResults = [] } = this.functionTypes.find(f => f.ref === ref) || {}
+              const { meta = {}, results: functionResults = [], parameters = [] } = this.functionTypes.find(f => f.ref === ref) || {}
 
               const functionLabel = meta.short
 
@@ -954,19 +948,32 @@ export default {
                 values.push(`<tr><td><b class="text-primary">${functionLabel}</b></td><td/></tr>`)
               }
 
-              if (args.length && kind !== 'expressions') {
-                values.push('<tr class="title"><td><b>Arguments</b></td><td/></tr>')
+              if (kind === 'expressions') {
+                args = args.map(({ target, expr, type }) => {
+                  return `<tr><td><var>${encodeHTML(target)}</var> <samp>(${type})</samp></td><td><code>${encodeHTML(expr)}</code></td><td/></tr>`
+                })
+              } else {
+                if (args.length) {
+                  values.push('<tr class="title"><td><b>Arguments</b></td><td/><td/></tr>')
+                }
+
+                args = parameters.map(({ name, types = [] }) => {
+                  const { type, expr, value } = args.find(({ target }) => target === name) || {}
+                  const exprType = type || `${types[0]}`
+                  const exprBadge = expr ? '<span title="Expression" class="circle-badge badge-small ml-1">e</span>' : ''
+
+                  return `<tr><td><var>${encodeHTML(name)}</var> <samp>(${exprType})</samp></td><td><code>${encodeHTML(expr || value)}</code></td><td>${exprBadge}</td></tr>`
+                })
               }
-              args = args.map(({ target = '', type = 'Any', expr = '', value = '' }) => `<tr><td><var>${encodeHTML(target)}</var> <samp>(${type})</samp></td><td><code>${encodeHTML(expr || value)}</code></td></tr>`)
 
               if (results.length) {
-                args.push('<tr class="title border-top"><td><b>Results</b></td><td /></tr>')
+                args.push('<tr class="title border-top"><td><b>Results</b></td><td/><td/></tr>')
               }
 
               results = results.map(({ target = '', expr = '', value = '' }) => {
                 const { types = [] } = functionResults.find(({ name }) => name === expr || name === value) || {}
                 const type = types.length ? `(${types[0]})` : ''
-                return `<tr><td><code>${encodeHTML(target)}</code> <samp>${type}</samp></td><td><var>${encodeHTML(expr || value)}</var></td></tr>`
+                return `<tr><td><code>${encodeHTML(target)}</code> <samp>${type}</samp></td><td><var>${encodeHTML(expr || value)}</var></td><td/></tr>`
               })
 
               values = [...values, ...args, ...results].join('')
@@ -975,9 +982,20 @@ export default {
               let { properties = [] } = this.eventTypes.find(et => resourceType === et.resourceType && eventType === et.eventType) || {}
 
               if (resourceType) {
-                resourceType = resourceType.split(':').map(s => {
-                  return s[0].toUpperCase() + s.slice(1).toLowerCase()
-                }).join(' ')
+                resourceType = resourceType.split(':')
+                  .map(part => part
+                    .split('-')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                    .join(' '),
+                  )
+                  .join(' - ')
+              }
+
+              if (eventType) {
+                eventType = eventType.replace('on', '')
+                  .split(/(?=[A-Z])/)
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                  .join(' ')
               }
 
               values.push('<tr class="title"><td><b>Configuration</b></td><td/><td/></tr>')
@@ -985,10 +1003,21 @@ export default {
               values.push(`<tr><td><var>Event</var></td><td/><td><code>${eventType || ''}</code></td></tr>`)
 
               if (constraints.length && eventType && eventType !== 'onManual') {
+                const getConstraintNameLabel = (name) => {
+                  return name
+                    .split('.')
+                    .map(s => {
+                      const first = s[0] || ''
+                      const rest = s.slice(1) || ''
+                      return first.toUpperCase() + rest.toLowerCase()
+                    })
+                    .join(' ')
+                }
+
                 constraints = [
                   '<tr class="title"><td><b>Constraints</b></td><td/><td/></tr>',
                   ...constraints.map(({ name = '', op = '', values = '' }) => {
-                    return `<tr><td><samp>${name || eventType.includes('on') ? eventType.replace('on', '') : ''}</var></td><td><samp>${op}</samp></td><td><code>${encodeHTML(values.join(' or '))}</code></td></tr>`
+                    return `<tr><td><samp>${getConstraintNameLabel(name) || eventType}</var></td><td><samp>${op}</samp></td><td><code>${encodeHTML(values.join(' or '))}</code></td></tr>`
                   }),
                 ]
               } else {
@@ -1576,8 +1605,6 @@ export default {
         } else if (source.config.kind === 'iterator') {
           this.edges[node.id].node.value = `${outPaths.length === 1 ? 'Body' : 'End'}`
         }
-
-        this.edgeConnected = true
       })
 
       this.graph.addListener(mxEvent.CELL_CONNECTED, (sender, evt) => {
@@ -1691,20 +1718,24 @@ export default {
             }
           }
         },
+
         mouseUp: (sender, evt) => {
           evt.consume()
         },
-        mouseDown: (sender, evt) => {
-          // Prevent click event handling if edge was just connected
-          if (this.edgeConnected) {
-            this.edgeConnected = false
-            return
-          }
 
+        mouseDown: (sender, evt) => {
           const event = evt.evt
           const cell = evt.state?.cell
 
           if (event) {
+            // Check if clicked element is an anchor point
+            const isAnchorPoint = event.target?.href?.baseVal?.includes('connection-point')
+
+            if (isAnchorPoint) {
+              evt.consume()
+              return
+            }
+
             if (mxEvent.isControlDown(event) || (mxClient.IS_MAC && mxEvent.isMetaDown(event))) {
               // Prevent sidebar opening/closing when CTRL(CMD) is pressed while clicking
               if (cell) {
@@ -2598,6 +2629,7 @@ export default {
       return this.$AutomationAPI.functionList()
         .then(({ set }) => {
           this.functionTypes = set
+          this.functionTypes.push(...components.promptDefinitions)
         })
         .catch(this.toastErrorHandler(this.$t('notification:failed-fetch-functions')))
     },
@@ -2633,11 +2665,6 @@ export default {
 .toolbar {
   background-color: var(--sidebar-bg) !important;
   width: 66px;
-}
-
-.zoom {
-  right: 0;
-  bottom: 0;
 }
 
 .component-fade-enter-active, .component-fade-leave-active {

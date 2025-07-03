@@ -1,29 +1,31 @@
 <template>
-  <div>
+  <div class="d-flex flex-column gap-1">
     <p
       v-if="!!message"
+      class="text-break"
       v-html="message"
     />
 
-    <div class="d-flex flex-column gap-1">
+    <b-form-group
+      :label="pVal('label', '')"
+      label-class="text-primary"
+    >
       <c-input-select
         v-model="value"
         :options="options"
-        :get-option-key="getOptionKey"
+        :get-option-key="r => r.recordID"
         :loading="processing"
         append-to-body
         option-value="recordID"
-        option-text="label"
-        placeholder="Select record"
+        :placeholder="pVal('placeholder', 'Select a record')"
         :filterable="false"
         :reduce="r => r.recordID"
-        class="w-100 mb-3"
+        class="w-100"
         @search="search"
       >
         <template #list-footer>
           <c-pagination
             v-if="showPagination"
-          
             :has-prev-page="hasPrevPage"
             :has-next-page="hasNextPage"
             @prev="goToPage(false)"
@@ -31,22 +33,22 @@
           />
         </template>
       </c-input-select>
+    </b-form-group>
 
-      <b-button
-        :disabled="loading"
-        variant="primary"
-        class="ml-auto"
-        @click="$emit('submit', { value: encodeValue() })"
-      >
-        {{ pVal('buttonLabel', 'Submit') }}
-      </b-button>
-    </div>
+    <b-button
+      :disabled="loading"
+      variant="primary"
+      class="ml-auto"
+      @click="$emit('submit', { value: encodeValue() })"
+    >
+      {{ pVal('buttonLabel', 'Submit') }}
+    </b-button>
   </div>
 </template>
+
 <script lang="js">
 import base from './base.vue'
 import CPagination from '../common/CPagination.vue'
-import { pVal } from '../utils.ts'
 import CInputSelect from '../../input/CInputSelect.vue'
 import { compose, NoID } from '@cortezaproject/corteza-js'
 import { debounce } from 'lodash'
@@ -58,6 +60,7 @@ export default {
     CInputSelect,
     CPagination,
   },
+
   extends: base,
 
   data () {
@@ -255,10 +258,6 @@ export default {
 
     goToPage (next = true) {
       this.filter.pageCursor = next ? this.filter.nextPage : this.filter.prevPage
-    },
-
-    getOptionKey ({ recordID }) {
-      return recordID
     },
 
     setDefaultValues () {

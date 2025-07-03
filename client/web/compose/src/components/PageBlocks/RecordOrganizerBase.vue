@@ -109,7 +109,7 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 import axios from 'axios'
 import base from './base'
 import draggable from 'vuedraggable'
@@ -274,13 +274,14 @@ export default {
   },
 
   methods: {
+    ...mapActions({
+      updateRecordSet: 'record/updateRecords',
+    }),
+
     createEvents () {
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$on('refetch-records', this.refresh)
-      }
+      this.$root.$on('refetch-records', this.refresh)
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
@@ -368,8 +369,11 @@ export default {
 
       const route = {
         name: 'page.record.create',
-        params: { pageID },
-        values,
+        params: {
+          pageID,
+          values,
+          refRecord: this.record,
+        },
         query: null,
         edit: true,
       }
@@ -379,6 +383,7 @@ export default {
           recordID: NoID,
           recordPageID: pageID,
           values,
+          refRecord: this.record,
           edit: true,
         })
       } else if (this.options.displayOption === 'newTab') {
@@ -388,8 +393,8 @@ export default {
       }
     },
 
-    refreshOnRelatedRecordsUpdate ({ moduleID, notPageID }) {
-      if (this.options.moduleID === moduleID && this.page.pageID !== notPageID) {
+    refreshOnRelatedRecordsUpdate ({ moduleID } = {}) {
+      if (this.options.moduleID === moduleID) {
         this.refresh()
       }
     },
@@ -497,29 +502,28 @@ export default {
 
       this.processing = true
 
-      const { response, cancel } = this.$ComposeAPI
-        .recordListCancellable({ namespaceID, moduleID, query, sort })
-
+      const { response, cancel } = this.$ComposeAPI.recordListCancellable({ namespaceID, moduleID, query, sort })
       this.abortableRequests.push(cancel)
 
-      return response()
-        .then(({ set }) => {
-          const fields = [this.labelField, this.descriptionField].filter(f => !!f)
-          this.records = set.map(r => Object.freeze(new compose.Record(this.roModule, r)))
+      return response().then(({ set }) => {
+        const fields = [this.labelField, this.descriptionField].filter(f => !!f)
+        this.records = set.map(r => Object.freeze(new compose.Record(this.roModule, r)))
 
-          return Promise.all([
-            this.fetchUsers(fields, this.records),
-            this.fetchRecords(namespaceID, fields, this.records),
-          ])
-        }).catch(e => {
-          if (!axios.isCancel(e)) {
-            console.error(e)
-          }
-        }).finally(() => {
-          setTimeout(() => {
-            this.processing = false
-          }, 300)
-        })
+        this.updateRecordSet(this.records)
+
+        return Promise.all([
+          this.fetchUsers(fields, this.records),
+          this.fetchRecords(namespaceID, fields, this.records),
+        ])
+      }).catch(e => {
+        if (!axios.isCancel(e)) {
+          console.error(e)
+        }
+      }).finally(() => {
+        setTimeout(() => {
+          this.processing = false
+        }, 300)
+      })
     },
 
     handleRecordClick (record) {
@@ -571,10 +575,7 @@ export default {
     destroyEvents () {
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$off('refetch-records', this.refresh)
-      }
+      this.$root.$off('refetch-records', this.refresh)
     },
   },
 }

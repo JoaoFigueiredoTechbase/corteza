@@ -174,7 +174,7 @@ export default {
     if (this.recordPaginationUsable) {
       this.setRecordPaginationUsable(false)
     } else {
-      this.clearRecordIDs()
+      this.clearRecordPagination()
     }
   },
 
@@ -186,7 +186,7 @@ export default {
     ...mapActions({
       updateModule: 'module/update',
       setRecordPaginationUsable: 'ui/setRecordPaginationUsable',
-      clearRecordIDs: 'ui/clearRecordIDs',
+      clearRecordPagination: 'ui/clearRecordPagination',
     }),
 
     handleFieldsSave (fields = []) {

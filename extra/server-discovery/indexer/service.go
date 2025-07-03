@@ -3,6 +3,9 @@ package indexer
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
+
 	"github.com/cortezaproject/corteza/extra/server-discovery/pkg/api"
 	"github.com/cortezaproject/corteza/extra/server-discovery/pkg/es"
 	"github.com/cortezaproject/corteza/extra/server-discovery/pkg/es/mapping"
@@ -11,8 +14,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
 	"go.uber.org/zap"
-	"net/http"
-	"net/url"
 )
 
 type (
@@ -89,7 +90,14 @@ func Initialize(ctx context.Context, log *zap.Logger, c Config) (err error) {
 	}
 
 	// Reindexing existing mapping if needed
-	DefaultReIndexer = reindex.ReIndexer(log, DefaultEs, DefaultApiClient, c.ES)
+	DefaultReIndexer = reindex.ReIndexer(log, DefaultEs, DefaultApiClient, c.ES, func(ctx context.Context) (err error) {
+		err = DefaultMapper.Mappings(ctx, esc, "private")
+		if err != nil {
+			return err
+		}
+
+		return
+	})
 
 	esb, err := DefaultEs.BulkIndexer()
 	if err != nil {

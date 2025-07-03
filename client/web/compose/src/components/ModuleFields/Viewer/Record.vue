@@ -74,22 +74,12 @@ export default {
     },
   },
 
-  watch: {
-    value: {
-      immediate: true,
-      handler (value) {
-        this.formatRecordValues(value)
-      },
-    },
+  mounted () {
+    this.formatRecordValues(this.value)
   },
 
   beforeDestroy () {
-    this.destroyEvents()
     this.setDefaultValues()
-  },
-
-  mounted () {
-    this.$root.$on('module-records-updated', this.refreshOnRelatedModuleUpdate)
   },
 
   methods: {
@@ -98,12 +88,6 @@ export default {
       resolveUsers: 'user/resolveUsers',
       resolveRecords: 'record/resolveRecords',
     }),
-
-    refreshOnRelatedModuleUpdate ({ moduleID }) {
-      if (this.relatedModuleID === moduleID) {
-        this.formatRecordValues(this.value)
-      }
-    },
 
     linkToRecord (recordID) {
       if (!this.recordPage || !recordID) {
@@ -129,9 +113,10 @@ export default {
       }
 
       return this.findModuleByID({ namespace: this.namespace, moduleID }).then(async module => {
-        const relatedField = module.fields.find(({ name }) => name === labelField)
-        let records = this.findRecordsByIDs(recordIDs).map(r => new compose.Record(module, r))
         const mappedIDs = {}
+        const relatedField = module.fields.find(({ name }) => name === labelField)
+
+        let records = this.findRecordsByIDs(recordIDs).map(r => new compose.Record(module, r))
 
         if (relatedField.kind === 'Record' && recordLabelField) {
           this.processing = true
@@ -145,6 +130,7 @@ export default {
             const recordValue = relatedField.isMulti ? r.values[relatedField.name] : [r.values[relatedField.name]]
             recordValue.forEach(rID => relatedRecordIDs.add(rID))
           })
+
           await this.resolveRecords({ namespaceID, moduleID: relatedModule.moduleID, recordIDs: [...relatedRecordIDs] })
 
           const relatedLabelField = relatedModule.fields.find(({ name }) => name === recordLabelField)
@@ -212,10 +198,6 @@ export default {
       this.recordValues = {}
       this.relRecords = []
       this.relatedModuleID = undefined
-    },
-
-    destroyEvents () {
-      this.$root.$off('module-records-updated', this.refreshOnRelatedModuleUpdate)
     },
   },
 }

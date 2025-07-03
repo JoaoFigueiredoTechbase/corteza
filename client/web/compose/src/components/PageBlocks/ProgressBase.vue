@@ -89,10 +89,7 @@ export default {
     createEvents () {
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$on('refetch-records', this.refresh)
-      }
+      this.$root.$on('refetch-records', this.refresh)
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
@@ -154,8 +151,12 @@ export default {
         })
     },
 
-    refreshOnRelatedRecordsUpdate ({ moduleID, notPageID }) {
-      if (this.options.value.moduleID === moduleID && this.page.pageID !== notPageID) {
+    refreshOnRelatedRecordsUpdate ({ moduleID } = {}) {
+      const { value = {} } = this.options || {}
+
+      const hasMatchingModule = value.moduleID === moduleID
+
+      if (hasMatchingModule) {
         this.refresh()
       }
     },
@@ -169,10 +170,7 @@ export default {
     destroyEvents () {
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$off('refetch-records', this.refresh)
-      }
+      this.$root.$off('refetch-records', this.refresh)
     },
   },
 }

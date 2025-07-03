@@ -1,9 +1,10 @@
 package documents
 
 import (
+	"time"
+
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	sysTypes "github.com/cortezaproject/corteza/server/system/types"
-	"time"
 )
 
 type (
@@ -44,10 +45,11 @@ type (
 		Handle       string            `json:"handle,omitempty"`
 		Suspended    *time.Time        `json:"suspendedAt,omitempty"`
 		Url          string            `json:"url,omitempty"`
+		CatchAll     []any             `json:"catch_all"`
 		Updated      *docPartialChange `json:"updated,omitempty"`
 		Created      *docPartialChange `json:"created,omitempty"`
 		Deleted      *docPartialChange `json:"deleted,omitempty"`
-		Security     docSecurity       `json:"security"`
+		Security     []docSecurity     `json:"security"`
 	}
 
 	docComposeNamespace struct {
@@ -58,11 +60,12 @@ type (
 		Url          string                         `json:"url,omitempty"`
 		Enabled      bool                           `json:"enabled"`
 		Meta         docPartialComposeNamespaceMeta `json:"meta"`
+		CatchAll     []interface{}                  `json:"catch_all"`
 
 		Updated  *docPartialChange `json:"updated,omitempty"`
 		Created  *docPartialChange `json:"created,omitempty"`
 		Deleted  *docPartialChange `json:"deleted,omitempty"`
-		Security docSecurity       `json:"security"`
+		Security []docSecurity     `json:"security"`
 
 		// Aggregation update
 		Namespace docPartialComposeNamespace `json:"namespace"`
@@ -90,11 +93,13 @@ type (
 		Updated      *docPartialChange               `json:"updated,omitempty"`
 		Created      *docPartialChange               `json:"created,omitempty"`
 		Deleted      *docPartialChange               `json:"deleted,omitempty"`
-		Security     docSecurity                     `json:"security"`
+		Security     []docSecurity                   `json:"security"`
 
 		// Aggregation update
 		Namespace docPartialComposeNamespace `json:"namespace"`
 		Module    docPartialComposeModule    `json:"module"`
+
+		CatchAll []any `json:"catch_all"`
 	}
 
 	docPartialComposeModuleField struct {
@@ -115,10 +120,11 @@ type (
 		Meta         map[string]any           `json:"labels,omitempty"`
 		ValueLabels  map[string]string        `json:"valueLabels,omitempty"`
 		Values       map[string][]interface{} `json:"values"`
+		CatchAll     []any                    `json:"catch_all"`
 		Updated      *docPartialChange        `json:"updated,omitempty"`
 		Created      *docPartialChange        `json:"created,omitempty"`
 		Deleted      *docPartialChange        `json:"deleted,omitempty"`
-		Security     docSecurity              `json:"security"`
+		Security     []docSecurity            `json:"security"`
 
 		// Aggregation update
 		Namespace docPartialComposeNamespace `json:"namespace"`
@@ -127,10 +133,10 @@ type (
 
 	docSecurity struct {
 		// list of roles that are allowed to read the resource
-		AllowedRoles []uint64 `json:"allowedRoles"`
+		AllowedRoles []string `json:"allowedRoles"`
 
 		// list of roles that are disallowed to read the resource
-		DeniedRoles []uint64 `json:"deniedRoles"`
+		DeniedRoles []string `json:"deniedRoles"`
 	}
 )
 

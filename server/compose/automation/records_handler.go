@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/cortezaproject/corteza/server/compose/types"
 	. "github.com/cortezaproject/corteza/server/pkg/expr"
@@ -435,4 +436,25 @@ func wrapRecordValueErrorSet(rr *types.Record, res *types.RecordValueErrorSet, e
 	ss = re.ReplaceAllString(ss, "")
 
 	return rr, errors.New(ss)
+}
+
+func (h recordsHandler) clone(ctx context.Context, args *recordsCloneArgs) (*recordsCloneResults, error) {
+	results := &recordsCloneResults{}
+
+	rec, err := h.lookupRecord(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+
+	results.Record = rec.Clone()
+
+	results.Record.ID = 0
+	results.Record.CreatedAt = time.Now()
+	results.Record.UpdatedAt = nil
+	results.Record.DeletedAt = nil
+	results.Record.CreatedBy = 0
+	results.Record.UpdatedBy = 0
+	results.Record.DeletedBy = 0
+
+	return results, nil
 }

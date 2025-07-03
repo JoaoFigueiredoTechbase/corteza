@@ -117,10 +117,7 @@ export default {
       this.$root.$on('drill-down-chart', this.drillDown)
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$on('refetch-records', this.refresh)
-      }
+      this.$root.$on('refetch-records', this.refresh)
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
@@ -278,12 +275,8 @@ export default {
       })
     },
 
-    refreshOnRelatedRecordsUpdate ({ moduleID, notPageID }) {
-      if (this.page.pageID === notPageID) {
-        return
-      }
-
-      const metrics = this.options.metrics
+    refreshOnRelatedRecordsUpdate ({ moduleID } = {}) {
+      const { metrics = [] } = this.options || {}
 
       const hasMatchingModule = metrics.some((m) => {
         return m.moduleID === moduleID
@@ -299,10 +292,7 @@ export default {
       this.$root.$off('drill-down-chart', this.drillDown)
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$off('refetch-records', this.refresh)
-      }
+      this.$root.$off('refetch-records', this.refresh)
     },
   },
 }

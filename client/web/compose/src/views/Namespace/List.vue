@@ -115,7 +115,7 @@ export default {
   },
 
   mounted () {
-    document.title = this.$t('general:label.app-name.public')
+    document.title = this.$t('general:label.app-name.namespace.list')
   },
 
   methods: {

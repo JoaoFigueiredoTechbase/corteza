@@ -330,16 +330,6 @@ export default {
     },
   },
 
-  created () {
-    this.loadLatest()
-    if (this.value) {
-      this.resolving = true
-      this.formatRecordValues(this.value).finally(() => {
-        this.resolving = false
-      })
-    }
-  },
-
   beforeDestroy () {
     this.setDefaultValues()
     this.destroyEvents()
@@ -347,6 +337,16 @@ export default {
 
   mounted () {
     this.createEvents()
+
+    this.loadLatest()
+
+    if (this.value) {
+      this.resolving = true
+
+      this.formatRecordValues(this.value).finally(() => {
+        this.resolving = false
+      })
+    }
   },
 
   methods: {
@@ -354,12 +354,11 @@ export default {
       findModuleByID: 'module/findByID',
       resolveUsers: 'user/resolveUsers',
       resolveRecords: 'record/resolveRecords',
-      updateRecords: 'record/updateRecords',
+      updateRecordSet: 'record/updateRecords',
     }),
 
     createEvents () {
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
-      this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
@@ -476,7 +475,7 @@ export default {
           this.filter.nextPage = filter.nextPage
           this.filter.prevPage = filter.prevPage
 
-          this.updateRecords(set)
+          this.updateRecordSet(set)
 
           return this.formatRecordValues(set.map(({ recordID }) => recordID)).then(() => {
             this.records = set.map(r => new compose.Record(this.module, r))
@@ -512,6 +511,7 @@ export default {
             const recordValue = relatedField.isMulti ? r.values[relatedField.name] : [r.values[relatedField.name]]
             recordValue.forEach(rID => relatedRecordIDs.add(rID))
           })
+
           await this.resolveRecords({ namespaceID, moduleID: relatedModule.moduleID, recordIDs: [...relatedRecordIDs] })
 
           const relatedLabelField = relatedModule.fields.find(({ name }) => name === recordLabelField)
@@ -583,15 +583,6 @@ export default {
       }
     },
 
-    refreshOnRelatedRecordsUpdate () {
-      const { page } = this.getRecordSelectorPage()
-      if (page === undefined || this.module === undefined) return
-
-      if (page.pageID !== this.$route.params.pageID) {
-        this.loadLatest()
-      }
-    },
-
     getRecordSelectorPage () {
       const recordFieldModuleID = this.field.options.moduleID
 
@@ -641,7 +632,6 @@ export default {
 
     destroyEvents () {
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
-      this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
     },
 
     setDefaultValues () {

@@ -83,6 +83,7 @@
                   <b-form-select
                     v-model="group.args[0].args[argIndex].args[0].ref"
                     :options="getOperators(getColumnData(group.args[0].args[argIndex].args[0].args[1]))"
+                    class="border-left-0"
                     style="max-width: 120px;"
                   />
 
@@ -102,6 +103,7 @@
                   <b-form-select
                     v-model="group.args[0].args[argIndex].args[0].ref"
                     :options="getOperators(getColumnData(group.args[0].args[argIndex].args[0].args[0]))"
+                    class="border-left-0"
                     style="max-width: 120px;"
                   />
 

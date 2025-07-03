@@ -96,6 +96,7 @@ class Searcher {
       namespaces,
       from,
       size,
+      resourceTypes,
     } = a || {}
 
     const params = new URLSearchParams()
@@ -103,6 +104,7 @@ class Searcher {
     // Filter
     if (modules?.length > 0) modules.forEach(m => params.append('moduleAggs', m))
     if (namespaces?.length > 0) namespaces.forEach(n => params.append('namespaceAggs', n))
+    if (resourceTypes?.length > 0) resourceTypes.forEach(t => params.append('resourceTypes', t))
 
     // Pagination
     if (from) params.append('from', from)

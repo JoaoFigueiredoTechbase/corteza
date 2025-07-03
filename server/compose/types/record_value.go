@@ -196,6 +196,18 @@ func (set RecordValueSet) Get(name string, place uint) *RecordValue {
 	return nil
 }
 
+func (set RecordValueSet) GetAll(name string) (out []*RecordValue) {
+	for i := range set {
+		if set[i].Name != name {
+			continue
+		}
+
+		out = append(out, set[i])
+	}
+
+	return
+}
+
 // Has value set?
 func (set RecordValueSet) Has(name string, place uint) bool {
 	for i := range set {

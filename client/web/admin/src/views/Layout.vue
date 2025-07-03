@@ -2,7 +2,7 @@
   <div class="d-flex flex-column w-100 vh-100 overflow-hidden">
     <header>
       <c-topbar
-        :sidebar-pinned="pinned"
+        :sidebar-expanded="expanded"
         :settings="$Settings.get('ui.topbar', {})"
         :labels="{
           appMenu: $t('navigation.appMenu'),
@@ -33,7 +33,6 @@
     >
       <c-sidebar
         :expanded.sync="expanded"
-        :pinned.sync="pinned"
         :icon="icon"
         :logo="logo"
         expand-on-click
@@ -69,7 +68,7 @@
         <div
           class="sidebar-spacer d-print-none"
           :class="{
-            'expanded': expanded && pinned,
+            'expanded': expanded,
           }"
         />
       </template>
@@ -117,6 +116,8 @@
         warning: (countdownTime) => $t('general:extendSession.labels.warning', { countdownTime }),
       }"
     />
+
+    <c-notification-sidebar v-if="!$Settings.get('ui.topbar', {}).hideNotifications" />
   </div>
 </template>
 
@@ -125,7 +126,7 @@ import CTheMainNav from 'corteza-webapp-admin/src/components/CTheMainNav'
 import { components, mixins } from '@cortezaproject/corteza-vue'
 import { mapGetters } from 'vuex'
 
-const { CExtendSession, CPermissionsModal, CPrompts, CTopbar, CSidebar } = components
+const { CExtendSession, CPermissionsModal, CPrompts, CTopbar, CSidebar, CNotificationSidebar } = components
 
 export default {
   i18nOptions: {
@@ -139,6 +140,7 @@ export default {
     CSidebar,
     CTheMainNav,
     CExtendSession,
+    CNotificationSidebar,
   },
 
   mixins: [
@@ -147,10 +149,10 @@ export default {
 
   data () {
     return {
+      expanded: false,
+
       allowed: false,
       error: null,
-      expanded: window.innerWidth > 576,
-      pinned: window.innerWidth > 576,
     }
   },
 
@@ -174,20 +176,6 @@ export default {
 
     isAutoLogoutEnabled () {
       return this.$Settings.get('auth.autoLogout.enabled')
-    },
-  },
-
-  watch: {
-    icon: {
-      immediate: true,
-      handler (icon) {
-        if (icon) {
-          const favicon = document.getElementById('favicon')
-          if (favicon) {
-            favicon.href = icon
-          }
-        }
-      },
     },
   },
 

@@ -61,8 +61,8 @@ params:
     wf: Array
 
   filterParams: &filterParams
-    module: *moduleLookup
     namespace: *namespaceLookup
+    module: *moduleLookup
     query:
       types:
         - { wf: String }
@@ -89,8 +89,8 @@ params:
         - { wf: String }
 
   edgeParams: &edgeParams
-    module: *moduleLookup
     namespace: *namespaceLookup
+    module: *moduleLookup
 
 labels: &labels
   record: "step,workflow"
@@ -104,8 +104,8 @@ functions:
     labels:
       <<: *labels
     params:
-      module:    *moduleLookup
       namespace: *namespaceLookup
+      module:    *moduleLookup
       record:    *recordLookup
     results:
       record: *rvRecord
@@ -162,8 +162,8 @@ functions:
     labels:
       <<: *labels
     params:
-      module:    *moduleLookup
       namespace: *namespaceLookup
+      module:    *moduleLookup
     results:
       record: *rvRecord
 
@@ -236,8 +236,8 @@ functions:
     labels:
       <<: *labels
     params:
-      module:    *moduleLookup
       namespace: *namespaceLookup
+      module:    *moduleLookup
       metrics:
         required: true
         types: [ { wf: String } ]
@@ -271,3 +271,16 @@ functions:
             	{"count": 2, "dimension_0": 2, "metric_0": 5},
             	{"count": 1, "dimension_0": nil, "metric_0": nil},
             }
+
+  clone:
+    meta:
+      short: Compose record cloner
+      description: Creates a copy of an existing record
+    labels:
+      <<: *labels
+    params:
+      namespace: *namespaceLookup
+      module: *moduleLookup
+      record: *recordLookup
+    results:
+      record: *rvRecord

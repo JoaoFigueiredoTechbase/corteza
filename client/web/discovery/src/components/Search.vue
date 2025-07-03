@@ -1,55 +1,90 @@
 <template>
   <b-container
     fluid
-    class="h-100 mh-100 p-0"
+    class="h-100 mh-100 p-0 d-flex flex-column"
   >
-    <b-row
-      no-gutters
+    <split
+      direction="horizontal"
+      :gutter-size="12"
+      class="h-100 overflow-hidden"
     >
-      <b-col
-        cols="12"
-        :lg="map.show ? '7' : '12'"
-        :xl="map.show ? '8' : '12'"
-        class="results-container pt-3"
-        :class="{ 'with-map': map.show }"
+      <split-area
+        :size="map.show ? 70 : 100"
+        :min-size="300"
+        class="d-flex flex-column"
       >
-        <b-form-group class="px-3">
-          <c-input-search
-            :value="query"
-            :placeholder="$t('input-placeholder')"
-            :autocomplete="'off'"
-            :disabled="$store.state.processing"
-            submittable
-            @search="onQuerySubmit"
-          />
+        <div class="px-3 flex-shrink-0">
+          <b-form-group class="mb-0">
+            <c-input-search
+              :value="query"
+              :placeholder="$t('input-placeholder')"
+              :autocomplete="'off'"
+              :disabled="storeProcessing"
+              submittable
+              @search="onQuerySubmit"
+            />
+          </b-form-group>
 
           <div
-            class="d-flex align-items-center justify-content-between px-1 mt-1 text-muted"
+            class="d-flex align-items-center px-1 mt-1 mb-2 text-muted"
           >
-            <span
-              :class="{ 'discovering': $store.state.processing }"
-            >
-              {{ searchDescription }}
-            </span>
-            <span>
-              Use <samp>"text"</samp> for exact match
-            </span>
+            <div class="d-flex align-items-center">
+              <span
+                :class="{ 'discovering': storeProcessing }"
+                class="mt-1"
+              >
+                {{ searchDescription }}
+              </span>
+            </div>
+
+            <div class="d-flex align-items-center ml-auto gap-2">
+              <b-button
+                variant="extra-light"
+                size="sm"
+                class="d-flex align-items-center gap-1 mt-2"
+                @click="toggleMap"
+              >
+                <font-awesome-icon
+                  :icon="['fas', 'map-marked-alt']"
+                />
+                {{ !map.show ? $t('search:show-map') : $t('search:hide-map') }}
+              </b-button>
+
+              <div class="d-flex align-items-center">
+                <font-awesome-icon
+                  :icon="['fas', 'grip-lines']"
+                  class="mt-2 mr-1 pointer"
+                  :class="{ 'text-primary': viewMode === 'list' }"
+                  @click="viewMode = 'list'"
+                />
+
+                <b-form-checkbox
+                  v-model="viewMode"
+                  :value="'grid'"
+                  :unchecked-value="'list'"
+                  switch
+                  class="pointer ml-2"
+                />
+
+                <font-awesome-icon
+                  :icon="['fas', 'grip-horizontal']"
+                  class="mt-2 ml-1 pointer"
+                  :class="{ 'text-primary': viewMode === 'grid' }"
+                  @click="viewMode = 'grid'"
+                />
+              </div>
+            </div>
           </div>
-        </b-form-group>
+        </div>
 
-        <b-row
-          class="results w-100 m-0 mh-100 overflow-auto"
-        >
+        <div class="d-flex flex-column flex-fill overflow-hidden">
           <div
-            v-if="$store.state.processing || !total.actual"
-            class="position-absolute d-flex align-items-center justify-content-center w-100 h-100"
-            style="opacity: 0.8; z-index: 1; background-color: var(--gray-200);"
+            v-if="(storeProcessing || !total.actual) && !loadingMore"
+            class="d-flex align-items-center justify-content-center w-100 my-5"
           >
-            <h5
-              class="mb-5"
-            >
+            <h5 class="mb-0">
               <b-spinner
-                v-if="$store.state.processing"
+                v-if="storeProcessing"
                 variant="primary"
                 class="p-4"
               />
@@ -61,60 +96,71 @@
             </h5>
           </div>
 
-          <b-col
-            v-for="(hit, i) in filteredHits"
-            :key="i"
-            md="6"
-            :lg="map.show ? '6': '4'"
-            class="py-3"
+          <div
+            v-else
+            class="results d-flex flex-wrap gap-3 px-4 py-3 overflow-auto"
+            :class="{ 'list-view': viewMode === 'list' }"
           >
-            <result
-              :id="hit.value.recordID || hit.value.moduleID"
-              :index="i"
-              :hit="hit"
-              :show-map="map.show"
-              :class="{ 'border-primary border shadow': map.clickedMarker && [hit.value.recordID, hit.value.moduleID].includes(map.clickedMarker) }"
-              @hover="map.hoverIndex = $event"
-            />
-          </b-col>
-        </b-row>
+            <div
+              v-for="(hit, i) in hits"
+              :key="i"
+              class="result-item w-100"
+              :class="{ 'grid-view': viewMode === 'grid' }"
+            >
+              <result
+                :id="`result-${i}`"
+                :index="i"
+                :hit="hit"
+                :show-map="map.show"
+                :class="{ 'border-primary border shadow': map.clickedMarker && map.clickedMarker === i }"
+                class="border"
+                @hover="onResultHover(i)"
+              />
+            </div>
 
-        <div
-          class="position-fixed map-button"
-        >
-          <b-button
-            v-b-tooltip.noninteractive.hover="{ title: $t('tooltip.map'), container: '#body' }"
-            variant="warning"
-            class="rounded-circle p-3"
-            @click="toggleMap"
-          >
-            <font-awesome-icon
-              :icon="['fas', 'map-marked-alt']"
-              class="h3 mb-0"
-            />
-          </b-button>
+            <div
+              v-if="total.actual > 0 && total.actual < total.all"
+              class="d-flex align-items-center justify-content-center py-3 w-100"
+            >
+              <b-button
+                variant="primary"
+                :disabled="loadingMore"
+                class="d-flex align-items-center justify-content-center gap-1"
+                @click="getSearchData({ append: true })"
+              >
+                <b-spinner
+                  v-if="loadingMore"
+                  small
+                />
+                {{ loadingMore ? $t('search:loading-more') : $t('search:show-more') }}
+              </b-button>
+            </div>
+          </div>
         </div>
-      </b-col>
+      </split-area>
 
-      <b-col
-        v-if="map.show"
-        lg="5"
-        xl="4"
+      <split-area
+        :size="map.show ? 30 : 0"
+        :min-size="300"
       >
         <discovery-map
+          v-if="map.show"
           :markers="map.markers"
           :hover-index="map.hoverIndex"
-          @hover="markerHovered"
+          class="pl-2"
+          @marker-clicked="markerClicked"
         />
-      </b-col>
-    </b-row>
+      </split-area>
+    </split>
   </b-container>
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex'
 import Result from './Results'
 import DiscoveryMap from './DiscoveryMap.vue'
 import { components } from '@cortezaproject/corteza-vue'
+import { Split, SplitArea } from 'vue-split-panel'
 const { CInputSearch } = components
 
 export default {
@@ -126,19 +172,22 @@ export default {
     Result,
     DiscoveryMap,
     CInputSearch,
+    Split,
+    SplitArea,
   },
 
   data () {
     return {
+      loadingMore: false,
+
       query: '',
 
       hits: [],
-      filteredHits: [],
 
       pagination: {
         limit: 50,
         from: 0,
-        size: 250,
+        size: 50,
       },
 
       total: {
@@ -154,12 +203,21 @@ export default {
         clickedMarker: undefined,
         hoverIndex: undefined,
       },
+
+      viewMode: 'list',
     }
   },
 
   computed: {
+    ...mapGetters({
+      storeProcessing: 'discovery/processing',
+      storeResourceTypes: 'discovery/resourceTypes',
+      storeModules: 'discovery/modules',
+      storeNamespaces: 'discovery/namespaces',
+    }),
+
     searchDescription () {
-      if (this.$store.state.processing) {
+      if (this.storeProcessing) {
         return this.$t('discovering')
       }
 
@@ -172,13 +230,7 @@ export default {
   },
 
   watch: {
-    '$store.state.types': {
-      handler () {
-        this.getFilteredData()
-      },
-    },
-
-    '$store.state.modules': {
+    storeResourceTypes: {
       handler () {
         if (this.initial) return
         this.pagination.size = this.pagination.limit
@@ -186,7 +238,15 @@ export default {
       },
     },
 
-    '$store.state.namespaces': {
+    storeModules: {
+      handler () {
+        if (this.initial) return
+        this.pagination.size = this.pagination.limit
+        this.getSearchData()
+      },
+    },
+
+    storeNamespaces: {
       handler () {
         if (this.initial) return
         this.pagination.size = this.pagination.limit
@@ -195,16 +255,25 @@ export default {
     },
   },
 
-  created () {
+  mounted () {
     this.initial = true
 
-    const { query = '', modules = [], namespaces = [], size = 250 } = this.$route.query
+    const { query = '', modules, namespaces, resourceTypes, size = 50 } = this.$route.query
 
     this.query = query
     this.pagination.size = size
 
-    this.$store.commit('updateModules', Array.isArray(modules) ? modules : [modules])
-    this.$store.commit('updateNamespaces', Array.isArray(namespaces) ? namespaces : [namespaces])
+    if (namespaces) {
+      this.updateNamespaces(Array.isArray(namespaces) ? namespaces : [namespaces])
+    }
+
+    if (modules) {
+      this.updateModules(Array.isArray(modules) ? modules : [modules])
+    }
+
+    if (resourceTypes) {
+      this.updateResourceTypes(Array.isArray(resourceTypes) ? resourceTypes : [resourceTypes])
+    }
 
     this.getSearchData()
 
@@ -213,82 +282,61 @@ export default {
     }, 1000)
   },
 
-  mounted () {
-    const listElm = document.querySelector('.results')
-    listElm.addEventListener('scroll', e => {
-      if (listElm.scrollTop + listElm.clientHeight >= listElm.scrollHeight - 10) {
-        if (!this.$store.state.processing && this.total.actual < this.total.all) {
-          this.getSearchData({ append: true })
-        }
-      }
-    })
-  },
-
   methods: {
+    ...mapActions({
+      fetchData: 'discovery/fetchData',
+      updateModules: 'discovery/updateModules',
+      updateNamespaces: 'discovery/updateNamespaces',
+      updateResourceTypes: 'discovery/updateResourceTypes',
+    }),
+
     getSearchData ({ query = this.query, append = false } = {}) {
-      this.$store.commit('updateProcessing', true)
-
-      if (!append) {
-        this.map.markers = []
-      }
-
-      // Filters
-      const modules = this.$store.state.modules
-      const namespaces = this.$store.state.namespaces
-
-      // Pagination
       if (append) {
         this.pagination.size += this.pagination.limit
+        this.loadingMore = true
+      } else {
+        this.map.markers = []
+        this.hits = []
+        this.map.hoverIndex = undefined
       }
+
+      const modules = this.storeModules
+      const namespaces = this.storeNamespaces
 
       const { size } = this.pagination
 
       this.updateRouteQuery({ query, modules, namespaces, size })
 
-      this.$DiscoveryAPI.query({ query, modules, namespaces, size })
-        .then((response = {}) => {
-          if (response) {
-            this.hits = (response.hits || [])
-
-            this.total.all = response.total_results || 0
-
-            this.getFilteredData()
-
-            this.pagination = {
-              ...this.pagination,
-              from: response.from || 0,
-              size: response.size || 0,
-            }
-
-            this.$store.commit('updateAggregations', response.aggregations)
-
-            this.getMarkers()
+      this.fetchData({ query, modules, namespaces, size }).then((response = {}) => {
+        if (response) {
+          if (append) {
+            this.hits = [...this.hits, ...(response.hits || [])]
+          } else {
+            this.hits = response.hits || []
           }
-        }).catch(e => {
-          this.toastErrorHandler(this.$t('notification:search.failed'))(e)
-          this.hits = []
-          this.filteredHits.splice(0, this.filteredHits.length)
-        })
-        .finally(() => {
-          this.$store.commit('updateProcessing', false)
-        })
-    },
+          this.total.all = response.total_results || 0
+          this.total.actual = this.hits.length
 
-    getFilteredData () {
-      let filteredHits = this.hits
+          this.pagination = {
+            ...this.pagination,
+            from: response.from || 0,
+            size: response.size || 0,
+          }
 
-      if (this.$store.state.types.length > 0 && this.hits.length) {
-        filteredHits = this.hits.filter(hit => this.$store.state.types.includes(hit.type))
-      }
-
-      this.filteredHits.splice(0, this.filteredHits.length, ...filteredHits)
-      this.total.actual = this.filteredHits.length
+          this.getMarkers()
+        }
+      }).catch(e => {
+        this.toastErrorHandler(this.$t('notification:search.failed'))(e)
+        this.hits = []
+      }).finally(() => {
+        this.loadingMore = false
+      })
     },
 
     onQuerySubmit (query) {
-      if (!this.$store.state.processing) {
+      if (!this.storeProcessing) {
         this.query = query
-        this.pagination.size = 250
+        this.pagination.size = 50
         this.getSearchData()
       }
     },
@@ -296,12 +344,12 @@ export default {
     getMarkers () {
       const markers = []
 
-      this.filteredHits.forEach(({ type, value }) => {
+      this.hits.forEach(({ type, value }) => {
         if (type === 'compose:record' && Array.isArray(value.values)) {
           const id = value.recordID
           value.values.forEach(({ value = [] }) => {
             const isGeometry = value && value.find(v => {
-              return v.toString().includes('{"coordinates":[')
+              return (v !== null ? v : '').toString().includes('{"coordinates":[')
             })
 
             if (isGeometry) {
@@ -319,15 +367,26 @@ export default {
       this.map.markers = markers
     },
 
-    markerHovered (ID) {
+    markerClicked (ID) {
       if (ID) {
-        document.getElementById(ID).scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        })
+        const result = document.getElementById(`result-${ID}`)
+
+        if (result) {
+          result.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          })
+        }
       }
 
       this.map.clickedMarker = ID
+      this.map.hoverIndex = undefined
+    },
+
+    onResultHover (index) {
+      if (this.map.show) {
+        this.map.hoverIndex = index
+      }
     },
 
     toggleMap () {
@@ -335,7 +394,7 @@ export default {
     },
 
     updateRouteQuery ({ query = undefined, modules = [], namespaces = [], size = 0 }) {
-      if (JSON.stringify(this.$route.query) !== JSON.stringify({ query, modules, namespaces })) {
+      if (JSON.stringify(this.$route.query) !== JSON.stringify({ query, modules, namespaces, size })) {
         this.$router.push({ query: { query: query || undefined, modules, namespaces, size } })
       }
     },
@@ -343,39 +402,13 @@ export default {
 }
 </script>
 
+<style lang="scss">
+.split .gutter {
+  background-color: transparent;
+}
+</style>
+
 <style lang="scss" scoped>
-.results-container {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 64px);
-}
-
-.results-container.with-map {
-  height: calc(60vh - 64px);
-}
-
-@media (min-width: 992px) {
-  .results-container {
-    height: calc(100vh - 64px) !important;
-  }
-}
-
-.results {
-  flex: 1 1 auto;
-}
-
-.clear-query {
-  z-index: 3 !important;
-  right: 52px;
-  top: 2px;
-}
-
-.map-button {
-  bottom: 1rem;
-  right: 1rem;
-  z-index: 99999;
-}
-
 // https://stackoverflow.com/a/40991531/17926309
 .discovering::after {
   display: inline-block;
@@ -389,5 +422,24 @@ export default {
   50% { content: '..'; }
   75% { content: '...'; }
   100% { content: ''; }
+}
+
+.result-item {
+  &.grid-view {
+    min-width: 30rem;
+    flex: 1;
+  }
+}
+
+.list-view {
+  .result-item {
+    max-width: 100%;
+  }
+}
+
+.results {
+  flex: 1;
+  min-height: 0;
+  position: relative;
 }
 </style>

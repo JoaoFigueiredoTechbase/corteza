@@ -1,86 +1,92 @@
 <template>
   <div>
-    <div
-      @mouseleave="onHover(false)"
+    <b-sidebar
+      v-model="isExpanded"
+      data-test-id="sidebar"
+      :sidebar-class="`sidebar ${isExpanded ? 'expanded' : ''}`"
+      :header-class="`d-block sidebar-header ${isExpanded ? 'expanded border-bottom p-2' : ''}`"
+      :body-class="`${isExpanded ? 'px-3' : ''}`"
+      :footer-class="`rounded-right ${isExpanded ? 'px-2' : ''}`"
+      :no-header="!isExpanded"
+      :backdrop="isMobile"
+      backdrop-variant="white"
+      :shadow="isExpanded && 'sm'"
+      no-slide
+      :right="right"
+      no-close-on-route-change
+      no-close-on-esc
     >
-      <b-sidebar
-        v-model="isExpanded"
-        data-test-id="sidebar"
-        :sidebar-class="`sidebar ${isExpanded ? 'expanded' : ''}`"
-        :header-class="`d-block sidebar-header ${isExpanded ? 'expanded border-bottom p-2' : ''}`"
-        :body-class="`${isExpanded ? 'px-3' : ''}`"
-        :footer-class="`rounded-right ${isExpanded ? 'px-2' : ''}`"
-        :no-header="!isExpanded"
-        :backdrop="isMobile"
-        backdrop-variant="white"
-        :shadow="isExpanded && 'sm'"
-        no-slide
-        :right="right"
-        no-close-on-route-change
-        no-close-on-esc
-      >
-        <template #header>
-          <div
-            class="d-flex align-items-center justify-content-between pl-2"
-            style="height: 47px;"
+      <template #header>
+        <div
+          class="d-flex align-items-center justify-content-between pl-2"
+          style="height: 47px;"
+        >
+          <img
+            data-test-id="img-main-logo"
+            class="logo w-auto border-0"
+            :src="logo"
           >
-            <img
-              data-test-id="img-main-logo"
-              class="logo w-auto border-0"
-              :src="logo"
-            >
 
-            <b-button
-              variant="outline-light"
-              class="d-flex align-items-center justify-content-center p-2 border-0 text-secondary"
-              @click="closeSidebar()"
-            >
-              <font-awesome-icon
-                :icon="['fas', 'times']"
-                class="h6 mb-0"
-              />
-            </b-button>
-          </div>
-
-          <div
-            v-if="isExpanded"
-            class="px-2"
+          <b-button
+            variant="outline-light"
+            class="d-flex align-items-center justify-content-center p-2 border-0 text-secondary"
+            @click="closeSidebar()"
           >
-            <slot
-              name="header-expanded"
+            <font-awesome-icon
+              :icon="['fas', 'times']"
+              class="h6 mb-0"
             />
-          </div>
+          </b-button>
+        </div>
 
-          <hr
-            v-if="!isExpanded"
-            class="my-2"
-          >
-        </template>
+        <div
+          v-if="isExpanded"
+          class="px-2"
+        >
+          <slot
+            name="header-expanded"
+          />
+        </div>
 
+        <hr
+          v-if="!isExpanded"
+          class="my-2"
+        >
+      </template>
+
+      <slot
+        v-if="isExpanded"
+        name="body-expanded"
+      />
+
+      <template #footer>
         <slot
           v-if="isExpanded"
-          name="body-expanded"
+          name="footer-expanded"
         />
-
-        <template #footer>
-          <slot
-            v-if="isExpanded"
-            name="footer-expanded"
-          />
-        </template>
-      </b-sidebar>
-    </div>
+      </template>
+    </b-sidebar>
 
     <div
       class="d-flex align-items-center justify-content-center tab position-absolute p-2"
     >
+      <div
+        v-if="disabledRoutes.includes($route.name)"
+        class="d-flex align-items-center border-0 p-2"
+      >
+        <img
+          class="icon w-auto border-0"
+          :src="icon"
+        >
+      </div>
+
       <b-button
-        v-if="expandOnClick && !disabledRoutes.includes($route.name)"
+        v-else-if="expandOnClick"
         data-test-id="button-sidebar-open"
         variant="outline-extra-light"
         size="lg"
         class="d-flex align-items-center border-0 text-primary"
-        @click="togglePin()"
+        @click="openSidebar()"
       >
         <font-awesome-icon
           :icon="['fas', 'bars']"
@@ -89,7 +95,7 @@
       </b-button>
 
       <b-button
-        v-else-if="!disabledRoutes.includes($route.name)"
+        v-else
         data-test-id="button-home"
         variant="outline-extra-light"
         size="lg"
@@ -101,16 +107,6 @@
           class="h4 mb-0"
         />
       </b-button>
-
-      <div
-        v-else
-        class="d-flex align-items-center border-0 p-2"
-      >
-        <img
-          class="icon w-auto border-0"
-          :src="icon"
-        >
-      </div>
     </div>
   </div>
 </template>
@@ -121,11 +117,6 @@ import { throttle } from 'lodash'
 export default {
   props: {
     expanded: {
-      type: Boolean,
-      default: false,
-    },
-
-    pinned: {
       type: Boolean,
       default: false,
     },
@@ -158,7 +149,6 @@ export default {
 
   data () {
     return {
-      sidebarSettings: {},
       isMobile: false,
     }
   },
@@ -171,20 +161,6 @@ export default {
 
       set (expanded) {
         this.$emit('update:expanded', expanded)
-
-        if (!expanded) {
-          this.isPinned = false
-        }
-      },
-    },
-
-    isPinned: {
-      get () {
-        return this.pinned
-      },
-
-      set (pinned) {
-        this.$emit('update:pinned', pinned)
       },
     },
   },
@@ -203,8 +179,9 @@ export default {
     },
   },
 
-  created () {
-    this.checkSidebar()
+  mounted () {
+    this.checkSidebar(true)
+    this.checkIfMobile()
 
     this.$root.$on('close-sidebar', this.closeSidebar)
     window.addEventListener('resize', this.checkIfMobile)
@@ -217,81 +194,23 @@ export default {
 
   methods: {
     checkIfMobile: throttle(function () {
-      this.isMobile = window.innerWidth < 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-      if (this.isMobile) {
-        this.closeSidebar()
-      }
+      this.isMobile = window.innerWidth < 1024
     }, 500),
 
-    checkSidebar () {
+    checkSidebar (initial = false) {
       // If sidebar should be disabled on route, close and unpin when navigating to route
       if (this.disabledRoutes.includes(this.$route.name)) {
-        this.isPinned = false
         this.isExpanded = false
-      } else if (this.expandOnClick && !this.isExpanded) {
-        this.defaultSidebarAppearance()
-      }
-
-      this.checkIfMobile()
-    },
-
-    onHover: throttle(function (expand) {
-      if (!expand && !this.pinned && this.expandOnClick) {
-        setTimeout(() => {
-          this.isExpanded = expand
-        }, expand ? 0 : 100)
-      }
-    }, 300),
-
-    togglePin () {
-      if (this.expandOnClick && !this.isExpanded) {
+      } else if (!this.isMobile && initial) {
         this.isExpanded = true
       }
-
-      if (!this.isMobile) {
-        this.isPinned = !this.isPinned
-        this.saveSettings(this.isPinned)
-      }
-    },
-
-    defaultSidebarAppearance () {
-      const localStorageSettings = JSON.parse(window.localStorage.getItem('sidebarSettings'))
-
-      if (localStorageSettings) {
-        this.sidebarSettings = localStorageSettings
-      }
-
-      const appSidebar = (localStorageSettings || {})[this.$root.$options.name]
-
-      if (!this.isMobile) {
-        if (appSidebar) {
-          this.isExpanded = appSidebar.pinned
-          this.isPinned = appSidebar.pinned
-        } else {
-          this.openSidebar()
-        }
-      } else {
-        this.closeSidebar()
-      }
-    },
-
-    saveSettings (pinned) {
-      if (this.sidebarSettings[this.$root.$options.name]) {
-        this.sidebarSettings[this.$root.$options.name].pinned = pinned
-      } else {
-        this.sidebarSettings[this.$root.$options.name] = { pinned }
-      }
-      window.localStorage.setItem('sidebarSettings', JSON.stringify(this.sidebarSettings))
     },
 
     openSidebar () {
-      this.isPinned = true
       this.isExpanded = true
     },
 
     closeSidebar () {
-      this.isPinned = false
       this.isExpanded = false
     },
   },

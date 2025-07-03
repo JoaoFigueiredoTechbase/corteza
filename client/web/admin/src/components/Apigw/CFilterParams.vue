@@ -34,6 +34,7 @@
         :get-option-key="getOptionKey"
         :reduce="wf => wf.workflowID"
         :placeholder="$t('filters.placeholders.workflow')"
+        :loading="loadingWorkflows"
       />
 
       <b-form-select
@@ -72,33 +73,30 @@
         </template>
 
         <template v-else>
-          <b-input-group
-            v-for="(header, hIndex) in param.value"
-            :key="`header-${hIndex}`"
-            class="mb-2"
+          <c-form-table-wrapper
+            :labels="{ addButton: $t('filters.addHeader') }"
+            @add-item="param.value.push({ name: '', expr: '' })"
           >
-            <b-form-input
-              v-model="header.name"
-              :placeholder="$t('filters.labels.name')"
-            />
-            <b-form-input
-              v-model="header.expr"
-              :placeholder="$t('filters.labels.value')"
-            />
+            <b-input-group
+              v-for="(header, hIndex) in param.value"
+              :key="`header-${hIndex}`"
+              class="mb-2"
+            >
+              <b-form-input
+                v-model="header.name"
+                :placeholder="$t('filters.labels.name')"
+              />
+              <b-form-input
+                v-model="header.expr"
+                :placeholder="$t('filters.labels.value')"
+              />
 
-            <c-input-confirm
-              show-icon
-              @confirmed="param.value.splice(hIndex, 1)"
-            />
-          </b-input-group>
-
-          <b-button
-            variant="link"
-            class="text-decoration-none px-0"
-            @click="param.value.push({ name: '', expr: '' })"
-          >
-            + {{ $t('filters.addHeader') }}
-          </b-button>
+              <c-input-confirm
+                show-icon
+                @confirmed="param.value.splice(hIndex, 1)"
+              />
+            </b-input-group>
+          </c-form-table-wrapper>
         </template>
       </template>
 
@@ -144,6 +142,7 @@ export default {
 
   data () {
     return {
+      loadingWorkflows: false,
       workflows: [],
 
       httpStatusOptions: [
@@ -180,11 +179,16 @@ export default {
 
   created () {
     if (this.filter.params.some(({ label = '' }) => label === 'workflow')) {
+      this.loadingWorkflows = true
+
       this.$AutomationAPI.workflowList()
         .then(({ set: workflows = [] }) => {
           this.workflows = workflows.map(({ workflowID, handle, meta }) => {
             return { label: meta.name || handle, workflowID }
           })
+        })
+        .finally(() => {
+          this.loadingWorkflows = false
         })
     }
   },

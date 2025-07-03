@@ -219,6 +219,7 @@ export default {
             // Use replace so we don't push to history stack
             this.$router.replace({ name: 'page', params: { pageID } })
           } else {
+            document.title = this.namespace.name || this.namespace.slug || this.$t('general:label.app-name.namespace.view')
             this.loaded = true
           }
         }

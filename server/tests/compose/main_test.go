@@ -133,7 +133,7 @@ func newHelper(t *testing.T) helper {
 
 	if testUser == nil {
 		testUser = &sysTypes.User{
-			Handle: "test_user",
+			Handle: fmt.Sprintf("test_user_%d", id.Next()),
 			Name:   "test_user",
 			ID:     id.Next(),
 		}
@@ -142,7 +142,6 @@ func newHelper(t *testing.T) helper {
 		if err != nil {
 			panic(err)
 		}
-
 	}
 	h.cUser = testUser
 

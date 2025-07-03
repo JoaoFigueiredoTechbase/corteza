@@ -326,6 +326,7 @@
             >
               {{ $t('build.saveAsCopy.ref') }}
             </b-dropdown-item-button>
+
             <b-dropdown-item-button
               data-test-id="dropdown-item-saveAsCopy-noRef"
               @click="handleCloneLayout({ ref: false })"
@@ -563,12 +564,12 @@ export default {
         this.layouts = []
         this.layout = undefined
 
-        const { namespaceID, name } = this.namespace
+        const { namespaceID } = this.namespace
+
         this.findPageByID({ namespaceID, pageID, force: true }).then(page => {
-          let { title = '', handle } = page
-          title = title || handle
-          this.title = `${this.$t('label.pageBuilder')} - "${title}"`
-          document.title = [page.title, name, this.$t('general:label.app-name.private')].filter(v => v).join(' | ')
+          const { title = '', handle } = page
+          this.title = title || handle
+          document.title = this.$t('general:label.app-name.page.builder', { label: this.title, interpolation: { escapeValue: false } })
           this.page = page.clone()
           return this.fetchPageLayouts().then(() => {
             this.setLayout()

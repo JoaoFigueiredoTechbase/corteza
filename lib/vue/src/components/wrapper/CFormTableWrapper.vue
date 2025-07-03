@@ -1,9 +1,18 @@
 <template>
   <div class="list-background w-100 p-3 rounded border border-light">
-    <slot />
+    <div
+      v-if="loading"
+      class="d-flex justify-content-center align-items-center w-100"
+    >
+      <b-spinner />
+    </div>
+
+    <slot
+      v-else
+    />
 
     <b-button
-      v-if="!hideAddButton"
+      v-if="!hideAddButton && !loading"
       variant="primary"
       size="sm"
       :data-test-id="testID"
@@ -49,6 +58,11 @@ export default {
     buttonTestId: {
       type: String,
       default: '',
+    },
+
+    loading: {
+      type: Boolean,
+      default: false,
     },
   },
 }

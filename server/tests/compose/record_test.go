@@ -1733,3 +1733,48 @@ func TestRecordReports(t *testing.T) {
 	// 	}
 	// })
 }
+
+func TestRecordClone(t *testing.T) {
+	h := newHelper(t)
+	h.clearRecords()
+
+	module := h.repoMakeRecordModuleWithFields("record testing module",
+		&types.ModuleField{Name: "name", Kind: "String"},
+		&types.ModuleField{Name: "description", Kind: "String"},
+	)
+
+	// Create original record
+	original := h.makeRecord(module,
+		&types.RecordValue{Name: "name", Value: "Original Name"},
+		&types.RecordValue{Name: "description", Value: "Original Description"},
+	)
+
+	// Clone the record
+	cloned := original.Clone()
+
+	// Verify cloned record
+	h.a.NotNil(cloned)
+	h.a.Equal(original.ID, cloned.ID)
+	h.a.Equal(original.ModuleID, cloned.ModuleID)
+	h.a.Equal(original.NamespaceID, cloned.NamespaceID)
+	h.a.Equal(original.Values.Get("name", 0).Value, cloned.Values.Get("name", 0).Value)
+	h.a.Equal(original.Values.Get("description", 0).Value, cloned.Values.Get("description", 0).Value)
+	h.a.Equal(original.CreatedBy, cloned.CreatedBy)
+	h.a.Equal(original.UpdatedBy, cloned.UpdatedBy)
+	h.a.Equal(original.DeletedBy, cloned.DeletedBy)
+	h.a.Equal(original.CreatedAt, cloned.CreatedAt)
+	h.a.Equal(original.UpdatedAt, cloned.UpdatedAt)
+	h.a.Equal(original.DeletedAt, cloned.DeletedAt)
+
+	// Modify cloned record values
+	cloned.Values = cloned.Values.Set(&types.RecordValue{Name: "name", Value: "Modified Name"})
+	cloned.Values = cloned.Values.Set(&types.RecordValue{Name: "description", Value: "Modified Description"})
+
+	// Verify original record is not affected
+	h.a.Equal("Original Name", original.Values.Get("name", 0).Value, "Original record name should not be affected")
+	h.a.Equal("Original Description", original.Values.Get("description", 0).Value, "Original record description should not be affected")
+
+	// Verify cloned record has new values
+	h.a.Equal("Modified Name", cloned.Values.Get("name", 0).Value, "Cloned record should have modified name")
+	h.a.Equal("Modified Description", cloned.Values.Get("description", 0).Value, "Cloned record should have modified description")
+}

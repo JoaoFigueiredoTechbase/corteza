@@ -1,77 +1,80 @@
 <template>
-  <div class="nav-sidebar">
-    <b-button
+  <div
+    class="nav-sidebar"
+    :class="{ 'mt-1': root }"
+  >
+    <div
       v-for="({page = {}, params = {}, children = []}) of items"
-      :key="pageIndex(page)"
-      variant="link"
-      class="w-100 text-decoration-none p-0 pt-2 pb-1 nav-item"
-      active-class="nav-active"
-      exact-active-class="nav-active"
-      :title="page.title"
-      :to="{ name: page.name || defaultRouteName, params }"
+      :key="pageKey(page)"
+      :class="{ 'mb-1': root }"
     >
-      <span
-        class="d-inline-block w-75"
-        @click="closeSidebar()"
-      >
-        <template
-          v-if="page.icon"
+      <div class="d-flex align-items-start pointer pb-1">
+        <b-button
+          variant="link"
+          active-class="nav-active"
+          exact-active-class="nav-exact-active"
+          :title="page.title"
+          :to="{ name: page.name || defaultRouteName, params }"
+          class="nav-item d-flex align-items-center text-decoration-none rounded flex-grow-1 text-left pl-1 py-1 gap-1"
+          @click="onItemClick()"
         >
-          <font-awesome-icon
-            v-if="Array.isArray(page.icon)"
-            class="icon"
-            :icon="page.icon"
-          />
-          <template v-else>
+          <template v-if="page.icon">
+            <font-awesome-icon
+              v-if="Array.isArray(page.icon)"
+              :icon="page.icon"
+              class="icon"
+              style="height: 1rem; width: 1rem;"
+            />
             <img
+              v-else
               :src="page.icon"
               class="mr-1"
-              style="height: 1.5em; width: 1.5em;"
+              style="height: 1rem; width: 1rem;"
             >
           </template>
-        </template>
-        <label
-          class="title mb-0 pointer"
-        >
-          {{ page.title }}
-        </label>
-      </span>
 
-      <template
-        v-if="children.length"
-      >
+          <label
+            class="title pointer mb-0"
+            :class="{ 'root': root }"
+          >
+            {{ page.title }}
+          </label>
+        </b-button>
+
         <b-button
+          v-if="children.length"
           variant="outline-light"
-          size="sm"
-          class="p-0 border-0 float-right mr-1"
-          @click.self.stop.prevent="toggle(page)"
+          class="p-0 border-0 ml-auto"
+          style="min-width: 2rem; min-height: 2rem;"
+          @click="toggle(page)"
         >
           <font-awesome-icon
-            v-if="!collapses[pageIndex(page)]"
-            class="pointer-none text-dark"
+            v-if="!collapses[pageKey(page)]"
+            class="text-dark"
             :icon="['fas', 'chevron-down']"
           />
           <font-awesome-icon
             v-else
-            class="pointer-none text-primary"
+            class="text-primary"
             :icon="['fas', 'chevron-up']"
           />
         </b-button>
+      </div>
 
-        <b-collapse
-          :visible="collapses[pageIndex(page)]"
-          @click.stop.prevent
-        >
-          <c-sidebar-nav-items
-            class="ml-2"
-            :items="children"
-            :start-expanded="startExpanded"
-            :default-route-name="defaultRouteName"
-            v-on="$listeners"
-          />
-        </b-collapse>
-      </template>
-    </b-button>
+      <b-collapse
+        v-if="children.length"
+        :visible="collapses[pageKey(page)]"
+      >
+        <c-sidebar-nav-items
+          :items="children"
+          :start-expanded="startExpanded"
+          :default-route-name="defaultRouteName"
+          :root="false"
+          class="py-1 ml-2"
+          v-on="$listeners"
+        />
+      </b-collapse>
+    </div>
   </div>
 </template>
 
@@ -90,6 +93,10 @@ export default {
       type: Array,
       required: true,
       default: () => [],
+    },
+    root: {
+      type: Boolean,
+      default: true,
     },
     defaultRouteName: {
       type: String,
@@ -112,7 +119,7 @@ export default {
       immediate: true,
       handler (items = []) {
         items.forEach(({ page, params, children }) => {
-          const px = this.pageIndex(page)
+          const px = this.pageKey(page)
           // Apply startExpanded only if page isn't currently expanded
           this.$set(this.collapses, px, this.startExpanded || page.expanded || this.showChildren({ params, children }))
         })
@@ -121,18 +128,18 @@ export default {
   },
 
   methods: {
-    closeSidebar () {
+    onItemClick () {
       if (window.innerWidth < 576) {
         this.$root.$emit('close-sidebar')
       }
     },
 
-    pageIndex (p) {
+    pageKey (p) {
       return p.pageID || p.name || p.title
     },
 
     toggle (p) {
-      const px = this.pageIndex(p)
+      const px = this.pageKey(p)
       this.$set(this.collapses, px, !this.collapses[px])
     },
 
@@ -153,57 +160,38 @@ export default {
 </script>
 
 <style scoped lang="scss">
-// This has to be there, so chevrons are clickable inside the button
-.pointer-none {
-  pointer-events: none;
-}
-
-.svg-inline--fa {
-  width: 30px;
-}
-
-.nav-item > span {
-  .icon {
-    color: var(--black)
-  }
-
-  .title {
-    font-family: var(--font-regular) !important;
-    color: var(--black);
-  }
-}
-
-.nav-item:hover > span {
-  .icon {
-    color: var(--primary)
-  }
-
-  .title {
-    font-family: var(--font-semibold) !important;
-    color: var(--primary);
-    transition: color 0.25s;
-  }
-}
-
-.nav-active > span > {
-  .icon {
-    color: var(--primary)
-  }
-
-  .title {
-    font-family: var(--font-semibold) !important;
-    color: var(--primary);
-    transition: color 0.5s
-  }
-}
-
-.nav-item {
-  text-align: left;
-}
-
-[dir="rtl"] {
+.nav-sidebar {
   .nav-item {
-    text-align: right;
+    transition: background-color 0.2s ease-out;
+
+    .icon {
+      color: var(--black);
+      transition: color 0.3s ease-in-out;
+    }
+
+    .title {
+      color: var(--black);
+      font-family: var(--font-regular) !important;
+      transition: color 0.3s ease-in-out;
+      text-align: left;
+    }
+
+    &:hover {
+      background-color: var(--light);
+    }
   }
+
+  .nav-active {
+    .icon {
+      color: var(--primary);
+    }
+
+    .title {
+      font-family: var(--font-medium) !important;
+      color: var(--primary);
+    }
+  }
+
 }
 </style>
+

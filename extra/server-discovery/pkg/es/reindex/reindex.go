@@ -5,15 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/cortezaproject/corteza/extra/server-discovery/pkg/options"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
 	"github.com/jmoiron/sqlx/types"
 	"go.uber.org/zap"
-	"net/http"
-	"net/url"
-	"time"
 )
 
 type (
@@ -95,10 +96,11 @@ type (
 	}
 
 	reIndexer struct {
-		log   *zap.Logger
-		esOpt options.EsOpt
-		es    esService
-		api   apiClientService
+		log            *zap.Logger
+		esOpt          options.EsOpt
+		es             esService
+		api            apiClientService
+		assureMappings func(context.Context) error
 	}
 )
 
@@ -106,12 +108,13 @@ const (
 	IndexTpl = "corteza-%s-%s"
 )
 
-func ReIndexer(log *zap.Logger, es esService, api apiClientService, esOpt options.EsOpt) *reIndexer {
+func ReIndexer(log *zap.Logger, es esService, api apiClientService, esOpt options.EsOpt, assureMappings func(context.Context) error) *reIndexer {
 	return &reIndexer{
-		log:   log,
-		esOpt: esOpt,
-		es:    es,
-		api:   api,
+		log:            log,
+		esOpt:          esOpt,
+		es:             es,
+		api:            api,
+		assureMappings: assureMappings,
 	}
 }
 
@@ -352,6 +355,11 @@ func (ri *reIndexer) feedReindex(ctx context.Context, esb esutil.BulkIndexer, in
 	if ds == nil {
 		ri.log.Debug("invalid resource for feed update")
 		return
+	}
+
+	err = ri.assureMappings(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to assure mappings: %w", err)
 	}
 
 	for {
@@ -656,69 +664,82 @@ func (ri *reIndexer) Watch(ctx context.Context) {
 
 	go func() {
 		defer ticker.Stop()
+		processing := false
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				esb, err := ri.es.BulkIndexer()
-				if err != nil {
-					ri.log.Error(fmt.Sprintf("failed to prepare bulk indexer for feed changes: %s", err))
-					return
-				}
-
-				var (
-					req *http.Request
-					rsp *http.Response
-
-					qs = url.Values{"from": []string{now.UTC().Format(time.RFC3339)}}
-				)
-
-				feeds := &feedResponse{}
-
-				// store time before making request
-				tmpTime := time.Now()
-
-				if req, err = ri.api.Feed(qs); err != nil {
-					ri.log.Error(fmt.Sprintf("failed to prepare feed request: %s", err))
+				if processing {
+					ri.log.Warn("skupping feed changes reindexing: already processing")
 					continue
 				}
 
-				if rsp, err = ri.api.HttpClient().Do(req.WithContext(ctx)); err != nil {
-					ri.log.Error(fmt.Sprintf("failed to send feed request: %s", err))
-					continue
-				}
+				processing = true
+				go func() {
+					defer func() {
+						processing = false
+					}()
 
-				if rsp.StatusCode != http.StatusOK {
-					ri.log.Error(fmt.Sprintf("request resulted in an unexpected status '%s' for feed", rsp.Status))
-					continue
-				}
-
-				if err = json.NewDecoder(rsp.Body).Decode(feeds); err != nil {
-					ri.log.Error(fmt.Sprintf("failed to decode feed resources: %s", err))
-					continue
-				}
-
-				if err = rsp.Body.Close(); err != nil {
-					ri.log.Error(fmt.Sprintf("failed to close feed response body: %s", err))
-					continue
-				}
-
-				// Update time after successful request
-				now = tmpTime
-
-				if feeds != nil && feeds.Response != nil && len(feeds.Response.ActivityLogs) > 0 {
-					err = ri.feedReindexChanges(ctx, esb, "private", feeds.Response.ActivityLogs)
+					esb, err := ri.es.BulkIndexer()
 					if err != nil {
-						ri.log.Error(fmt.Sprintf("failed to update indexes for feed changes: %s", err))
-						continue
+						ri.log.Error(fmt.Sprintf("failed to prepare bulk indexer for feed changes: %s", err))
+						return
 					}
-				} else {
-					ri.log.Debug(fmt.Sprintf("No feed changes since last %d seconds; current time: %s", timeOut, now.UTC().String()))
-				}
 
-				_ = esb.Close(ctx)
+					var (
+						req *http.Request
+						rsp *http.Response
+
+						qs = url.Values{"from": []string{now.UTC().Format(time.RFC3339)}}
+					)
+
+					feeds := &feedResponse{}
+
+					// store time before making request
+					tmpTime := time.Now()
+
+					if req, err = ri.api.Feed(qs); err != nil {
+						ri.log.Error(fmt.Sprintf("failed to prepare feed request: %s", err))
+						return
+					}
+
+					if rsp, err = ri.api.HttpClient().Do(req.WithContext(ctx)); err != nil {
+						ri.log.Error(fmt.Sprintf("failed to send feed request: %s", err))
+						return
+					}
+
+					if rsp.StatusCode != http.StatusOK {
+						ri.log.Error(fmt.Sprintf("request resulted in an unexpected status '%s' for feed", rsp.Status))
+						return
+					}
+
+					if err = json.NewDecoder(rsp.Body).Decode(feeds); err != nil {
+						ri.log.Error(fmt.Sprintf("failed to decode feed resources: %s", err))
+						return
+					}
+
+					if err = rsp.Body.Close(); err != nil {
+						ri.log.Error(fmt.Sprintf("failed to close feed response body: %s", err))
+						return
+					}
+
+					// Update time after successful request
+					now = tmpTime
+
+					if feeds != nil && feeds.Response != nil && len(feeds.Response.ActivityLogs) > 0 {
+						err = ri.feedReindexChanges(ctx, esb, "private", feeds.Response.ActivityLogs)
+						if err != nil {
+							ri.log.Error(fmt.Sprintf("failed to update indexes for feed changes: %s", err))
+							return
+						}
+					} else {
+						ri.log.Debug(fmt.Sprintf("No feed changes since last %d seconds; current time: %s", timeOut, now.UTC().String()))
+					}
+
+					_ = esb.Close(ctx)
+				}()
 			}
 		}
 	}()

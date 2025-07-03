@@ -347,6 +347,13 @@ type (
 		*recordBase
 	}
 
+	// recordBeforeOrganize
+	//
+	// This type is auto-generated.
+	recordBeforeOrganize struct {
+		*recordBase
+	}
+
 	// recordAfterCreate
 	//
 	// This type is auto-generated.
@@ -372,6 +379,13 @@ type (
 	//
 	// This type is auto-generated.
 	recordAfterUndelete struct {
+		*recordBase
+	}
+
+	// recordAfterOrganize
+	//
+	// This type is auto-generated.
+	recordAfterOrganize struct {
 		*recordBase
 	}
 )
@@ -2501,6 +2515,13 @@ func (recordBeforeUndelete) EventType() string {
 	return "beforeUndelete"
 }
 
+// EventType on recordBeforeOrganize returns "beforeOrganize"
+//
+// This function is auto-generated.
+func (recordBeforeOrganize) EventType() string {
+	return "beforeOrganize"
+}
+
 // EventType on recordAfterCreate returns "afterCreate"
 //
 // This function is auto-generated.
@@ -2527,6 +2548,13 @@ func (recordAfterDelete) EventType() string {
 // This function is auto-generated.
 func (recordAfterUndelete) EventType() string {
 	return "afterUndelete"
+}
+
+// EventType on recordAfterOrganize returns "afterOrganize"
+//
+// This function is auto-generated.
+func (recordAfterOrganize) EventType() string {
+	return "afterOrganize"
 }
 
 // RecordOnManual creates onManual for compose:record resource
@@ -2829,6 +2857,56 @@ func RecordBeforeUndeleteImmutable(
 	}
 }
 
+// RecordBeforeOrganize creates beforeOrganize for compose:record resource
+//
+// This function is auto-generated.
+func RecordBeforeOrganize(
+	argRecord *types.Record,
+	argOldRecord *types.Record,
+	argModule *types.Module,
+	argNamespace *types.Namespace,
+	argRecordValueErrors *types.RecordValueErrorSet,
+	argSelected []interface{},
+) *recordBeforeOrganize {
+	return &recordBeforeOrganize{
+		recordBase: &recordBase{
+			immutable:         false,
+			record:            argRecord,
+			oldRecord:         argOldRecord,
+			module:            argModule,
+			namespace:         argNamespace,
+			recordValueErrors: argRecordValueErrors,
+			selected:          argSelected,
+		},
+	}
+}
+
+// RecordBeforeOrganizeImmutable creates beforeOrganize for compose:record resource
+//
+// None of the arguments will be mutable!
+//
+// This function is auto-generated.
+func RecordBeforeOrganizeImmutable(
+	argRecord *types.Record,
+	argOldRecord *types.Record,
+	argModule *types.Module,
+	argNamespace *types.Namespace,
+	argRecordValueErrors *types.RecordValueErrorSet,
+	argSelected []interface{},
+) *recordBeforeOrganize {
+	return &recordBeforeOrganize{
+		recordBase: &recordBase{
+			immutable:         true,
+			record:            argRecord,
+			oldRecord:         argOldRecord,
+			module:            argModule,
+			namespace:         argNamespace,
+			recordValueErrors: argRecordValueErrors,
+			selected:          argSelected,
+		},
+	}
+}
+
 // RecordAfterCreate creates afterCreate for compose:record resource
 //
 // This function is auto-generated.
@@ -3017,6 +3095,56 @@ func RecordAfterUndeleteImmutable(
 	argSelected []interface{},
 ) *recordAfterUndelete {
 	return &recordAfterUndelete{
+		recordBase: &recordBase{
+			immutable:         true,
+			record:            argRecord,
+			oldRecord:         argOldRecord,
+			module:            argModule,
+			namespace:         argNamespace,
+			recordValueErrors: argRecordValueErrors,
+			selected:          argSelected,
+		},
+	}
+}
+
+// RecordAfterOrganize creates afterOrganize for compose:record resource
+//
+// This function is auto-generated.
+func RecordAfterOrganize(
+	argRecord *types.Record,
+	argOldRecord *types.Record,
+	argModule *types.Module,
+	argNamespace *types.Namespace,
+	argRecordValueErrors *types.RecordValueErrorSet,
+	argSelected []interface{},
+) *recordAfterOrganize {
+	return &recordAfterOrganize{
+		recordBase: &recordBase{
+			immutable:         false,
+			record:            argRecord,
+			oldRecord:         argOldRecord,
+			module:            argModule,
+			namespace:         argNamespace,
+			recordValueErrors: argRecordValueErrors,
+			selected:          argSelected,
+		},
+	}
+}
+
+// RecordAfterOrganizeImmutable creates afterOrganize for compose:record resource
+//
+// None of the arguments will be mutable!
+//
+// This function is auto-generated.
+func RecordAfterOrganizeImmutable(
+	argRecord *types.Record,
+	argOldRecord *types.Record,
+	argModule *types.Module,
+	argNamespace *types.Namespace,
+	argRecordValueErrors *types.RecordValueErrorSet,
+	argSelected []interface{},
+) *recordAfterOrganize {
+	return &recordAfterOrganize{
 		recordBase: &recordBase{
 			immutable:         true,
 			record:            argRecord,

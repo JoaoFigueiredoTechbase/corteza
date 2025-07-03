@@ -3,10 +3,12 @@ package dalutils
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/cortezaproject/corteza/server/compose/types"
 	"github.com/cortezaproject/corteza/server/pkg/dal"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
+	"github.com/spf13/cast"
 )
 
 type (
@@ -42,7 +44,17 @@ func ComposeRecordsList(ctx context.Context, s searcher, mod *types.Module, filt
 		return
 	}
 
-	set, outFilter, err = drainIterator(ctx, iter, mod, filter)
+	set, _, outFilter, err = drainIterator(ctx, iter, mod, filter)
+	return
+}
+
+func ComposeRecordsListN(ctx context.Context, s searcher, mod *types.Module, filter types.RecordFilter) (set types.RecordSet, summaries map[string]types.RecordSummary, outFilter types.RecordFilter, err error) {
+	iter, err := prepIterator(ctx, s, mod, filter)
+	if err != nil {
+		return
+	}
+
+	set, summaries, outFilter, err = drainIterator(ctx, iter, mod, filter)
 	return
 }
 
@@ -136,7 +148,7 @@ func prepIterator(ctx context.Context, dal searcher, mod *types.Module, filter t
 //
 // Collection of records is done with respect to check function and limit constraint on record filter
 // For any other filter constraint we assume that underlying DAL took care of it
-func drainIterator(ctx context.Context, iter dal.Iterator, mod *types.Module, f types.RecordFilter) (set types.RecordSet, outFilter types.RecordFilter, err error) {
+func drainIterator(ctx context.Context, iter dal.Iterator, mod *types.Module, f types.RecordFilter) (set types.RecordSet, summaries map[string]types.RecordSummary, outFilter types.RecordFilter, err error) {
 	// close iterator after we've drained it
 	defer iter.Close()
 
@@ -232,10 +244,12 @@ func drainIterator(ctx context.Context, iter dal.Iterator, mod *types.Module, f 
 	}
 
 	// Get the page nav/total/next-prev cursors
-	nav, err := generatePageNavigation(ctx, iter, mod, f, set)
+	nav, auxSm, err := generatePageNavigation(ctx, iter, mod, f, set)
 	if err != nil {
 		return
 	}
+
+	summaries = auxSm
 
 	// Make out filter
 	outFilter = f
@@ -252,7 +266,7 @@ func drainIterator(ctx context.Context, iter dal.Iterator, mod *types.Module, f 
 // If the limit is defined and is less than the total number of records in the set,
 // the page navigation will have multiple pages with cursor(s) based on the total number of records and the provided limit.
 // @todo revisit and clean up this function properly
-func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.Module, p types.RecordFilter, set types.RecordSet) (out types.RecordFilter, err error) {
+func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.Module, p types.RecordFilter, set types.RecordSet) (out types.RecordFilter, summaries map[string]types.RecordSummary, err error) {
 	const (
 		howMuchMore = 1000
 	)
@@ -336,8 +350,117 @@ func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.M
 		}
 	)
 
+	if len(p.Summaries) > 0 {
+		summaries = make(map[string]types.RecordSummary, len(p.Summaries))
+	}
+
 	if setLen == 0 {
 		return
+	}
+
+	existing := make(map[any]struct{}, 24)
+	looped := false
+
+	procSummary := func(r *types.Record) (err error) {
+		for _, smDef := range p.Summaries {
+			// Get record value
+			var vv []any
+			vv, err = r.GetValues(smDef.Field)
+			if err != nil {
+				return
+			}
+
+			bit := summaries[fmt.Sprintf("%s %s", smDef.Name, smDef.Field)]
+
+			// This will be constant so we're good
+			bit.Name = smDef.Name
+
+			// Skip empty
+			if len(vv) == 0 {
+				bit.EmptyCount++
+				summaries[fmt.Sprintf("%s %s", smDef.Name, smDef.Field)] = bit
+				continue
+			}
+
+			bit.NotEmptyCount++
+
+			for _, v := range vv {
+				bit.Count++
+
+				if _, ok := existing[v]; !ok {
+					existing[v] = struct{}{}
+					bit.UniqueCount++
+				}
+			}
+
+			switch smDef.Name {
+			case "min":
+				for _, v := range vv {
+					if !looped {
+						bit.Min = cast.ToFloat64(v)
+					} else {
+						bit.Min = math.Min(bit.Min, cast.ToFloat64(v))
+					}
+				}
+
+			case "max":
+				for _, v := range vv {
+					if !looped {
+						bit.Max = cast.ToFloat64(v)
+					} else {
+						bit.Max = math.Max(bit.Max, cast.ToFloat64(v))
+					}
+				}
+
+			case "avg":
+				for _, v := range vv {
+					bit.Sum += cast.ToFloat64(v)
+				}
+
+			case "sum":
+				for _, v := range vv {
+					bit.Sum += cast.ToFloat64(v)
+				}
+
+			case "earliest":
+				for _, v := range vv {
+					if bit.Earliest.IsZero() {
+						bit.Earliest = cast.ToTime(v)
+					} else {
+						aux := cast.ToTime(v)
+						if !aux.IsZero() && aux.Before(bit.Earliest) {
+							bit.Earliest = aux
+						}
+					}
+				}
+
+			case "latest":
+				for _, v := range vv {
+					if bit.Latest.IsZero() {
+						bit.Latest = cast.ToTime(v)
+					} else {
+						aux := cast.ToTime(v)
+						if !aux.IsZero() && aux.After(bit.Latest) {
+							bit.Latest = aux
+						}
+					}
+				}
+			}
+
+			looped = true
+			summaries[fmt.Sprintf("%s %s", smDef.Name, smDef.Field)] = bit
+		}
+		return
+	}
+
+	// Firstly sort out the current things
+	if len(p.Summaries) > 0 {
+		for _, r := range set {
+			err = procSummary(r)
+			if err != nil {
+				return
+			}
+		}
 	}
 
 	first = set[0]
@@ -367,7 +490,7 @@ func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.M
 		}
 	}
 
-	if p.IncTotal || p.IncPageNavigation {
+	if p.IncTotal || p.IncPageNavigation || len(p.Summaries) > 0 {
 		// For the first page nav
 		err = generatePage(last)
 		if err != nil {
@@ -391,6 +514,11 @@ func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.M
 					} else if !ok {
 						return nil
 					}
+				}
+
+				err = procSummary(rec)
+				if err != nil {
+					return err
 				}
 
 				interLoop++
@@ -426,6 +554,18 @@ func generatePageNavigation(ctx context.Context, iter dal.Iterator, mod *types.M
 		}
 
 		out.PageNavigation = pageNavigation
+	}
+
+	// Do averages
+	if len(p.Summaries) > 0 {
+		for n, s := range summaries {
+			if s.Name != "avg" {
+				continue
+			}
+
+			s.Avg = s.Sum / float64(s.Count)
+			summaries[n] = s
+		}
 	}
 
 	return

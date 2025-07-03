@@ -96,7 +96,7 @@ export default function (ComposeAPI) {
         })
       },
 
-      clearRecordIDs ({ commit }) {
+      clearRecordPagination ({ commit }) {
         commit(types.clearRecordPagination)
       },
 

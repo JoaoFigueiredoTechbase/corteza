@@ -173,12 +173,12 @@ export default {
               if (this.inModal) {
                 this.$emit('handle-record-redirect', { recordID: record.recordID, recordPageID: this.page.pageID, edit: false })
 
-                // If we are in a modal we need to refresh blocks not in modal
-                this.$root.$emit('module-records-updated', {
-                  moduleID: this.module.moduleID,
-                  notPageID: this.page.pageID,
-                })
+                // If we are in a modal we need to refresh blocks/records not in modal
+                this.$root.$emit('refetch-records', { recordID: record.recordID })
               } else {
+                // Refresh blocks related to the module
+                this.$root.$emit('module-records-updated', { moduleID: this.module.moduleID })
+
                 this.$router.push({ name: route, params: { ...this.$route.params, recordID: record.recordID, edit: false } })
               }
 

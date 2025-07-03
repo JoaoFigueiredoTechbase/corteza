@@ -1,38 +1,37 @@
 <template>
   <div>
-    <div class="my-2">
+    <!-- <div class="my-2">
       <h6 class="text-primary mb-2">
         {{ $t('types.title') }}
       </h6>
       <b-form-checkbox-group
-        v-model="types"
-        name="types"
-        :disabled="$store.state.processing"
+        :checked="storeResourceTypes"
+        name="type"
+        :disabled="storeProcessing"
         stacked
         class="mt-1"
-        @change="updateTypes()"
+        @change="updateResourceTypes"
       >
         <b-form-checkbox
           v-for="option in options"
           :key="option.value"
           :value="option.value"
-          class="ml-2"
+          class="pointer ml-2"
         >
-          <div
-            class="d-flex align-items-center mb-0"
-          >
-            <span class="d-inline-block text-truncate mr-3">
-              {{ option.text }}
-            </span>
-          </div>
+          <b-avatar
+            :icon="option.icon"
+            size="sm"
+            class="align-center bg-light text-dark"
+          />
+          {{ option.text }}
         </b-form-checkbox>
       </b-form-checkbox-group>
-    </div>
+    </div> -->
 
     <div
       v-for="agg in aggregationOptions"
       :key="agg.resource"
-      class="mt-4"
+      class="my-2"
     >
       <div
         v-if="agg.items.length"
@@ -67,7 +66,7 @@
         v-model="groups[agg.name]"
         stacked
         class="mt-1 ml-2"
-        :disabled="$store.state.processing"
+        :disabled="storeProcessing"
         @change="updateGroup(agg.name)"
       >
         <b-form-checkbox
@@ -76,17 +75,16 @@
           :value="resource.name"
           class="mb-1"
         >
-          <div
-            class="d-flex align-items-center"
-          >
+          <div class="d-flex align-items-center">
             <span class="d-inline-block text-truncate">
               {{ getResourceDisplayName(agg.resource, resource) }}
             </span>
-            <span
+
+            <!-- <span
               class="pl-3 ml-auto text-muted"
             >
               {{ resource.hits }}
-            </span>
+            </span> -->
           </div>
         </b-form-checkbox>
       </b-form-checkbox-group>
@@ -95,6 +93,8 @@
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex'
+
 export default {
   i18nOptions: {
     namespaces: 'filters',
@@ -102,7 +102,6 @@ export default {
 
   data () {
     return {
-      types: [],
       groups: {
         Module: [],
         Namespace: [],
@@ -111,18 +110,25 @@ export default {
   },
 
   computed: {
+    ...mapGetters({
+      storeResourceTypes: 'discovery/resourceTypes',
+      storeAggregations: 'discovery/aggregations',
+      storeModules: 'discovery/modules',
+      storeNamespaces: 'discovery/namespaces',
+      storeProcessing: 'discovery/processing',
+    }),
+
     options () {
       return [
-        { text: this.$t('types.namespace'), value: 'compose:namespace' },
-        { text: this.$t('types.module'), value: 'compose:module' },
-        { text: this.$t('types.record'), value: 'compose:record' },
-        { text: this.$t('types.user'), value: 'system:user' },
+        { text: this.$t('types.namespace'), value: 'compose:namespace', icon: 'code-square' },
+        { text: this.$t('types.module'), value: 'compose:module', icon: 'list-ul' },
+        { text: this.$t('types.record'), value: 'compose:record', icon: 'file-earmark-text' },
       ]
     },
 
     aggregationOptions () {
-      let namespaceOptions = this.$store.state.aggregations.find(({ resource }) => resource === 'compose:namespace') || {}
-      let moduleOptions = this.$store.state.aggregations.find(({ resource }) => resource === 'compose:module') || {}
+      let namespaceOptions = this.storeAggregations.find(({ resource }) => resource === 'compose:namespace') || {}
+      let moduleOptions = this.storeAggregations.find(({ resource }) => resource === 'compose:module') || {}
 
       namespaceOptions = {
         resource: 'compose:namespace',
@@ -150,21 +156,26 @@ export default {
   },
 
   watch: {
-    '$store.state.namespaces': {
+    storeNamespaces: {
       immediate: true,
       handler (namespace) {
         this.groups.Namespace = namespace
       },
     },
 
-    '$store.state.modules': {
+    storeModules: {
       immediate: true,
       handler (module) {
         this.groups.Module = module
       },
     },
   },
+
   methods: {
+    ...mapActions({
+      updateResourceTypes: 'discovery/updateResourceTypes',
+    }),
+
     getResourceDisplayName (type, { name, handle, slug }) {
       if (type === 'compose:namespace') {
         return name || slug || 'Unnamed namespace'
@@ -173,17 +184,13 @@ export default {
       }
     },
 
-    updateTypes () {
-      this.$store.commit('updateTypes', this.types)
-    },
-
     updateGroup (name) {
-      this.$store.commit(`update${name}s`, this.groups[name])
+      this.$store.dispatch(`discovery/update${name}s`, this.groups[name])
     },
 
     clearGroup (name) {
       this.groups[name] = []
-      this.$store.commit(`update${name}s`, [])
+      this.updateGroup(name)
     },
   },
 }

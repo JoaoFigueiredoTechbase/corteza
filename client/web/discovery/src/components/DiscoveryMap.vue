@@ -26,8 +26,10 @@ export default {
       type: Array,
       required: true,
     },
+
     hoverIndex: {
-      type: String,
+      type: Number,
+      required: false,
       default: undefined,
     },
   },
@@ -46,9 +48,10 @@ export default {
     makerValues () {
       return this.markers.map((marker, i) => {
         return {
-          id: marker.id,
+          id: i,
           value: marker.coordinates,
-          opacity: [this.hoverIndex, this.clickedMarker].includes(marker.id) ? 1.0 : 0.6,
+          opacity: [this.hoverIndex, this.clickedMarker].includes(i) ? 1.0 : 0.6,
+          color: 'var(--primary)',
         }
       })
     },
@@ -73,19 +76,26 @@ export default {
             this.center = coordinates
           }
         }
+
+        this.clickedMarker = undefined
       },
     },
   },
 
   methods: {
     onMarkerClick ({ index }) {
-      this.clickedMarker = index
-      this.$emit('hover', this.clickedMarker)
+      if (index === this.clickedMarker) {
+        this.clickedMarker = undefined
+      } else {
+        this.clickedMarker = index
+      }
+
+      this.$emit('marker-clicked', this.clickedMarker)
     },
 
     clearClickedMarker () {
       this.clickedMarker = undefined
-      this.$emit('hover', this.clickedMarker)
+      this.$emit('marker-clicked', this.clickedMarker)
     },
   },
 }

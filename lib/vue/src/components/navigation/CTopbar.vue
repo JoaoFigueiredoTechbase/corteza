@@ -2,7 +2,7 @@
   <div class="header-navigation d-flex flex-wrap align-items-center py-2 px-3 gap-2">
     <div
       class="sidebar-spacer"
-      :class="{ 'expanded': sidebarPinned }"
+      :class="{ 'expanded': sidebarExpanded }"
     />
 
     <h2 class="title mb-0">
@@ -13,7 +13,7 @@
       <slot name="tools" />
     </div>
 
-    <div class="d-flex align-items-center ml-auto">
+    <div class="d-flex align-items-center ml-auto gap-1">
       <b-button
         v-if="!hideAppSelector && !settings.hideAppSelector"
         data-test-id="app-selector"
@@ -24,6 +24,12 @@
         {{ labels.appMenu }}
       </b-button>
 
+      <slot name="right-tools" />
+
+      <c-notification-button
+        v-if="!settings.hideNotifications"
+      />
+
       <b-dropdown
         v-if="!settings.hideHelp"
         data-test-id="dropdown-helper"
@@ -33,7 +39,7 @@
         menu-class="topbar-dropdown-menu border-0 shadow-sm text-dark mt-2"
         right
         no-caret
-        class="nav-icon mx-1 text-sm-nowrap"
+        class="nav-icon text-sm-nowrap"
       >
         <template #button-content>
           <div
@@ -48,9 +54,11 @@
             </span>
           </div>
         </template>
+
         <div>
           <slot name="help-dropdown" />
         </div>
+
         <b-dropdown-item
           v-for="(helpLink, index) in helpLinks"
           :key="index"
@@ -59,6 +67,7 @@
         >
           {{ helpLink.handle }}
         </b-dropdown-item>
+
         <b-dropdown-item
           v-if="!settings.hideForumLink"
           data-test-id="dropdown-helper-forum"
@@ -67,6 +76,7 @@
         >
           {{ labels.helpForum }}
         </b-dropdown-item>
+
         <b-dropdown-item
           v-if="!settings.hideDocumentationLink"
           data-test-id="dropdown-helper-docs"
@@ -75,6 +85,7 @@
         >
           {{ labels.helpDocumentation }}
         </b-dropdown-item>
+
         <b-dropdown-item
           v-if="!settings.hideFeedbackLink"
           data-test-id="dropdown-helper-feedback"
@@ -83,6 +94,7 @@
         >
           {{ labels.helpFeedback }}
         </b-dropdown-item>
+
         <b-dropdown-divider
           v-if="!onlyVersion"
         />
@@ -209,13 +221,17 @@
 <script>
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faMoon, faSun } from '@fortawesome/free-solid-svg-icons'
+import CNotificationButton from '../notifications/CNotificationButton.vue'
 
 library.add(faMoon, faSun)
 
 export default {
+  components: {
+    CNotificationButton,
+  },
 
   props: {
-    sidebarPinned: {
+    sidebarExpanded: {
       type: Boolean,
       required: true,
       default: false,
@@ -388,7 +404,8 @@ $nav-user-icon-size: calc(var(--topbar-height) - 16px);
   min-height: $nav-user-icon-size;
   padding-left: 47px;
 
-  .vue-portal-target {
+  > * {
+    padding: 0.25rem 0;
     display: -webkit-box; /* For Safari and old versions of Chrome */
     display: -ms-flexbox; /* For old versions of IE */
     -webkit-box-orient: vertical; /* For Safari and old versions of Chrome */
@@ -402,7 +419,7 @@ $nav-user-icon-size: calc(var(--topbar-height) - 16px);
 .tools-wrapper {
   flex-grow: 1;
 
-  .vue-portal-target {
+  > * {
     display: flex;
     justify-content: end;
     align-items: center;

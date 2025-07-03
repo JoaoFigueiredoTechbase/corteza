@@ -84,15 +84,23 @@ func (d systemResources) Users(ctx context.Context, limit uint, cur string, user
 				Name:         u.Name,
 				Handle:       u.Handle,
 				Suspended:    u.SuspendedAt,
-				Created:      makePartialChange(&u.CreatedAt),
-				Updated:      makePartialChange(u.UpdatedAt),
-				Deleted:      makePartialChange(u.DeletedAt),
+
+				CatchAll: []any{u.ID, u.Email, u.Name, u.Handle},
+
+				Created: makePartialChange(&u.CreatedAt),
+				Updated: makePartialChange(u.UpdatedAt),
+				Deleted: makePartialChange(u.DeletedAt),
 			}
 			if len(d.opt.CortezaDomain) > 0 && u.ID > 0 {
 				doc.Url = fmt.Sprintf("%s/admin/system/user/edit/%d", d.opt.CortezaDomain, u.ID)
 			}
 
-			doc.Security.AllowedRoles, doc.Security.DeniedRoles = d.rbac.SignificantRoles(u, "read")
+			allowedRoles, deniedRoles := d.rbac.SignificantRoles(u, "read")
+
+			doc.Security = append(doc.Security, docSecurity{
+				AllowedRoles: stringifyUints64(allowedRoles),
+				DeniedRoles:  stringifyUints64(deniedRoles),
+			})
 
 			rsp.Documents[i].ID = u.ID
 			rsp.Documents[i].Source = doc

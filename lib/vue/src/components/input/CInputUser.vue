@@ -8,7 +8,6 @@
     :placeholder="placeholder"
     :loading="processing"
     :filterable="false"
-    :reduce="o => o.userID"
     v-bind="$attrs"
     @search="search"
     @input="onUserUpdate"
@@ -20,8 +19,10 @@ import { NoID } from '@cortezaproject/corteza-js'
 import { debounce } from 'lodash'
 
 export default {
+  name: 'CInputUser',
+
   props: {
-    userID: {
+    value: {
       type: String,
       default: null,
     },
@@ -34,31 +35,23 @@ export default {
 
   data () {
     return {
+      processing: false,
+
       user: {
         options: [],
         value: undefined,
 
         filter: {
           query: null,
-          limit: 10,
+          limit: 20,
         },
       },
-
-      processing: false,
     }
-  },
-
-  watch: {
-    userID: {
-      handler (userID) {
-        this.getUserByID(userID)
-      },
-    },
   },
 
   created () {
     this.fetchUsers().then(() => {
-      this.getUserByID(this.userID)
+      this.getUserByID(this.value)
     })
   },
 
@@ -86,22 +79,24 @@ export default {
 
     getUserByID (userID) {
       if (!userID || userID === NoID) {
-        this.user.value = userID
+        this.user.value = undefined
         return
       }
 
-      if (this.user.options.some(o => o.userID === userID)) {
-        this.user.value = userID
+      const user = this.user.options.find(o => o.userID === userID)
+
+      if (user) {
+        this.user.value = user
       } else {
-        this.$SystemAPI.userRead({ userID }).then(user => {
-          this.user.value = user.userID
+        return this.$SystemAPI.userRead({ userID }).then(user => {
+          this.user.value = user
           this.user.options.push(Object.freeze(user))
         })
       }
     },
 
-    onUserUpdate () {
-      this.$emit('input', this.user.value)
+    onUserUpdate ({ userID }) {
+      this.$emit('input', userID)
     },
 
     getOptionKey ({ userID }) {

@@ -24,6 +24,7 @@ import (
 	"github.com/cortezaproject/corteza/server/pkg/objstore/plain"
 	"github.com/cortezaproject/corteza/server/pkg/options"
 	"github.com/cortezaproject/corteza/server/store"
+	systemService "github.com/cortezaproject/corteza/server/system/service"
 	systemTypes "github.com/cortezaproject/corteza/server/system/types"
 	"go.uber.org/zap"
 )
@@ -225,6 +226,15 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, c Config) 
 	automation.AttachmentHandler(
 		automationService.Registry(),
 		DefaultAttachment,
+	)
+
+	automation.NotificationHandler(
+		automationService.Registry(),
+		systemService.DefaultNotification,
+		systemService.DefaultUser,
+		DefaultNamespace,
+		DefaultModule,
+		log,
 	)
 
 	return nil

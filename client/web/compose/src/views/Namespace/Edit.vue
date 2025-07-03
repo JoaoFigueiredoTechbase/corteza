@@ -519,6 +519,8 @@ export default {
       this.initialNamespaceState = this.namespace.clone()
       this.namespaceAssetsInitialState = this.namespaceAssets
 
+      document.title = this.isEdit ? this.$t('general:label.app-name.namespace.edit', { label: this.namespace.name || this.namespace.slug }) : this.$t('general:label.app-name.namespace.create')
+
       this.processing = false
     },
 

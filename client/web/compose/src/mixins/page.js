@@ -66,6 +66,7 @@ export default {
 
   methods: {
     ...mapActions({
+      clearRecordSet: 'record/clearSet',
       updatePageSet: 'page/updateSet',
     }),
 
@@ -113,9 +114,6 @@ export default {
     },
 
     async determineLayout ({ pageLayoutID, redirectOnFail = true } = {}) {
-      // Clear stored records so they can be refetched with latest values
-      this.clearRecordSet()
-
       if (this.isRecordPage) {
         this.resetErrors()
       }
@@ -165,15 +163,17 @@ export default {
         this.handleRecordButtons()
       } else {
         const { handle, meta = {} } = this.layout || {}
-        const title = meta.title || this.page.title
-        this.pageTitle = title || handle || this.$t('navigation:noPageTitle')
-        document.title = [title, this.namespace.name, this.$t('general:label.app-name.public')].filter(v => v).join(' | ')
+
+        this.pageTitle = (meta.title || this.page.title) || handle || this.$t('navigation:noPageTitle')
+        document.title = this.pageTitle
       }
 
       return this.prepareBlocks()
     },
 
     async prepareBlocks () {
+      this.blocks = undefined
+
       const tempBlocks = []
       const { blocks = [] } = this.layout || {}
 
@@ -184,25 +184,15 @@ export default {
         tempBlocks.push(block)
       })
 
-      if (this.isRecordPage) {
-        await new Promise(resolve => setTimeout(resolve, 300))
-      }
-
-      this.blocks = undefined
-
-      return this.evaluateBlocks(tempBlocks, this.isRecordPage)
+      return this.evaluateBlocks(tempBlocks)
     },
 
-    async evaluateBlocks (blocks = this.page.blocks, async = false) {
+    async evaluateBlocks (blocks = this.page.blocks) {
       const layoutBlocks = this.layout.blocks
       let layoutBlocksExpressions = {}
 
       // Only evaluate expressions if any blocks have visibility expressions
       if (layoutBlocks.some(({ meta = {} }) => (meta.visibility || {}).expression)) {
-        if (async) {
-          await new Promise(resolve => setTimeout(resolve, 300))
-        }
-
         layoutBlocksExpressions = await this.evaluateBlocksExpressions()
       }
 

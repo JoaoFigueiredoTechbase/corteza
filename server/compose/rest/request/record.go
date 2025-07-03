@@ -73,6 +73,11 @@ type (
 		// Module ID
 		ModuleID uint64 `json:",string"`
 
+		// Summaries GET parameter
+		//
+		// Record summaries
+		Summaries string
+
 		// Query GET parameter
 		//
 		// Record filtering query
@@ -156,6 +161,11 @@ type (
 		//
 		// What happens if record fails to import
 		OnError string
+
+		// MultiValueDelimiter POST parameter
+		//
+		// Imported namespace multiValueDelimiter
+		MultiValueDelimiter string
 	}
 
 	RecordImportProgress struct {
@@ -210,6 +220,16 @@ type (
 		//
 		// Convert times to this timezone
 		Timezone string
+
+		// MultiValueDelimiter GET parameter
+		//
+		// Multi value delimiter for CSV exports
+		MultiValueDelimiter string
+
+		// WrapMultiValue GET parameter
+		//
+		// Wrap multi value fields in brachets
+		WrapMultiValue string
 	}
 
 	RecordExec struct {
@@ -613,6 +633,7 @@ func (r RecordList) Auditable() map[string]interface{} {
 	return map[string]interface{}{
 		"namespaceID":       r.NamespaceID,
 		"moduleID":          r.ModuleID,
+		"summaries":         r.Summaries,
 		"query":             r.Query,
 		"meta":              r.Meta,
 		"deleted":           r.Deleted,
@@ -632,6 +653,11 @@ func (r RecordList) GetNamespaceID() uint64 {
 // Auditable returns all auditable/loggable parameters
 func (r RecordList) GetModuleID() uint64 {
 	return r.ModuleID
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordList) GetSummaries() string {
+	return r.Summaries
 }
 
 // Auditable returns all auditable/loggable parameters
@@ -681,6 +707,12 @@ func (r *RecordList) Fill(req *http.Request) (err error) {
 		// GET params
 		tmp := req.URL.Query()
 
+		if val, ok := tmp["summaries"]; ok && len(val) > 0 {
+			r.Summaries, err = val[0], nil
+			if err != nil {
+				return err
+			}
+		}
 		if val, ok := tmp["query"]; ok && len(val) > 0 {
 			r.Query, err = val[0], nil
 			if err != nil {
@@ -853,11 +885,12 @@ func NewRecordImportRun() *RecordImportRun {
 // Auditable returns all auditable/loggable parameters
 func (r RecordImportRun) Auditable() map[string]interface{} {
 	return map[string]interface{}{
-		"namespaceID": r.NamespaceID,
-		"moduleID":    r.ModuleID,
-		"sessionID":   r.SessionID,
-		"fields":      r.Fields,
-		"onError":     r.OnError,
+		"namespaceID":         r.NamespaceID,
+		"moduleID":            r.ModuleID,
+		"sessionID":           r.SessionID,
+		"fields":              r.Fields,
+		"onError":             r.OnError,
+		"multiValueDelimiter": r.MultiValueDelimiter,
 	}
 }
 
@@ -884,6 +917,11 @@ func (r RecordImportRun) GetFields() json.RawMessage {
 // Auditable returns all auditable/loggable parameters
 func (r RecordImportRun) GetOnError() string {
 	return r.OnError
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordImportRun) GetMultiValueDelimiter() string {
+	return r.MultiValueDelimiter
 }
 
 // Fill processes request and fills internal variables
@@ -920,6 +958,13 @@ func (r *RecordImportRun) Fill(req *http.Request) (err error) {
 					return err
 				}
 			}
+
+			if val, ok := req.MultipartForm.Value["multiValueDelimiter"]; ok && len(val) > 0 {
+				r.MultiValueDelimiter, err = val[0], nil
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -939,6 +984,13 @@ func (r *RecordImportRun) Fill(req *http.Request) (err error) {
 
 		if val, ok := req.Form["onError"]; ok && len(val) > 0 {
 			r.OnError, err = val[0], nil
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := req.Form["multiValueDelimiter"]; ok && len(val) > 0 {
+			r.MultiValueDelimiter, err = val[0], nil
 			if err != nil {
 				return err
 			}
@@ -1039,13 +1091,15 @@ func NewRecordExport() *RecordExport {
 // Auditable returns all auditable/loggable parameters
 func (r RecordExport) Auditable() map[string]interface{} {
 	return map[string]interface{}{
-		"namespaceID": r.NamespaceID,
-		"moduleID":    r.ModuleID,
-		"filename":    r.Filename,
-		"ext":         r.Ext,
-		"filter":      r.Filter,
-		"fields":      r.Fields,
-		"timezone":    r.Timezone,
+		"namespaceID":         r.NamespaceID,
+		"moduleID":            r.ModuleID,
+		"filename":            r.Filename,
+		"ext":                 r.Ext,
+		"filter":              r.Filter,
+		"fields":              r.Fields,
+		"timezone":            r.Timezone,
+		"multiValueDelimiter": r.MultiValueDelimiter,
+		"wrapMultiValue":      r.WrapMultiValue,
 	}
 }
 
@@ -1084,6 +1138,16 @@ func (r RecordExport) GetTimezone() string {
 	return r.Timezone
 }
 
+// Auditable returns all auditable/loggable parameters
+func (r RecordExport) GetMultiValueDelimiter() string {
+	return r.MultiValueDelimiter
+}
+
+// Auditable returns all auditable/loggable parameters
+func (r RecordExport) GetWrapMultiValue() string {
+	return r.WrapMultiValue
+}
+
 // Fill processes request and fills internal variables
 func (r *RecordExport) Fill(req *http.Request) (err error) {
 
@@ -1110,6 +1174,18 @@ func (r *RecordExport) Fill(req *http.Request) (err error) {
 		}
 		if val, ok := tmp["timezone"]; ok && len(val) > 0 {
 			r.Timezone, err = val[0], nil
+			if err != nil {
+				return err
+			}
+		}
+		if val, ok := tmp["multiValueDelimiter"]; ok && len(val) > 0 {
+			r.MultiValueDelimiter, err = val[0], nil
+			if err != nil {
+				return err
+			}
+		}
+		if val, ok := tmp["wrapMultiValue"]; ok && len(val) > 0 {
+			r.WrapMultiValue, err = val[0], nil
 			if err != nil {
 				return err
 			}

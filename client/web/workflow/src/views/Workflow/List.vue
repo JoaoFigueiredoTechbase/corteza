@@ -137,7 +137,6 @@
 
       <template #actions="{ item: w }">
         <b-dropdown
-          v-if="w.canGrant || w.canDeleteWorkflow"
           variant="outline-extra-light"
           toggle-class="d-flex align-items-center justify-content-center text-primary border-0 py-2 ml-1"
           no-caret
@@ -157,30 +156,27 @@
             {{ statusText(w) }}
           </b-dropdown-item-button>
 
-          <b-dropdown-item-button>
+          <export
+            data-test-id="button-export-workflow"
+            :workflows="([w.workflowID])"
+            :file-name="w.meta.name || w.handle"
+            size="md"
+            class="dropdown-item"
+          >
             <font-awesome-icon
               :icon="['fas', 'file-export']"
             />
+          </export>
 
-            <export
-              data-test-id="button-export-workflow"
-              :workflows="([w.workflowID])"
-              :file-name="w.meta.name || w.handle"
-              size="md"
-              class="p-0 ml-1"
-            />
-          </b-dropdown-item-button>
-
-          <b-dropdown-item-button v-if="w.canGrant">
-            <c-permissions-button
-              :tooltip="$t('permissions:resources.automation.workflow.tooltip')"
-              :title="w.meta.name || w.handle || w.workflowID"
-              :target="w.meta.name || w.handle || w.workflowID"
-              :resource="`corteza::automation:workflow/${w.workflowID}`"
-              :button-label="$t('permissions:ui.label')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item-button>
+          <c-permissions-button
+            v-if="w.canGrant"
+            :tooltip="$t('permissions:resources.automation.workflow.tooltip')"
+            :title="w.meta.name || w.handle || w.workflowID"
+            :target="w.meta.name || w.handle || w.workflowID"
+            :resource="`corteza::automation:workflow/${w.workflowID}`"
+            :button-label="$t('permissions:ui.label')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="w.canDeleteWorkflow && !w.deletedAt"

@@ -68,6 +68,7 @@ export default {
     ...mapGetters({
       getPageByID: 'page/getByID',
       getModuleByID: 'module/getByID',
+      updateRecordSet: 'record/updateRecords',
     }),
 
     dialogClass () {
@@ -133,6 +134,7 @@ export default {
           .recordRead({ namespaceID, moduleID, recordID })
           .then(record => {
             this.record = new compose.Record(this.module, record)
+            this.updateRecordSet(this.record)
           })
           .catch(this.toastErrorHandler(this.$t('notification:record.loadFailed')))
       } else if (this.module) {

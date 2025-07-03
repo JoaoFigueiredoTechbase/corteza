@@ -6,6 +6,8 @@ import './console-splash'
 import './plugins'
 import './mixins'
 import './components'
+import './filters'
+
 import store from './store'
 import router from './router'
 
@@ -23,11 +25,24 @@ export default (options = {}) => {
     }),
 
     async created () {
-      this.$i18n.i18next.on('loaded', () => {
+      this.$i18n.i18next.on('initialized', () => {
         this.i18nLoaded = true
       })
 
-      return this.$auth.vue(this).handle().then(({ user }) => {
+      this.websocket()
+
+      return this.$auth.vue(this).handle().then(async ({ user }) => {
+        // switch the favicon based on the settings
+        await this.$Settings.init({ api: this.$SystemAPI }).then(() => {
+          const icon = this.$Settings.attachment('ui.iconLogo') || '/icon.svg'
+
+          const favicon = document.getElementById('favicon')
+
+          if (favicon) {
+            favicon.href = icon
+          }
+        })
+
         // switch the page directionality on body based on language
         document.body.setAttribute('dir', this.textDirectionality(user.meta.preferredLanguage))
 
@@ -44,23 +59,22 @@ export default (options = {}) => {
 
         this.$store.dispatch('wfPrompts/update')
 
-        return this.$Settings.init({ api: this.$SystemAPI }).finally(() => {
-          this.websocket()
+        // Initialize notifications
+        this.$store.dispatch('notifications/fetchNotifications')
 
-          this.loaded = true
+        this.loaded = true
 
-          // This bit removes code from the query params
-          //
-          // Vue router can't be used here because when on any child route there is no
-          // guarantee that the route has loaded and so it may redirect us to the root page.
-          //
-          // @todo dig a bit deeper if there is a better vue-like solution; atm none were ok.
-          const url = new URL(window.location.href)
-          if (url.searchParams.get('code')) {
-            url.searchParams.delete('code')
-            window.location.replace(url.toString())
-          }
-        })
+        // This bit removes code from the query params
+        //
+        // Vue router can't be used here because when on any child route there is no
+        // guarantee that the route has loaded and so it may redirect us to the root page.
+        //
+        // @todo dig a bit deeper if there is a better vue-like solution; atm none were ok.
+        const url = new URL(window.location.href)
+        if (url.searchParams.get('code')) {
+          url.searchParams.delete('code')
+          window.location.replace(url.toString())
+        }
       }).catch((err) => {
         if (err instanceof Error && err.message === 'Unauthenticated') {
           // user not logged-in,
@@ -95,6 +109,22 @@ export default (options = {}) => {
               this.$store.dispatch('wfPrompts/clear', msg['@value'])
               break
 
+            case 'notification':
+              this.$store.dispatch('notifications/addNotification', msg['@value'])
+              break
+
+            case 'notification.read':
+              this.$store.dispatch('notifications/updateReadNotification', msg['@value'])
+              break
+
+            case 'notification.read.all':
+              this.$store.dispatch('notifications/updateAllReadNotifications', msg['@value'])
+              break
+
+            case 'notification.delete':
+              this.$store.dispatch('notifications/removeNotification', msg['@value'])
+              break
+
             case 'error':
               this.toastDanger('Websocket message with error', msg['@value'])
           }
@@ -109,6 +139,8 @@ export default (options = {}) => {
       'app',
       'layout',
       'navigation',
+      'notification',
+      'notifications',
     ),
 
     // Any additional options we want to merge

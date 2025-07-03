@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	automationEnvoy "github.com/cortezaproject/corteza/server/automation/envoy"
 	"github.com/cortezaproject/corteza/server/compose/dalutils"
 	composeEnvoy "github.com/cortezaproject/corteza/server/compose/envoy"
 	"github.com/cortezaproject/corteza/server/compose/rest/request"
@@ -19,14 +19,11 @@ import (
 	"github.com/cortezaproject/corteza/server/pkg/api"
 	"github.com/cortezaproject/corteza/server/pkg/corredor"
 	"github.com/cortezaproject/corteza/server/pkg/dal"
-	"github.com/cortezaproject/corteza/server/pkg/envoy"
-	"github.com/cortezaproject/corteza/server/pkg/envoy/csv"
-	envoyJson "github.com/cortezaproject/corteza/server/pkg/envoy/json"
-	estore "github.com/cortezaproject/corteza/server/pkg/envoy/store"
 	"github.com/cortezaproject/corteza/server/pkg/envoyx"
 	"github.com/cortezaproject/corteza/server/pkg/filter"
 	"github.com/cortezaproject/corteza/server/pkg/revisions"
 	"github.com/cortezaproject/corteza/server/store"
+	systemEnvoy "github.com/cortezaproject/corteza/server/system/envoy"
 	"github.com/spf13/cast"
 )
 
@@ -57,8 +54,9 @@ type (
 	}
 
 	recordSetPayload struct {
-		Filter *types.RecordFilter `json:"filter,omitempty"`
-		Set    []*recordPayload    `json:"set"`
+		Filter    *types.RecordFilter            `json:"filter,omitempty"`
+		Summaries map[string]types.RecordSummary `json:"summaries,omitempty"`
+		Set       []*recordPayload               `json:"set"`
 	}
 
 	Record struct {
@@ -115,6 +113,16 @@ func (ctrl *Record) List(ctx context.Context, r *request.RecordList) (interface{
 		}
 	)
 
+	if r.Summaries != "" {
+		var aux []types.RecordSummaryReq
+		err = json.Unmarshal([]byte(r.Summaries), &aux)
+		if err != nil {
+			return nil, err
+		}
+
+		f.Summaries = aux
+	}
+
 	if err = f.Sort.Set(r.Sort); err != nil {
 		return nil, err
 	}
@@ -145,9 +153,9 @@ func (ctrl *Record) List(ctx context.Context, r *request.RecordList) (interface{
 		return nil, err
 	}
 
-	rr, filter, err := ctrl.record.Find(ctx, f)
+	rr, smr, filter, err := ctrl.record.FindN(ctx, f)
 
-	return ctrl.makeFilterPayload(ctx, m, rr, &filter, err)
+	return ctrl.makeFilterPayloadN(ctx, m, rr, smr, &filter, err)
 }
 
 func (ctrl *Record) Read(ctx context.Context, r *request.RecordRead) (interface{}, error) {
@@ -423,6 +431,17 @@ func (ctrl *Record) ImportRun(ctx context.Context, r *request.RecordImportRun) (
 			}
 		}
 
+		for i, p := range importSession.Providers {
+			err = p.SetConfigs(map[string]any{
+				"multiValueDelimiter": r.MultiValueDelimiter,
+			})
+			if err != nil {
+				return
+			}
+
+			importSession.Providers[i] = p
+		}
+
 		sa := time.Now()
 		importSession.Progress.StartedAt = &sa
 
@@ -685,8 +704,6 @@ func (ctrl *Record) Export(ctx context.Context, r *request.RecordExport) (interf
 			NamespaceID: r.NamespaceID,
 			ModuleID:    r.ModuleID,
 		}
-		f = estore.NewDecodeFilter().
-			ComposeRecord(rf)
 
 		contentType string
 	)
@@ -710,28 +727,27 @@ func (ctrl *Record) Export(ctx context.Context, r *request.RecordExport) (interf
 			fx[f] = true
 		}
 
-		sd := estore.Decoder()
-		nn, err := sd.Decode(ctx, service.DefaultStore, dal.Service(), f)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to fetch records: %s", err.Error()), http.StatusBadRequest)
-		}
-
-		var encoder envoy.PrepareEncodeStreamer
+		envoySvc := envoyx.New()
+		envoySvc.AddDecoder(envoyx.DecodeTypeStore,
+			composeEnvoy.StoreDecoder{},
+			systemEnvoy.StoreDecoder{},
+			automationEnvoy.StoreDecoder{},
+		)
 
 		switch strings.ToLower(r.Ext) {
 		case "json", "jsonl", "ldjson", "ndjson":
 			contentType = "application/jsonl"
-			encoder = envoyJson.NewBulkRecordEncoder(&envoyJson.EncoderConfig{
-				Fields:   fx,
-				Timezone: r.Timezone,
-			})
+			envoySvc.AddEncoder(
+				envoyx.EncodeTypeIo,
+				composeEnvoy.JsonlEncoder{},
+			)
 
 		case "csv":
 			contentType = "text/csv"
-			encoder = csv.NewBulkRecordEncoder(&csv.EncoderConfig{
-				Fields:   fx,
-				Timezone: r.Timezone,
-			})
+			envoySvc.AddEncoder(
+				envoyx.EncodeTypeIo,
+				composeEnvoy.CsvEncoder{},
+			)
 
 		default:
 			http.Error(w, "unsupported format ("+r.Ext+")", http.StatusBadRequest)
@@ -741,27 +757,77 @@ func (ctrl *Record) Export(ctx context.Context, r *request.RecordExport) (interf
 		w.Header().Add("Content-Type", contentType)
 		w.Header().Add("Content-Disposition", "attachment"+filename)
 
-		bld := envoy.NewBuilder(encoder)
-		g, err := bld.Build(ctx, nn...)
+		var nodes envoyx.NodeSet
+		nodes, _, err = envoySvc.Decode(ctx, envoyx.DecodeParams{
+			Type: envoyx.DecodeTypeStore,
+			Params: map[string]any{
+				"storer": service.DefaultStore,
+				"dal":    dal.Service(),
+			},
+			Filter: map[string]envoyx.ResourceFilter{
+				composeEnvoy.ComposeRecordDatasourceAuxType: {
+					Refs: map[string]envoyx.Ref{
+						"NamespaceID": {
+							ResourceType: types.NamespaceResourceType,
+							Identifiers:  envoyx.MakeIdentifiers(r.NamespaceID),
+							Scope: envoyx.Scope{
+								ResourceType: types.NamespaceResourceType,
+								Identifiers:  envoyx.MakeIdentifiers(r.NamespaceID)},
+						},
+						"ModuleID": {
+							ResourceType: types.ModuleResourceType,
+							Identifiers:  envoyx.MakeIdentifiers(r.ModuleID),
+							Scope: envoyx.Scope{
+								ResourceType: types.NamespaceResourceType,
+								Identifiers:  envoyx.MakeIdentifiers(r.NamespaceID),
+							},
+						},
+					},
+					Scope: envoyx.Scope{
+						ResourceType: types.NamespaceResourceType,
+						Identifiers:  envoyx.MakeIdentifiers(r.NamespaceID),
+					},
+				},
+			},
+		})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
-		err = envoy.Encode(ctx, g, encoder)
+		var gg *envoyx.DepGraph
+		gg, err = envoySvc.Bake(ctx, envoyx.EncodeParams{
+			Type: envoyx.EncodeTypeStore,
+			Params: map[string]any{
+				"storer": service.DefaultStore,
+				"dal":    dal.Service(),
+			},
+		}, nil, nodes...)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		ss := encoder.Stream()
 
-		// Find only the stream we are interested in
-		for _, s := range ss {
-			if s.Resource == types.RecordResourceType {
-				io.Copy(w, s.Source)
-			}
+		mapping := make([]envoyx.MapEntry, 0, len(r.Fields))
+		for _, f := range r.Fields {
+			mapping = append(mapping, envoyx.MapEntry{
+				Column: f,
+				Field:  f,
+			})
+		}
+
+		err = envoySvc.Encode(ctx, envoyx.EncodeParams{
+			Type: envoyx.EncodeTypeIo,
+			Params: map[string]any{
+				"writer":              w,
+				"multiValueDelimiter": r.MultiValueDelimiter,
+				"wrapMultiValue":      r.WrapMultiValue,
+			},
+			FieldMapping: mapping,
+		}, gg)
+		if err != nil {
+			return
 		}
 
 		err = ctrl.record.RecordExport(ctx, *rf)
-
 	}, err
 }
 
@@ -904,12 +970,12 @@ func (ctrl Record) makePayload(ctx context.Context, m *types.Module, r *types.Re
 	}, nil
 }
 
-func (ctrl Record) makeFilterPayload(ctx context.Context, m *types.Module, rr types.RecordSet, f *types.RecordFilter, err error) (*recordSetPayload, error) {
+func (ctrl Record) makeFilterPayloadN(ctx context.Context, m *types.Module, rr types.RecordSet, smr map[string]types.RecordSummary, f *types.RecordFilter, err error) (*recordSetPayload, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	modp := &recordSetPayload{Filter: f, Set: make([]*recordPayload, len(rr))}
+	modp := &recordSetPayload{Filter: f, Summaries: smr, Set: make([]*recordPayload, len(rr))}
 
 	for i := range rr {
 		modp.Set[i], _ = ctrl.makePayload(ctx, m, rr[i], nil, nil)

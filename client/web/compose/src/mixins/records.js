@@ -9,6 +9,9 @@ export default {
 
       fields.filter(c => c.kind === 'Record').forEach(f => {
         const { moduleID } = f.options || {}
+
+        if (!moduleID) return
+
         if (!moduleRecords[moduleID]) {
           moduleRecords[moduleID] = new Set()
         }

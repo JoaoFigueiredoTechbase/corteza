@@ -298,18 +298,16 @@
                 label-class="text-primary mb-1"
               >
                 <c-form-table-wrapper
+                  :loading="fetchingRoles"
                   :labels="{
                     addButton: $t('general:label.add')
                   }"
                   @add-item="addFilterPreset"
                 >
-                  <b-spinner v-if="fetchingRoles" />
-
                   <b-table-simple
-                    v-else
                     borderless
                     small
-                    responsive="lg"
+                    responsive
                     class="mb-2"
                   >
                     <draggable
@@ -364,11 +362,11 @@
                           style="min-width: 200px;"
                         >
                           <c-input-role
-                            :value="getFilterRoles(filter)"
+                            :value="getResolvedRoles(filter)"
                             :placeholder="$t('recordList.filter.role.placeholder')"
                             :visible="isRoleVisible"
                             multiple
-                            @input="onFilterRoleChange(filter, $event)"
+                            @input="onRoleChange(filter, $event)"
                           />
                         </b-td>
 
@@ -541,6 +539,110 @@
                   :labels="checkboxLabel"
                 />
               </b-form-group>
+            </b-col>
+          </b-row>
+        </div>
+
+        <hr>
+
+        <div class="px-3">
+          <h5 class="mb-3">
+            {{ $t('recordList.summaries.label') }}
+          </h5>
+
+          <b-row>
+            <b-col cols="12">
+              <b-form-group
+                :label="$t('recordList.summaries.customSummaries.description')"
+                label-class="text-primary"
+              >
+                <c-input-checkbox
+                  v-model="options.customSummaries"
+                  switch
+                  :labels="checkboxLabel"
+                />
+              </b-form-group>
+            </b-col>
+
+            <b-col cols="12">
+              <c-form-table-wrapper
+                :loading="fetchingRoles"
+                :labels="{
+                  addButton: $t('general:label.add')
+                }"
+                @add-item="addSummary"
+              >
+                <b-table-simple
+                  borderless
+                  small
+                  responsive
+                  class="mb-2"
+                >
+                  <draggable
+                    :list.sync="options.summaries"
+                    group="sort"
+                    handle=".grab"
+                    tag="tbody"
+                  >
+                    <b-tr
+                      v-for="(summary, index) in options.summaries"
+                      :key="index"
+                    >
+                      <b-td
+                        class="grab text-center align-middle"
+                        style="width: 40px;"
+                      >
+                        <font-awesome-icon
+                          :icon="['fas', 'bars']"
+                          class="text-secondary"
+                        />
+                      </b-td>
+
+                      <b-td style="min-width: 200px;">
+                        <b-form-input
+                          v-model="summary.label"
+                          :placeholder="$t('recordList.summaries.param.label.placeholder')"
+                        />
+                      </b-td>
+
+                      <b-td style="min-width: 200px;">
+                        <c-input-select
+                          v-model="summary.field"
+                          :options="recordListModuleFields"
+                          :placeholder="$t('recordList.summaries.param.field.placeholder')"
+                          :reduce="field => field.name"
+                        />
+                      </b-td>
+
+                      <b-td style="min-width: 200px;">
+                        <c-input-select
+                          v-model="summary.metric"
+                          :options="summaryMetrics"
+                          :placeholder="$t('recordList.summaries.param.metric.placeholder')"
+                          :reduce="m => m.value"
+                        />
+                      </b-td>
+
+                      <b-td style="min-width: 200px;">
+                        <c-input-role
+                          :value="getResolvedRoles(summary)"
+                          :placeholder="$t('recordList.summaries.param.role.placeholder')"
+                          :visible="isRoleVisible"
+                          multiple
+                          @input="onRoleChange(summary, $event)"
+                        />
+                      </b-td>
+
+                      <b-td class="text-right align-middle">
+                        <c-input-confirm
+                          show-icon
+                          @confirmed="options.summaries.splice(index, 1)"
+                        />
+                      </b-td>
+                    </b-tr>
+                  </draggable>
+                </b-table-simple>
+              </c-form-table-wrapper>
             </b-col>
           </b-row>
         </div>
@@ -903,13 +1005,6 @@ export default {
       ]
     },
 
-    textWrapDisplayOptions () {
-      return [
-        { value: 'text-wrap', text: this.$t('recordList.record.wrapText') },
-        { value: 'text-nowrap', text: this.$t('recordList.record.showFullText') },
-      ]
-    },
-
     recordListModule () {
       if (this.options.moduleID !== NoID) {
         return this.getModuleByID(this.options.moduleID)
@@ -970,6 +1065,18 @@ export default {
     isInlineEditorAllowed () {
       return this.recordListModule && (this.onRecordPage || this.options.editable)
     },
+
+    summaryMetrics () {
+      return [
+        { value: 'sum', label: this.$t('recordList.summaries.metrics.sum.label') },
+        { value: 'min', label: this.$t('recordList.summaries.metrics.min.label') },
+        { value: 'max', label: this.$t('recordList.summaries.metrics.max.label') },
+        { value: 'avg', label: this.$t('recordList.summaries.metrics.avg.label') },
+        { value: 'emptyCount', label: this.$t('recordList.summaries.metrics.emptyCount.label') },
+        { value: 'notEmptyCount', label: this.$t('recordList.summaries.metrics.notEmptyCount.label') },
+        { value: 'uniqueCount', label: this.$t('recordList.summaries.metrics.uniqueCount.label') },
+      ]
+    },
   },
 
   watch: {
@@ -1025,15 +1132,31 @@ export default {
 
   methods: {
     fetchRoles () {
-      if (!this.options.filterPresets.length) {
+      const { filterPresets = [], summaries = [] } = this.options || {}
+
+      if (!filterPresets.length && !summaries.length) {
         return
       }
 
       this.fetchingRoles = true
 
-      const rolesToResolve = this.options.filterPresets.reduce((acc, { roles }) => {
-        return acc.concat(roles)
-      }, [])
+      const rolesToResolve = []
+
+      filterPresets.forEach(preset => {
+        preset.roles.forEach(r => {
+          if (!rolesToResolve.includes(r)) {
+            rolesToResolve.push(r)
+          }
+        })
+      })
+
+      summaries.forEach(summary => {
+        summary.roles.forEach(r => {
+          if (!rolesToResolve.includes(r)) {
+            rolesToResolve.push(r)
+          }
+        })
+      })
 
       this.$SystemAPI.roleList({ roleID: rolesToResolve }).then(({ set }) => {
         set.forEach(role => {
@@ -1044,18 +1167,22 @@ export default {
       })
     },
 
-    onFilterRoleChange (filter, roles) {
-      roles.forEach(r => {
+    onRoleChange (resource, value) {
+      value.forEach(r => {
         if (!this.resolvedRoles[r.roleID]) {
           this.resolvedRoles[r.roleID] = r
         }
       })
 
-      filter.roles = roles.map(({ roleID }) => roleID)
+      resource.roles = value.map(r => r.roleID)
     },
 
-    getFilterRoles (filter) {
-      return filter.roles.map(roleID => this.resolvedRoles[roleID])
+    getResolvedRoles ({ roles = [] }) {
+      return roles.map(roleID => {
+        console.log('roleID', roleID)
+        console.log('resolvedRoles', this.resolvedRoles[roleID])
+        return this.resolvedRoles[roleID]
+      })
     },
 
     isRoleVisible ({ meta }) {
@@ -1087,6 +1214,15 @@ export default {
       if (this.options.textStyles.wrappedFields) {
         this.options.textStyles.wrappedFields = fields.map(f => f.fieldID && f.fieldID !== NoID ? f.fieldID : f.name).filter(f => !!f)
       }
+    },
+
+    addSummary () {
+      this.options.summaries.push({
+        label: '',
+        field: '',
+        metric: '',
+        roles: [],
+      })
     },
   },
 }

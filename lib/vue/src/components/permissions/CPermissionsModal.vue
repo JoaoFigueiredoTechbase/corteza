@@ -211,7 +211,6 @@
           :disabled="!!add.roleID.length"
           :options="userOptions"
           :get-option-label="getUserLabel"
-          :get-option-key="getOptionUserKey"
           :placeholder="labels.add.user.placeholder"
           :filterable="false"
           @search="searchUsers"

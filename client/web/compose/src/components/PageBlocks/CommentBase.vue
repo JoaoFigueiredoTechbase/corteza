@@ -96,7 +96,9 @@
     </template>
   </wrap>
 </template>
+
 <script>
+import axios from 'axios'
 import { mapGetters } from 'vuex'
 import base from './base'
 import FieldViewer from 'corteza-webapp-compose/src/components/ModuleFields/Viewer'
@@ -250,10 +252,7 @@ export default {
     createEvents () {
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$on('refetch-records', this.refresh)
-      }
+      this.$root.$on('refetch-records', this.refresh)
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
@@ -273,8 +272,8 @@ export default {
       return user.name || user.handle || user.email || ''
     },
 
-    refreshOnRelatedRecordsUpdate ({ moduleID, notPageID }) {
-      if (this.options.moduleID === moduleID && this.page.pageID !== notPageID) {
+    refreshOnRelatedRecordsUpdate ({ moduleID } = {}) {
+      if (this.options.moduleID === moduleID) {
         this.refresh()
       }
     },
@@ -356,13 +355,17 @@ export default {
       }
 
       if (this.options.filter) {
-        return evaluatePrefilter(this.options.filter, {
-          record: this.record,
-          user: this.$auth.user || {},
-          recordID: (this.record || {}).recordID || NoID,
-          ownerID: (this.record || {}).ownedBy || NoID,
-          userID: (this.$auth.user || {}).userID || NoID,
-        })
+        try {
+          return evaluatePrefilter(this.options.filter, {
+            record: this.record,
+            user: this.$auth.user || {},
+            recordID: (this.record || {}).recordID || NoID,
+            ownerID: (this.record || {}).ownedBy || NoID,
+            userID: (this.$auth.user || {}).userID || NoID,
+          })
+        } catch (e) {
+          return e
+        }
       }
 
       return ''
@@ -379,12 +382,14 @@ export default {
       if (module.moduleID !== this.options.moduleID) {
         throw Error('Module incompatible, module mismatch')
       }
+
       if (this.referenceField) {
         if (filter.length) {
           filter += ' AND '
         }
         filter += `${this.referenceField.name} = '${this.reference}' `
       }
+
       const { positionField: sort } = this.options
       const { moduleID, namespaceID } = module
 
@@ -395,12 +400,16 @@ export default {
         sort,
       }
 
-      const { response, cancel } = this.$ComposeAPI
-        .recordListCancellable(params)
+      const { response, cancel } = this.$ComposeAPI.recordListCancellable(params)
       this.abortableRequests.push(cancel)
 
-      return response()
-        .then(({ set }) => set.map(r => Object.freeze(new compose.Record(module, r))))
+      return response().then(({ set = [] }) => {
+        return set.map(r => Object.freeze(new compose.Record(module, r)))
+      }).catch(e => {
+        if (!axios.isCancel(e)) {
+          console.error(e)
+        }
+      })
     },
 
     setDefaultValues () {
@@ -419,10 +428,7 @@ export default {
     destroyEvents () {
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
-
-      if (!this.isRecordPage) {
-        this.$root.$off('refetch-records', this.refresh)
-      }
+      this.$root.$off('refetch-records', this.refresh)
     },
   },
 }

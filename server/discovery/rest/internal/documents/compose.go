@@ -3,6 +3,7 @@ package documents
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	cmpService "github.com/cortezaproject/corteza/server/compose/service"
 	cmpTypes "github.com/cortezaproject/corteza/server/compose/types"
@@ -67,6 +68,10 @@ type (
 
 var (
 	modulePages map[uint64]pageDetail
+)
+
+const (
+	maxValueLength = 512
 )
 
 func ComposeResources() *composeResources {
@@ -166,9 +171,16 @@ func (d composeResources) Namespaces(ctx context.Context, limit uint, cur string
 					Name:        ns.Name,
 					Handle:      nsSlug,
 				},
+
+				CatchAll: []any{nsID, ns.Name, nsSlug},
 			}
 
-			doc.Security.AllowedRoles, doc.Security.DeniedRoles = d.rbac.SignificantRoles(ns, "read")
+			allowedRoles, deniedRoles := d.rbac.SignificantRoles(ns, "read")
+
+			doc.Security = append(doc.Security, docSecurity{
+				AllowedRoles: stringifyUints64(allowedRoles),
+				DeniedRoles:  stringifyUints64(deniedRoles),
+			})
 
 			rsp.Documents[i].Source = doc
 		}
@@ -247,6 +259,8 @@ func (d composeResources) Modules(ctx context.Context, namespaceID uint64, limit
 				Updated: makePartialChange(mod.UpdatedAt),
 				Deleted: makePartialChange(mod.DeletedAt),
 
+				CatchAll: []any{mod.ID, mod.Name, mod.Handle},
+
 				Namespace: nsPartial,
 				Module: docPartialComposeModule{
 					ModuleID: mod.ID,
@@ -255,7 +269,22 @@ func (d composeResources) Modules(ctx context.Context, namespaceID uint64, limit
 				},
 			}
 
-			doc.Security.AllowedRoles, doc.Security.DeniedRoles = d.rbac.SignificantRoles(mod, "read")
+			for _, f := range mod.Fields {
+				if f.Name != "" {
+					doc.CatchAll = append(doc.CatchAll, f.Name)
+				}
+
+				if f.Label != "" {
+					doc.CatchAll = append(doc.CatchAll, f.Label)
+				}
+			}
+
+			allowedRoles, deniedRoles := d.rbac.SignificantRoles(mod, "read")
+
+			doc.Security = append(doc.Security, docSecurity{
+				AllowedRoles: stringifyUints64(allowedRoles),
+				DeniedRoles:  stringifyUints64(deniedRoles),
+			})
 
 			rsp.Documents[i].Source = doc
 		}
@@ -376,9 +405,14 @@ func (d composeResources) Records(ctx context.Context, namespaceID, moduleID uin
 			}
 
 			// Values and value labels
-			doc.Values, doc.ValueLabels = d.recordValues(ctx, rec, mod.Fields)
+			doc.Values, doc.ValueLabels, doc.CatchAll = d.recordValues(ctx, rec, mod.Fields)
 
-			doc.Security.AllowedRoles, doc.Security.DeniedRoles = d.rbac.SignificantRoles(rec, "read")
+			allowedRoles, deniedRoles := d.rbac.SignificantRoles(rec, "read")
+
+			doc.Security = append(doc.Security, docSecurity{
+				AllowedRoles: stringifyUints64(allowedRoles),
+				DeniedRoles:  stringifyUints64(deniedRoles),
+			})
 
 			rsp.Documents[i].Source = doc
 		}
@@ -387,14 +421,15 @@ func (d composeResources) Records(ctx context.Context, namespaceID, moduleID uin
 	}()
 }
 
-func (d composeResources) recordValues(ctx context.Context, rec *cmpTypes.Record, ff cmpTypes.ModuleFieldSet) (map[string][]interface{}, map[string]string) {
+func (d composeResources) recordValues(ctx context.Context, rec *cmpTypes.Record, ff cmpTypes.ModuleFieldSet) (map[string][]interface{}, map[string]string, []any) {
 	var (
-		rval   = make(map[string][]interface{})
-		fields = make(map[string]string)
+		rval     = make(map[string][]interface{})
+		fields   = make(map[string]string)
+		catchAll = make([]any, 0, len(rec.Values))
 	)
 
 	if rec.GetModule() == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	_ = rec.GetModule().Fields.Walk(func(f *cmpTypes.ModuleField) error {
@@ -415,7 +450,9 @@ func (d composeResources) recordValues(ctx context.Context, rec *cmpTypes.Record
 		for _, val := range rv {
 			// refs needs to be casted to string (json & unsigned 64-bit integers)!
 			if f.IsRef() {
-				vv = append(vv, fmt.Sprintf("%d", val.Ref))
+				aux := fmt.Sprintf("%d", val.Ref)
+				vv = append(vv, aux)
+				catchAll = append(catchAll, aux)
 				continue
 			}
 
@@ -423,6 +460,7 @@ func (d composeResources) recordValues(ctx context.Context, rec *cmpTypes.Record
 				vv = append(vv, tmp)
 			}
 
+			catchAll = append(catchAll, clampString(val.Value, maxValueLength))
 		}
 
 		if len(vv) == 0 {
@@ -437,7 +475,7 @@ func (d composeResources) recordValues(ctx context.Context, rec *cmpTypes.Record
 		return nil
 	})
 
-	return rval, fields
+	return rval, fields, catchAll
 }
 
 // getUrlToResource construct page url for compose resources
@@ -483,4 +521,19 @@ func (d composeResources) getUserInfo(ctx context.Context, ID uint64, users map[
 		}
 		return u, users, err
 	}
+}
+
+func stringifyUints64(uints []uint64) []string {
+	strings := make([]string, len(uints))
+	for i, num := range uints {
+		strings[i] = strconv.FormatUint(num, 10)
+	}
+	return strings
+}
+
+func clampString(input string, maxLength int) string {
+	if len(input) > maxLength {
+		return input[:maxLength]
+	}
+	return input
 }

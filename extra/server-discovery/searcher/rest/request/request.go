@@ -1,8 +1,9 @@
 package request
 
 import (
-	"github.com/cortezaproject/corteza/server/pkg/payload"
 	"net/http"
+
+	"github.com/cortezaproject/corteza/server/pkg/payload"
 )
 
 type (
@@ -10,6 +11,7 @@ type (
 		Q             string
 		From          int
 		Size          int
+		Rt            []string
 		NamespaceAggs []string
 		ModuleAggs    []string
 		DumpRaw       string
@@ -28,6 +30,7 @@ func (r SearchResources) Auditable() map[string]interface{} {
 		"from":          r.From,
 		"size":          r.Size,
 		"namespaceAggs": r.NamespaceAggs,
+		"resourceTypes": r.Rt,
 		"moduleAggs":    r.ModuleAggs,
 		"dump":          r.DumpRaw,
 	}
@@ -43,6 +46,10 @@ func (r SearchResources) GetSize() int {
 
 func (r SearchResources) GetFrom() int {
 	return r.From
+}
+
+func (r SearchResources) GetResourceTypes() []string {
+	return r.Rt
 }
 
 func (r SearchResources) GetNamespaceAggs() []string {
@@ -79,6 +86,18 @@ func (r *SearchResources) Fill(req *http.Request) (err error) {
 
 		if val, ok := tmp["from"]; ok && len(val) > 0 {
 			r.From, err = payload.ParseInt(val[0]), nil
+			if err != nil {
+				return err
+			}
+		}
+
+		if val, ok := tmp["resourceTypes[]"]; ok {
+			r.Rt, err = val, nil
+			if err != nil {
+				return err
+			}
+		} else if val, ok = tmp["resourceTypes"]; ok {
+			r.Rt, err = val, nil
 			if err != nil {
 				return err
 			}

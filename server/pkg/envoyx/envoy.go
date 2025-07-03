@@ -75,16 +75,17 @@ type (
 	DecodeParams struct {
 		Type   decodeType
 		Params map[string]any
-		Config DecoderConfig
+		Config map[string]any
 		Filter map[string]ResourceFilter
 	}
-	DecoderConfig struct{}
 
 	EncodeParams struct {
 		Type    encodeType
 		Params  map[string]any
 		Envoy   EnvoyConfig
 		Encoder EncoderConfig
+
+		FieldMapping []MapEntry
 
 		// @note these are only used by records since v1 did just that
 		// @todo make these more expanded

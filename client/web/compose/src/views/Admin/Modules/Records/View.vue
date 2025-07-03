@@ -103,7 +103,7 @@
 <script>
 import axios from 'axios'
 import { isEqual } from 'lodash'
-import { mapGetters } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 import RecordToolbar from 'corteza-webapp-compose/src/components/Common/RecordToolbar'
 import record from 'corteza-webapp-compose/src/mixins/record'
 import { compose, NoID } from '@cortezaproject/corteza-js'
@@ -305,6 +305,10 @@ export default {
   },
 
   methods: {
+    ...mapActions({
+      updateRecordSet: 'record/updateRecords',
+    }),
+
     createEvents () {
       this.$root.$on('refetch-records', this.refresh)
     },
@@ -353,8 +357,11 @@ export default {
 
         return response()
           .then(record => {
+            record = new compose.Record(module, record)
+            this.updateRecordSet(record)
+
             return new Promise(resolve => setTimeout(resolve, 300)).then(() => {
-              return new compose.Record(module, record)
+              return record
             })
           })
           .catch((e) => {

@@ -74,7 +74,7 @@
         v-model="modal.open"
         :title="modal.title"
         scrollable
-        size="lg"
+        size="xl"
         title-class="text-capitalize"
         @ok="saveSettings()"
       >
@@ -97,15 +97,13 @@
           </b-input-group>
         </b-form-group>
 
-        <div>
-          <div class="mb-2">
-            <h5>
-              {{ $t('code-snippets.add') }}
-            </h5>
-            <span class="text-muted">
-              {{ $t('code-snippets.form.value.description') }}
-            </span>
-          </div>
+        <b-form-group
+          :label="$t('code-snippets.form.code.label')"
+          label-class="text-primary"
+        >
+          <small class="text-muted">
+            {{ $t('code-snippets.form.code.description') }}
+          </small>
 
           <c-ace-editor
             v-model="modal.data.script"
@@ -116,7 +114,7 @@
             :border="false"
             :show-popout="false"
           />
-        </div>
+        </b-form-group>
 
         <template #modal-footer="{ ok, cancel }">
           <c-input-confirm
@@ -196,7 +194,6 @@ export default {
       return [
         { key: 'name', label: this.$t('code-snippets.table-headers.name') },
         { key: 'enabled', label: this.$t('code-snippets.table-headers.enabled'), thClass: 'text-center', tdClass: 'text-center' },
-        { key: 'script', label: this.$t('code-snippets.table-headers.script'), tdClass: 'text-break', thStyle: 'min-width: 25rem;' },
         { key: 'actions', label: '', thStyle: { 'min-width': '7rem' }, tdClass: 'text-right' },
       ]
     },

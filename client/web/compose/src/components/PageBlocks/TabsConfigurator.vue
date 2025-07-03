@@ -116,7 +116,7 @@
       @add-item="addTab"
     >
       <b-table-simple
-        responsive="lg"
+        responsive
         borderless
         small
       >

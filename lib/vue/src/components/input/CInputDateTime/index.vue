@@ -10,6 +10,8 @@
       :max="maxDate"
       :label-reset-button="labels.clear"
       :label-today-button="labels.today"
+      :locale="browserLocale"
+      :start-weekday="weekStartDay"
       label-help=""
       today-variant="info"
       selected-variant="extra-light"
@@ -28,6 +30,7 @@
       :placeholder="labels.none"
       :label-reset-button="labels.clear"
       :label-now-button="labels.now"
+      :locale="browserLocale"
       boundary="window"
       hide-header
       no-close-button
@@ -108,6 +111,20 @@ export default {
 
     maxDate () {
       return this.onlyPast ? new Date() : undefined
+    },
+
+    browserLocale () {
+      return navigator.language || navigator.languages?.[0] || 'en-US'
+    },
+
+    weekStartDay () {
+      const locale = new Intl.Locale(this.browserLocale)
+
+      if (locale.weekInfo && locale.weekInfo.firstDay !== undefined) {
+        return (locale.weekInfo.firstDay % 7)
+      }
+
+      return 0
     },
   },
 }

@@ -214,9 +214,7 @@ edit:
 
 federated: Federated
 forModule:
-  recordList: Record List for module
-  recordListPage: Record List page for module
-  recordPage: Record page for module
+  recordPage: '{{name}} - Record Page'
 general:
   fields: Module fields
   label:

@@ -307,11 +307,10 @@
             :description="$t('security.impersonateUser.description')"
             label-class="text-primary"
           >
-            <c-select-user
-              :user-i-d="resource.security.impersonateUser"
+            <c-input-user
+              v-model="resource.security.impersonateUser"
               :placeholder="$t('security.impersonateUser.placeholder')"
-              :clearable="false"
-              @input="onUpdateUser"
+              :clearable="true"
             />
           </b-form-group>
         </b-col>
@@ -502,11 +501,10 @@
 import { NoID } from '@cortezaproject/corteza-js'
 import { handle, components } from '@cortezaproject/corteza-vue'
 import CRolePicker from 'corteza-webapp-admin/src/components/CRolePicker'
-import CSelectUser from 'corteza-webapp-admin/src/components/Authclient/CSelectUser'
 import copy from 'copy-to-clipboard'
 import axios from 'axios'
 
-const { CInputDateTime } = components
+const { CInputDateTime, CInputUser } = components
 
 export default {
   name: 'CAuthclientEditorInfo',
@@ -518,7 +516,7 @@ export default {
 
   components: {
     CRolePicker,
-    CSelectUser,
+    CInputUser,
     CInputDateTime,
   },
 
@@ -625,10 +623,6 @@ export default {
   },
 
   methods: {
-    onUpdateUser (userID) {
-      this.resource.security.impersonateUser = userID
-    },
-
     onGrantChange (grant) {
       if (grant === 'client_credentials' && (!this.resource.security.impersonateUser || this.resource.security.impersonateUser === NoID)) {
         this.resource.security.impersonateUser = this.$auth.user.userID

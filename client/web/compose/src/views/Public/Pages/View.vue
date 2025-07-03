@@ -166,7 +166,9 @@ export default {
 
         if (!this.isRecordPage) {
           this.determineLayout().then(blocks => {
-            this.blocks = blocks
+            if (blocks) {
+              this.blocks = blocks
+            }
           }).finally(() => {
             this.processing = false
           })
@@ -176,7 +178,8 @@ export default {
         if (this.recordPaginationUsable) {
           this.setRecordPaginationUsable(false)
         } else {
-          this.clearRecordIDs()
+          this.clearRecordSet()
+          this.clearRecordPagination()
         }
       },
     },
@@ -210,10 +213,9 @@ export default {
   methods: {
     ...mapActions({
       setRecordPaginationUsable: 'ui/setRecordPaginationUsable',
-      clearRecordIDs: 'ui/clearRecordIDs',
+      clearRecordPagination: 'ui/clearRecordPagination',
       setPreviousPages: 'ui/setPreviousPages',
       pushPreviousPages: 'ui/pushPreviousPages',
-      clearRecordSet: 'record/clearSet',
       setPageHandle: 'ui/setPageHandle',
       setLayoutHandle: 'ui/setLayoutHandle',
       setRecordPageHandle: 'ui/setRecordPageHandle',

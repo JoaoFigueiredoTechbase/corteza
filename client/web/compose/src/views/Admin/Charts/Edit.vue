@@ -745,6 +745,8 @@ export default {
         this.chart = c
         this.initialChartState = this.chart.clone()
 
+        document.title = this.$t('general:label.app-name.chart.create')
+
         this.onEditReport(0)
       } else {
         this.loading = true
@@ -754,6 +756,8 @@ export default {
           // Make a copy so that we do not change store item by ref
           this.chart = chartConstructor(chart)
           this.initialChartState = this.chart.clone()
+
+          document.title = this.$t('general:label.app-name.chart.edit', { label: this.chart.name, interpolation: { escapeValue: false } })
 
           this.onEditReport(0)
         }).catch(e => {
@@ -827,6 +831,8 @@ export default {
           this.chart = chartConstructor(chart)
           this.initialChartState = this.chart.clone()
 
+          document.title = this.$t('general:label.app-name.chart.edit', { label: this.chart.name, interpolation: { escapeValue: false } })
+
           this.toastSuccess(this.$t('notification:chart.created'))
 
           toggleProcessing(false)
@@ -845,6 +851,8 @@ export default {
         this.updateChart(c).then((chart) => {
           this.chart = chartConstructor(chart)
           this.initialChartState = this.chart.clone()
+
+          document.title = this.$t('general:label.app-name.chart.edit', { label: this.chart.name, interpolation: { escapeValue: false } })
 
           this.toastSuccess(this.$t('notification:chart.updated'))
 

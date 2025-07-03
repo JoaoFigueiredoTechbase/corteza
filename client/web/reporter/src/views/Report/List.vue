@@ -113,17 +113,15 @@
             {{ $t('general:resourceList.clone') }}
           </b-dropdown-item-button>
 
-          <b-dropdown-item v-if="r.canGrant">
-            <c-permissions-button
-              :tooltip="$t('permissions:resources.system.report.tooltip')"
-              :title="r.meta.name || r.handle || r.reportID"
-              :target="r.meta.name || r.handle || r.reportID"
-              :resource="`corteza::system:report/${r.reportID}`"
-              class="text-dark d-print-none border-0"
-              :button-label="$t('permissions:ui.label')"
-              button-variant="dropdown-item p-0"
-            />
-          </b-dropdown-item>
+          <c-permissions-button
+            v-if="r.canGrant"
+            :tooltip="$t('permissions:resources.system.report.tooltip')"
+            :title="r.meta.name || r.handle || r.reportID"
+            :target="r.meta.name || r.handle || r.reportID"
+            :resource="`corteza::system:report/${r.reportID}`"
+            :button-label="$t('permissions:ui.label')"
+            class="dropdown-item"
+          />
 
           <c-input-confirm
             v-if="r.canDeleteReport"

@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+
 	"github.com/cortezaproject/corteza/extra/server-discovery/pkg/es/reindex"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
 	"go.uber.org/zap"
-	"net/http"
-	"net/url"
 )
 
 type (
@@ -28,7 +29,9 @@ type (
 	}
 
 	reqMapping struct {
-		// @todo settings
+		// @todo structure
+		Settings map[string]any `json:"settings,omitempty"`
+
 		Mappings struct {
 			Properties map[string]*property `json:"properties,omitempty"`
 		} `json:"mappings,omitempty"`
@@ -44,6 +47,8 @@ type (
 	property struct {
 		// https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-types.html
 		Type string `json:"type,omitempty"`
+
+		Analyzer string `json:"analyzer,omitempty"`
 
 		// Boost factor
 		// https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-boost.html
@@ -132,6 +137,24 @@ func (m *mapper) Mappings(ctx context.Context, esc *elasticsearch.Client, indexP
 		buf.Reset()
 		esReq := reqMapping{}
 		//esReq.Mappings.Properties = im.Properties
+		esReq.Settings = map[string]any{
+			"analysis": map[string]any{
+				"analyzer": map[string]any{
+					"edge_ngram_analyzer": map[string]any{
+						"tokenizer": "edge_ngram_tokenizer",
+						"filter":    []any{"lowercase"},
+					},
+				},
+				"tokenizer": map[string]any{
+					"edge_ngram_tokenizer": map[string]any{
+						"type":        "edge_ngram",
+						"min_gram":    2,
+						"max_gram":    15,
+						"token_chars": []any{"letter", "digit"},
+					},
+				},
+			},
+		}
 		esReq.Mappings.Properties = im.Mapping
 
 		if err = json.NewEncoder(buf).Encode(esReq); err != nil {
@@ -142,6 +165,7 @@ func (m *mapper) Mappings(ctx context.Context, esc *elasticsearch.Client, indexP
 		iLog := m.log.With(zap.String("name", index))
 
 		if e := indexMap[index]; e != nil {
+			// @todo upsert settings if not the same?
 			iLog.Info("index exists",
 				zap.String("health", e.Health),
 				zap.String("status", e.Status),

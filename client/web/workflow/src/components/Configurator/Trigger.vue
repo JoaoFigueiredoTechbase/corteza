@@ -41,7 +41,7 @@
             v-model="item.triggers.eventType"
             :options="eventTypeOptions"
             :get-option-key="getOptionEventTypeKey"
-            label="eventType"
+            :get-option-label="getEventTypeLabel"
             :reduce="e => e.eventType"
             :filter="evtTypeFilter"
             :placeholder="$t('steps:trigger.configurator.select-event-type')"
@@ -105,10 +105,7 @@
         >
           <template #cell(name)="{ item: c }">
             <samp v-if="c.name">
-              {{ c.name.split('.').map(s => {
-                return s[0].toUpperCase() + s.slice(1).toLowerCase()
-              }).join(' ')
-              }}
+              {{ getConstraintNameLabel(c.name) }}
             </samp>
           </template>
 
@@ -359,9 +356,7 @@ export default {
         if (!name.includes('*')) {
           cons.push({
             value: name,
-            text: name.split('.').map(s => {
-              return s[0].toUpperCase() + s.slice(1).toLowerCase()
-            }).join(' '),
+            text: this.getConstraintNameLabel(name),
           })
         }
 
@@ -412,9 +407,7 @@ export default {
           this.resourceTypes = [...resourceTypes].map(resourceType => {
             return {
               value: resourceType,
-              text: resourceType.split(':').map(s => {
-                return s[0].toUpperCase() + s.slice(1).toLowerCase()
-              }).join(' '),
+              text: this.getResourceTypeLabel(resourceType),
             }
           })
         })
@@ -469,11 +462,10 @@ export default {
     },
 
     updateDefaultName () {
-      let { resourceType, eventType } = this.item.triggers
+      const { resourceType, eventType } = this.item.triggers
 
       if (resourceType) {
-        eventType = eventType || ''
-        let value = [resourceType.split(':').join(' '), eventType].filter(v => v).join(' - ')
+        let value = [this.getResourceTypeLabel(resourceType), this.getEventTypeLabel({ eventType })].filter(v => v).join(' - ')
         value = value.charAt(0).toUpperCase() + value.slice(1)
         this.$emit('update-default-value', { value, force: !this.item.node.value })
       }
@@ -485,6 +477,36 @@ export default {
 
     getOptionEventTypeKey ({ eventType }) {
       return eventType
+    },
+
+    getResourceTypeLabel (resourceType) {
+      if (!resourceType) return ''
+
+      return resourceType
+        .split(':')
+        .map(part => part
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' '),
+        )
+        .join(' - ')
+    },
+
+    getEventTypeLabel ({ eventType = '' } = {}) {
+      if (!eventType) return ''
+
+      return eventType
+        .replace('on', '')
+        .split(/(?=[A-Z])/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+    },
+
+    getConstraintNameLabel (name) {
+      return name
+        .split('.')
+        .map(s => s[0].toUpperCase() + s.slice(1).toLowerCase())
+        .join(' ')
     },
   },
 }

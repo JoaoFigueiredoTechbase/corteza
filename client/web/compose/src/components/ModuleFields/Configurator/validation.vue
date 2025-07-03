@@ -61,7 +61,7 @@
         <field-expressions
           v-model="field.expressions.validators"
           v-slot="{ value }"
-          :no-prompt="v => v.error.length === 0 && v.test.length === 0"
+          :no-prompt="isValidatorEmpty"
           @remove="onRemove('validators', $event)"
         >
           <b-form-input
@@ -281,6 +281,10 @@ export default {
   methods: {
     isNew (value) {
       return !(value.validatorID && value.validatorID !== NoID)
+    },
+
+    isValidatorEmpty ({ error = '', test = '' } = {}) {
+      return error.length === 0 && test.length === 0
     },
 
     checkForFieldConstraint () {
