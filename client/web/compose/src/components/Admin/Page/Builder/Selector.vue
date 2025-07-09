@@ -201,6 +201,11 @@ export default {
           block: new compose.PageBlockNavigation(),
           image: images.Navigation,
         },
+        {
+          label: this.$t('helloBox.label'),
+          block: new compose.PageBlockHelloBox(),
+          image: images.HelloBox,
+        },
       ],
     }
   },

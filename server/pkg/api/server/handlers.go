@@ -21,6 +21,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
+
+	"github.com/cortezaproject/corteza/server/pkg/api/server/Yeastar"
 )
 
 // routes used when server is in waiting mode
@@ -120,6 +122,8 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 			metricsMount(r, httpOpt.MetricsUsername, httpOpt.MetricsPassword)
 		}
 
+		r.Post("/api/fetch-cdr", Yeastar.HandleFetchCDRs)
+		r.Get("/api/db-cdr", Yeastar.HandleCDRDB)
 	})
 
 	if httpOpt.BaseUrl != "/" {
@@ -178,7 +182,8 @@ func mountServiceHandlers(r chi.Router, log *zap.Logger, opt options.HttpServerO
 }
 
 // @todo move all these routes under /console and
-//       output JSON instead of plain raw text
+//
+//	output JSON instead of plain raw text
 func mountDebugHandler(r chi.Router, log *zap.Logger) {
 	log.Debug("route debugger enabled: /__routes")
 	r.Get("/__routes", debugRoutes(r))
