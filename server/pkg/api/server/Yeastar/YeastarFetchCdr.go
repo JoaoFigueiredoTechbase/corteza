@@ -219,11 +219,11 @@ func HandleCDRDB(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cdrs)
 
-	cdrJSON, err := json.MarshalIndent(cdrs, "", "  ")
-	if err != nil {
-		log.Printf("Failed to marshal CDRs: %v\n", err)
-	} else {
-		log.Printf("CDR loaded:\n%s\n", string(cdrJSON))
-	}
+	// cdrJSON, err := json.MarshalIndent(cdrs, "", "  ")
+	// if err != nil {
+	// 	log.Printf("Failed to marshal CDRs: %v\n", err)
+	// } else {
+	// 	log.Printf("CDR loaded:\n%s\n", string(cdrJSON))
+	// }
 
 }
