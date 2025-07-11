@@ -264,7 +264,7 @@ func SyncCDR() ([]CDR, error) {
 	}
 
 	// Step 3: Send to Corteza endpoint
-	cortezaURL := "http://172.27.0.20:18080/api/gateway/cdr/update"
+	cortezaURL := "http://localhost:80/api/gateway/cdr/sync"
 
 	payloadBytes, err := json.Marshal(cdrs)
 	if err != nil {

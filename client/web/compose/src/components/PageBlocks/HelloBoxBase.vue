@@ -1,5 +1,8 @@
 <template>
-  <wrap v-bind="$props" v-on="$listeners">
+  <wrap
+    v-bind="$props"
+    v-on="$listeners"
+  >
     <div class="cdr-container">
       <!-- Header Section -->
       <div class="header-section">
@@ -37,7 +40,9 @@
           </div>
 
           <div class="filter-group">
-            <select v-model="statusFilter" class="filter-select">
+            <select v-model="statusFilter"
+              class="filter-select"
+            >
               <option value="">All Status</option>
               <option value="ANSWERED">Answered</option>
               <option value="NO ANSWER">No Answer</option>
@@ -46,10 +51,18 @@
             </select>
 
             <select v-model="directionFilter" class="filter-select">
-              <option value="">All Directions</option>
-              <option value="Inbound">Inbound</option>
-              <option value="Outbound">Outbound</option>
-              <option value="Internal">Internal</option>
+              <option value="">
+                All Directions
+              </option>
+              <option value="Inbound">
+                Inbound
+              </option>
+              <option value="Outbound">
+                Outbound
+              </option>
+              <option value="Internal">
+                Internal
+              </option>
             </select>
           </div>
 
@@ -76,6 +89,12 @@
           <input v-model="dateTo" type="date" class="date-input">
           <input v-model="timeTo" type="time" class="time-input">
           <button class="btn btn-sm" @click="applyDateFilter">Apply</button>
+        </div>
+
+        <div class="button-box">
+          <button @click="handleClick">
+            Aqui
+          </button>
         </div>
       </div>
 
@@ -186,7 +205,7 @@
 
 <script>
 import base from './base'
-// import YeastarService from '../../services/YeastarService'
+import YeastarService from '../../services/YeastarService'
 
 export default {
   name: 'EnhancedCDRComponent',
@@ -302,6 +321,26 @@ export default {
   },
 
   methods: {
+    async handleClick () {
+      try {
+        this.loading = true
+        this.error = false
+
+        const service = new YeastarService()
+        const response = await service.syncCDR()
+
+        if (Array.isArray(response) && response.length > 0) {
+          this.contentBody = response
+          this.filterData()
+        } else {
+          this.error = true
+          this.errorMessage = 'No CDR data available'
+        }
+      } catch (error) {
+        console.error('Error syncing CDR data:', error)
+      }
+    },
+
     async loadData () {
       // try {
       //   this.loading = true
