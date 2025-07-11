@@ -206,6 +206,11 @@ export default {
           block: new compose.PageBlockHelloBox(),
           image: images.HelloBox,
         },
+        // {
+        //   label: this.$t('syncButton.label'),
+        //   block: new compose.PageBlockSyncButton(),
+        //   image: images.HelloBox,
+        // },
       ],
     }
   },

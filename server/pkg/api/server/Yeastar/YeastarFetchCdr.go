@@ -22,6 +22,7 @@ type CDR struct {
 	UID            string  `json:"uid"`
 	SrcAddr        string  `json:"src_addr"`
 	Duration       int     `json:"duration"`
+	RingDuration   int     `json:"ring_duration"`
 	TalkDuration   int     `json:"talk_duration"`
 	Disposition    string  `json:"disposition"`
 	CallType       string  `json:"call_type"`
@@ -198,6 +199,98 @@ func LoadCDRsFromDB() ([]CDR, error) {
 	return cdrs, nil
 }
 
+func SyncCDR() ([]CDR, error) {
+	// Step 1: Get access token
+	tokenPayload := map[string]string{
+		"username": apiUsername,
+		"password": apiPassword,
+	}
+	tokenBody, _ := json.Marshal(tokenPayload)
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/openapi/v1.0/get_token", apiURL), bytes.NewReader(tokenBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenAPI")
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	var tokenRes tokenResponse
+	if err := json.NewDecoder(res.Body).Decode(&tokenRes); err != nil {
+		return nil, err
+	}
+	if tokenRes.ErrCode != 0 {
+		return nil, errors.New("failed to retrieve token")
+	}
+
+	// Step 2: Fetch CDRs
+	cdrURL := fmt.Sprintf("%s/openapi/v1.0/cdr/list?access_token=%s", apiURL, tokenRes.AccessToken)
+	req2, err := http.NewRequest("GET", cdrURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req2.Header.Set("Accept", "application/json")
+	req2.Header.Set("User-Agent", "OpenAPI")
+
+	res2, err := client.Do(req2)
+	if err != nil {
+		return nil, err
+	}
+	defer res2.Body.Close()
+
+	body, err := io.ReadAll(res2.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CDR response: %w", err)
+	}
+	var cdrs cdrResponse
+	if err := json.Unmarshal(body, &cdrs); err != nil {
+		return nil, err
+	}
+	if cdrs.ErrCode != 0 {
+		return nil, fmt.Errorf("CDR fetch failed: %s", cdrs.ErrMsg)
+	}
+
+	// Step 3: Send to Corteza endpoint
+	cortezaURL := "http://172.27.0.20:18080/api/gateway/cdr/update"
+
+	payloadBytes, err := json.Marshal(cdrs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal CDR payload: %w", err)
+	}
+
+	req3, err := http.NewRequest("POST", cortezaURL, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Corteza request: %w", err)
+	}
+	req3.Header.Set("Content-Type", "application/json")
+
+	res3, err := client.Do(req3)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send CDRs to Corteza: %w", err)
+	}
+	defer res3.Body.Close()
+
+	if res3.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(res3.Body)
+		return nil, fmt.Errorf("Corteza rejected the request: %s", string(respBody))
+	}
+
+	return cdrs.Data, nil
+}
+
 func HandleFetchCDRs(w http.ResponseWriter, r *http.Request) {
 	cdrs, err := FetchCDRs()
 	if err != nil {
@@ -226,4 +319,15 @@ func HandleCDRDB(w http.ResponseWriter, r *http.Request) {
 	// 	log.Printf("CDR loaded:\n%s\n", string(cdrJSON))
 	// }
 
+}
+
+func HandleSyncCDR(w http.ResponseWriter, r *http.Request) {
+	cdrs, err := SyncCDR()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to sync CDRs: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cdrs)
 }

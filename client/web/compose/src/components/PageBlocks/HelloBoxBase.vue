@@ -186,7 +186,7 @@
 
 <script>
 import base from './base'
-import YeastarService from '../../services/YeastarService'
+// import YeastarService from '../../services/YeastarService'
 
 export default {
   name: 'EnhancedCDRComponent',
@@ -303,27 +303,27 @@ export default {
 
   methods: {
     async loadData () {
-      try {
-        this.loading = true
-        this.error = false
+      // try {
+      //   this.loading = true
+      //   this.error = false
 
-        const service = new YeastarService()
-        const response = await service.getCDRDB()
+      //   const service = new YeastarService()
+      //   const response = await service.getCDRDB()
 
-        if (Array.isArray(response) && response.length > 0) {
-          this.contentBody = response
-          this.filterData()
-        } else {
-          this.error = true
-          this.errorMessage = 'No CDR data available'
-        }
-      } catch (error) {
-        console.error('Error fetching CDR data:', error)
-        this.error = true
-        this.errorMessage = error.message || 'Failed to load CDR data'
-      } finally {
-        this.loading = false
-      }
+      //   if (Array.isArray(response) && response.length > 0) {
+      //     this.contentBody = response
+      //     this.filterData()
+      //   } else {
+      //     this.error = true
+      //     this.errorMessage = 'No CDR data available'
+      //   }
+      // } catch (error) {
+      //   console.error('Error fetching CDR data:', error)
+      //   this.error = true
+      //   this.errorMessage = error.message || 'Failed to load CDR data'
+      // } finally {
+      //   this.loading = false
+      // }
     },
 
     async refreshData () {

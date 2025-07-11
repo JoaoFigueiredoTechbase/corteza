@@ -93,4 +93,31 @@ export default class YeastarService {
       throw error // Re-throw to handle in calling function
     }
   }
+
+  async syncCDR () {
+    const baseUrl = window.CortezaAPI = 'http://localhost:80/api'
+
+    try {
+      const response = await fetch(`${baseUrl}/sync/cdr`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to sync CDR: ${response.statusText}`)
+      }
+
+      // First check the response text
+      const text = await response.text()
+      console.log('Raw response:', text) // Inspect this in console
+
+      const data = JSON.parse(text)
+      return data
+    } catch (error) {
+      console.error('Error in syncCDR:', error)
+      throw error // Re-throw to handle in calling function
+    }
+  }
 }
