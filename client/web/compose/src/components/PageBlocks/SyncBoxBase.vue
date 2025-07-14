@@ -29,7 +29,7 @@ export default {
   methods: {
     async handleClick () {
       try {
-        const message = await YeastarService.syncCDR()
+        const message = await YeastarService.syncALL()
         console.error('message: ', message)
       } catch (error) {
         console.error('Error syncing CDR data:', error)

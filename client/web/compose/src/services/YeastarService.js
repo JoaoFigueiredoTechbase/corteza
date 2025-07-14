@@ -94,27 +94,44 @@ export default class YeastarService {
     }
   }
 
-  async syncCDR () {
+  async syncALL () {
     const baseUrl = window.CortezaAPI = 'http://localhost:80/api'
 
     try {
-      const response = await fetch(`${baseUrl}/sync/cdr`, {
+      const responseCDR = await fetch(`${baseUrl}/sync/cdr`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       })
 
-      if (!response.ok) {
-        throw new Error(`Failed to sync CDR: ${response.statusText}`)
+      if (!responseCDR.ok) {
+        throw new Error(`Failed to sync CDR: ${responseCDR.statusText}`)
       }
 
-      // First check the response text
-      const text = await response.text()
-      console.log('Raw response:', text) // Inspect this in console
+      const responseAgent = await fetch(`${baseUrl}/sync/agent`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
 
-      const data = JSON.parse(text)
-      return data
+      if (!responseAgent.ok) {
+        throw new Error(`Failed to sync Agent: ${responseAgent.statusText}`)
+      }
+
+      const responseQueue = await fetch(`${baseUrl}/sync/queue`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!responseQueue.ok) {
+        throw new Error(`Failed to sync Queue: ${responseQueue.statusText}`)
+      }
+
+      return 200
     } catch (error) {
       console.error('Error in syncCDR:', error)
       throw error // Re-throw to handle in calling function

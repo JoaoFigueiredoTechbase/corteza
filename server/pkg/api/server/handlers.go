@@ -126,6 +126,8 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		r.Post("/api/fetch-cdr", Yeastar.HandleFetchCDRs)
 		r.Get("/api/db-cdr", Yeastar.HandleCDRDB)
 		r.Get("/api/sync/cdr", Yeastar.HandleSyncCDR)
+		r.Get("/api/sync/agent", Yeastar.HandleSyncAgent)
+		r.Get("/api/sync/queue", Yeastar.HandleSyncQueue)
 	})
 
 	if httpOpt.BaseUrl != "/" {
