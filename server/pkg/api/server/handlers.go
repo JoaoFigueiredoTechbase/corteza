@@ -11,6 +11,7 @@ import (
 
 	"github.com/cortezaproject/corteza/server/assets"
 	"github.com/cortezaproject/corteza/server/pkg/api"
+	"github.com/cortezaproject/corteza/server/pkg/api/server/Yeastar"
 	"github.com/cortezaproject/corteza/server/pkg/auth"
 	"github.com/cortezaproject/corteza/server/pkg/errors"
 	"github.com/cortezaproject/corteza/server/pkg/healthcheck"
@@ -21,8 +22,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
-
-	"github.com/cortezaproject/corteza/server/pkg/api/server/Yeastar"
 )
 
 // routes used when server is in waiting mode
@@ -123,11 +122,17 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		}
 
 		// Api
-		r.Post("/api/fetch-cdr", Yeastar.HandleFetchCDRs)
-		r.Get("/api/db-cdr", Yeastar.HandleCDRDB)
-		r.Get("/api/sync/cdr", Yeastar.HandleSyncCDR)
-		r.Get("/api/sync/agent", Yeastar.HandleSyncAgent)
-		r.Get("/api/sync/queue", Yeastar.HandleSyncQueue)
+		// r.Post("/api/fetch-cdr", Yeastar.HandleFetchCDRs)
+		// r.Get("/api/db-cdr", Yeastar.HandleCDRDB)
+
+		// r.Get("/api/sync/cdr", Yeastar.HandleSyncCDR)
+		// r.Get("/api/sync/agent", Yeastar.HandleSyncAgent)
+		// r.Get("/api/sync/queue", Yeastar.HandleSyncQueue)
+
+		r.Get("/api/sync/all", Yeastar.HandleSyncAllHTTP)
+
+		r.Post("/api/receive/token", Yeastar.TokenCallbackHandler)
+		r.Post("/api/receive/config", Yeastar.ConfigCallbackHandler)
 	})
 
 	if httpOpt.BaseUrl != "/" {
