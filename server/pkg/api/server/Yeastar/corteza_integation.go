@@ -64,89 +64,114 @@ func (cc *CortezaClient) TriggerTokenPush() error {
 
 // SaveToken saves token to Corteza storage
 func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) error {
-	fmt.Println("💾 Starting to save token to Corteza")
+	fmt.Println("Starting to save token to Corteza")
 
 	url := fmt.Sprintf("%s/api/gateway/store/token", cc.baseURL)
-	fmt.Printf("🌍 Save token URL: %s\n", url)
+	fmt.Printf("Save token URL: %s\n", url)
 
-	fmt.Printf("🔐 Token being saved: %+v\n", token)
+	fmt.Printf("Token being saved: %+v\n", token)
 
 	jsonPayload, err := json.Marshal(token)
 	if err != nil {
-		fmt.Printf("❌ Failed to marshal token: %v\n", err)
+		fmt.Printf("Failed to marshal token: %v\n", err)
 		return fmt.Errorf("failed to marshal token for saving: %w", err)
 	}
-	fmt.Printf("📤 JSON payload: %s\n", string(jsonPayload))
+	fmt.Printf("JSON payload: %s\n", string(jsonPayload))
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
 	if err != nil {
-		fmt.Printf("❌ Failed to create request: %v\n", err)
+		fmt.Printf("Failed to create request: %v\n", err)
 		return fmt.Errorf("failed to create save request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	fmt.Println("📡 Sending token to Corteza token storage API")
+	fmt.Println("Sending token to Corteza token storage API")
 	resp, err := cc.client.Do(req)
 	if err != nil {
-		fmt.Printf("❌ Failed to send request: %v\n", err)
+		fmt.Printf("Failed to send request: %v\n", err)
 		return fmt.Errorf("failed to send token to storage API: %w", err)
 	}
 	defer resp.Body.Close()
 
-	fmt.Printf("📥 Received response with status code: %d\n", resp.StatusCode)
+	fmt.Printf("Received response with status code: %d\n", resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ Token storage failed: %d - %s\n", resp.StatusCode, string(body))
+		fmt.Printf("Token storage failed: %d - %s\n", resp.StatusCode, string(body))
 		return fmt.Errorf("failed to store token remotely, status: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	fmt.Println("✅ Token successfully saved to Corteza")
+	fmt.Println("Token successfully saved to Corteza")
 	return nil
 }
 
 // SendData sends processed data to Corteza using specific sync endpoints.
+// SendData sends processed data to Corteza using specific sync endpoints.
 func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data interface{}) error {
-	// Construct the URL using the specific sync endpoint
-	url := fmt.Sprintf("%s/api/gateway/%s/sync/", cc.baseURL, moduleName)
+	fmt.Println("Starting SendData to Corteza")
 
-	fmt.Printf("📡 Sending data to Corteza\n")
-	fmt.Printf("🔗 Endpoint: %s\n", url)
+	// Log base URL and module
+	fmt.Printf("Corteza BaseURL: %s\n", cc.baseURL)
+	fmt.Printf("Module Name: %s\n", moduleName)
 
+	// Construct full endpoint
+	url := fmt.Sprintf("%s/api/gateway/%s/sync", cc.baseURL, moduleName)
+	fmt.Printf("Full Sync Endpoint: %s\n", url)
+
+	// Construct payload
 	payload := map[string]interface{}{
 		"data": data,
 	}
 
-	jsonPayload, err := json.Marshal(payload)
+	// Marshal payload
+	jsonPayload, err := json.MarshalIndent(payload, "", "  ") // Pretty-print
 	if err != nil {
-		return fmt.Errorf("❌ failed to marshal data for module %s: %w", moduleName, err)
+		fmt.Printf("Error marshaling payload for module %s: %v\n", moduleName, err)
+		return fmt.Errorf("failed to marshal data for module %s: %w", moduleName, err)
 	}
+	fmt.Printf("JSON Payload:\n%s\n", string(jsonPayload))
 
-	fmt.Printf("📦 Payload for module %s:\n%s\n", moduleName, string(jsonPayload))
-
+	// Create HTTP request
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
 	if err != nil {
-		return fmt.Errorf("❌ failed to create request for module %s: %w", moduleName, err)
+		fmt.Printf("Failed to create HTTP request: %v\n", err)
+		return fmt.Errorf("failed to create request for module %s: %w", moduleName, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	// Log request metadata
+	fmt.Printf("Request Method: %s\n", req.Method)
+	fmt.Printf("Request Headers:\n")
+	for k, v := range req.Header {
+		fmt.Printf("  %s: %v\n", k, v)
+	}
+
+	// Send request
+	fmt.Println("Sending request to Corteza...")
 	resp, err := cc.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("❌ failed to send data to Corteza for module %s: %w", moduleName, err)
+		fmt.Printf("Request error for module %s: %v\n", moduleName, err)
+		return fmt.Errorf("failed to send data to Corteza for module %s: %w", moduleName, err)
 	}
 	defer resp.Body.Close()
 
+	// Read response body
 	bodyBytes, _ := io.ReadAll(resp.Body)
 
-	fmt.Printf("📥 Response from Corteza for module %s:\n", moduleName)
-	fmt.Printf("🔢 Status code: %d\n", resp.StatusCode)
-	fmt.Printf("📄 Response body: %s\n", string(bodyBytes))
+	// Log response details
+	fmt.Printf("Response Status: %d %s\n", resp.StatusCode, resp.Status)
+	fmt.Printf("Response Headers:\n")
+	for k, v := range resp.Header {
+		fmt.Printf("  %s: %v\n", k, v)
+	}
+	fmt.Printf("Response Body:\n%s\n", string(bodyBytes))
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("❌ failed to store data for module %s, status: %d, response: %s",
+		fmt.Printf("Unexpected status code: %d\n", resp.StatusCode)
+		return fmt.Errorf("failed to store data for module %s, status: %d, response: %s",
 			moduleName, resp.StatusCode, string(bodyBytes))
 	}
 
-	fmt.Printf("✅ Data for module %s stored successfully!\n", moduleName)
+	fmt.Printf("Data for module '%s' stored successfully!\n", moduleName)
 	return nil
 }

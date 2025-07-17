@@ -43,58 +43,56 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func SyncAll() error {
-	// Initialize global managers
 	InitializeGlobalManagers()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	// Create Corteza client
 	cortezaClient := NewCortezaClient("http://localhost:80")
-
-	// Initialize service
 	service := NewYeastarService(GlobalConfigManager, GlobalTokenManager, cortezaClient)
 
-RESTART_SYNC:
-	// Trigger config and token push
-	fmt.Println("Triggering config and token push from Corteza...")
+	// Get config first
+	fmt.Println("Triggering config push from Corteza...")
 	if err := cortezaClient.TriggerConfigPush(); err != nil {
 		return fmt.Errorf("failed to trigger config push: %w", err)
 	}
 
+	fmt.Println("Waiting for config from Corteza...")
+	config, err := service.configManager.WaitForConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get config: %w", err)
+	}
+
+	// Try to get token from Corteza first
+	fmt.Println("Triggering token push from Corteza...")
 	if err := cortezaClient.TriggerTokenPush(); err != nil {
-		return fmt.Errorf("failed to trigger token push: %w", err)
+		fmt.Printf("Warning: failed to trigger token push: %v\n", err)
 	}
 
-	// Wait for initialization
-	fmt.Println("Waiting for config and token from Corteza...")
-	if err := service.WaitForInitialization(ctx); err != nil {
-		return fmt.Errorf("failed to initialize service: %w", err)
-	}
-	fmt.Println("Service initialized successfully!")
+	// Wait for token with short timeout
+	tokenCtx, tokenCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer tokenCancel()
 
-	// Check if token is valid
-	if !GlobalTokenManager.IsTokenValid() {
-		fmt.Println("❌ Token from Corteza is already expired. Fetching new token from Yeastar...")
-
-		cfg := GlobalConfigManager.GetConfig()
-		if cfg == nil {
-			return fmt.Errorf("config not available for token refresh")
-		}
-
-		newToken, err := GlobalTokenManager.GetNewToken(ctx, cfg)
+	fmt.Println("Waiting for token from Corteza...")
+	token, err := service.tokenManager.WaitForToken(tokenCtx)
+	if err != nil || token == nil || token.AccessToken == "" {
+		fmt.Println("No valid token from Corteza, getting fresh one from Yeastar...")
+		token, err = GlobalTokenManager.GetNewToken(ctx, config)
 		if err != nil {
-			return fmt.Errorf("failed to fetch new token from Yeastar: %w", err)
+			return fmt.Errorf("failed to get token from Yeastar: %w", err)
 		}
 
-		GlobalTokenManager.SetToken(newToken)
-
-		if err := cortezaClient.SaveToken(ctx, newToken); err != nil {
-			return fmt.Errorf("failed to push new token to Corteza: %w", err)
+		fmt.Println("Saving fresh token to Corteza...")
+		if err := cortezaClient.SaveToken(ctx, token); err != nil {
+			return fmt.Errorf("failed to save token to Corteza: %w", err)
 		}
 
-		fmt.Println("✅ New token pushed to Corteza. Restarting sync process...")
-		goto RESTART_SYNC
+		// Set the token directly since we just got it
+		GlobalTokenManager.SetToken(token)
+	}
+
+	// Verify we have a valid token
+	if !GlobalTokenManager.IsTokenValid() {
+		return fmt.Errorf("no valid token available after all attempts")
 	}
 
 	// ----------- Begin Data Processing -----------
@@ -131,7 +129,7 @@ RESTART_SYNC:
 	if err := service.SendDataToCorteza(ctx, "queue", queues); err != nil {
 		return fmt.Errorf("failed to send queues to Corteza: %w", err)
 	}
-	fmt.Println("✅ queues processed and sent to Corteza successfully!")
+	fmt.Println("queues processed and sent to Corteza successfully!")
 
 	// Members
 	fmt.Println("\n--- Processing queue members ---")
@@ -143,7 +141,7 @@ RESTART_SYNC:
 	if err := service.SendDataToCorteza(ctx, "member", members); err != nil {
 		return fmt.Errorf("failed to send queue members to Corteza: %w", err)
 	}
-	fmt.Println("✅ queue members processed and sent to Corteza successfully!")
+	fmt.Println("queue members processed and sent to Corteza successfully!")
 
 	// CDRs
 	fmt.Println("\n--- Processing cdrs ---")
@@ -160,7 +158,7 @@ RESTART_SYNC:
 	if err := service.SendDataToCorteza(ctx, "cdr", cdrs); err != nil {
 		return fmt.Errorf("failed to send cdrs to Corteza: %w", err)
 	}
-	fmt.Println("✅ cdrs processed and sent to Corteza successfully!")
+	fmt.Println("cdrs processed and sent to Corteza successfully!")
 
 	return nil
 }

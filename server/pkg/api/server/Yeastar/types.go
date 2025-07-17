@@ -16,6 +16,16 @@ type TokenResponse struct {
 	//ErrCode                int    `json:"errcode"`
 }
 
+type YeastarTokenResponse struct {
+	ErrCode                int     `json:"errcode"`
+	ErrMsg                 string  `json:"errmsg"`
+	AccessToken            string  `json:"access_token"`
+	RefreshToken           string  `json:"refresh_token"`
+	AccessTokenExpireTime  float64 `json:"access_token_expire_time"`
+	RefreshTokenExpireTime float64 `json:"refresh_token_expire_time"`
+	YsID                   string  `json:"ys_id"`
+}
+
 type Agent struct {
 	ID       int    `json:"id"`
 	Presence string `json:"presence_status"`
