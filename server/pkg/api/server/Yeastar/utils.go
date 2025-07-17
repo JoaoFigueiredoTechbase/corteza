@@ -110,6 +110,7 @@ func mapAgent(raw Agent) Agent {
 		Presence: safeStringConvert(raw.Presence), // Use safeStringConvert for consistency, though raw.Presence is already string
 		Number:   safeStringConvert(raw.Number),
 		Name:     safeStringConvert(raw.Name),
+		Email:    safeStringConvert(raw.Email),
 	}
 
 	// Set default values for empty fields
@@ -121,6 +122,9 @@ func mapAgent(raw Agent) Agent {
 	}
 	if agent.Name == "" {
 		agent.Name = "Unknown Agent"
+	}
+	if agent.Email == "" {
+		agent.Email = "" // Explicitly keep it as empty string if missing
 	}
 
 	return agent

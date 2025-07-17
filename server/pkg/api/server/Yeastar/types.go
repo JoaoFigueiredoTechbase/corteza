@@ -9,10 +9,10 @@ type Config struct {
 
 // TokenResponse represents the token response from Yeastar API
 type TokenResponse struct {
-	AccessToken            string `json:"AccessToken"`
-	RefreshToken           string `json:"RefreshToken"`
-	AccessTokenExpireTime  int64  `json:"AccessTokenExpireTime"`
-	RefreshTokenExpireTime int64  `json:"RefreshTokenExpireTime"`
+	AccessToken            string  `json:"AccessToken"`
+	RefreshToken           string  `json:"RefreshToken"`
+	AccessTokenExpireTime  float64 `json:"AccessTokenExpireTime"`
+	RefreshTokenExpireTime float64 `json:"RefreshTokenExpireTime"`
 	//ErrCode                int    `json:"errcode"`
 }
 
@@ -21,6 +21,7 @@ type Agent struct {
 	Presence string `json:"presence_status"`
 	Number   string `json:"number"`
 	Name     string `json:"caller_id_name"`
+	Email    string `json:"email_addr"`
 }
 
 // Queue represents a call queue

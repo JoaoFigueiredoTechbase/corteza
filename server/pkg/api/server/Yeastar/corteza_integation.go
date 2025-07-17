@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -65,66 +64,89 @@ func (cc *CortezaClient) TriggerTokenPush() error {
 
 // SaveToken saves token to Corteza storage
 func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) error {
-	url := fmt.Sprintf("%s/api/gateway/store/token", cc.baseURL)
+	fmt.Println("💾 Starting to save token to Corteza")
 
-	fmt.Printf("Saving Token to Corteza: %+v\n", token)
+	url := fmt.Sprintf("%s/api/gateway/store/token", cc.baseURL)
+	fmt.Printf("🌍 Save token URL: %s\n", url)
+
+	fmt.Printf("🔐 Token being saved: %+v\n", token)
 
 	jsonPayload, err := json.Marshal(token)
 	if err != nil {
+		fmt.Printf("❌ Failed to marshal token: %v\n", err)
 		return fmt.Errorf("failed to marshal token for saving: %w", err)
 	}
+	fmt.Printf("📤 JSON payload: %s\n", string(jsonPayload))
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
 	if err != nil {
+		fmt.Printf("❌ Failed to create request: %v\n", err)
 		return fmt.Errorf("failed to create save request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	fmt.Println("📡 Sending token to Corteza token storage API")
 	resp, err := cc.client.Do(req)
 	if err != nil {
+		fmt.Printf("❌ Failed to send request: %v\n", err)
 		return fmt.Errorf("failed to send token to storage API: %w", err)
 	}
 	defer resp.Body.Close()
 
+	fmt.Printf("📥 Received response with status code: %d\n", resp.StatusCode)
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("❌ Token storage failed: %d - %s\n", resp.StatusCode, string(body))
 		return fmt.Errorf("failed to store token remotely, status: %d, body: %s", resp.StatusCode, string(body))
 	}
 
+	fmt.Println("✅ Token successfully saved to Corteza")
 	return nil
 }
 
 // SendData sends processed data to Corteza using specific sync endpoints.
 func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data interface{}) error {
-	// Convert plural moduleName to singular for the endpoint path
-	// Example: "agents" -> "agent", "queues" -> "queue", "cdrs" -> "cdr"
-	singularModuleName := strings.TrimSuffix(moduleName, "s") // Simple plural to singular for these cases
-
 	// Construct the URL using the specific sync endpoint
-	url := fmt.Sprintf("%s/api/gateway/%s/sync/", cc.baseURL, singularModuleName)
+	url := fmt.Sprintf("%s/api/gateway/%s/sync/", cc.baseURL, moduleName)
 
-	jsonPayload, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("failed to marshal data for saving to Corteza module %s: %w", moduleName, err)
+	fmt.Printf("📡 Sending data to Corteza\n")
+	fmt.Printf("🔗 Endpoint: %s\n", url)
+
+	payload := map[string]interface{}{
+		"data": data,
 	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("❌ failed to marshal data for module %s: %w", moduleName, err)
+	}
+
+	fmt.Printf("📦 Payload for module %s:\n%s\n", moduleName, string(jsonPayload))
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
 	if err != nil {
-		return fmt.Errorf("failed to create request for module %s: %w", moduleName, err)
+		return fmt.Errorf("❌ failed to create request for module %s: %w", moduleName, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := cc.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to send data to Corteza storage API for module %s: %w", moduleName, err)
+		return fmt.Errorf("❌ failed to send data to Corteza for module %s: %w", moduleName, err)
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	fmt.Printf("📥 Response from Corteza for module %s:\n", moduleName)
+	fmt.Printf("🔢 Status code: %d\n", resp.StatusCode)
+	fmt.Printf("📄 Response body: %s\n", string(bodyBytes))
+
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body) // Consider logging readErr here too
-		return fmt.Errorf("failed to store data remotely for module %s, status: %d, response: %s",
+		return fmt.Errorf("❌ failed to store data for module %s, status: %d, response: %s",
 			moduleName, resp.StatusCode, string(bodyBytes))
 	}
 
+	fmt.Printf("✅ Data for module %s stored successfully!\n", moduleName)
 	return nil
 }

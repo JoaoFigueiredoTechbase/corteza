@@ -72,60 +72,56 @@ func SyncAll() error {
 	}
 	fmt.Println("Service initialized successfully!")
 
-	// Process different data types
-	dataTypes := []struct {
-		endpoint   string
-		moduleName string
-		processor  func([]byte) (interface{}, error)
-	}{
-		{
-			endpoint:   "extension",
-			moduleName: "agents",
-			processor: func(data []byte) (interface{}, error) {
-				agents, err := processAgentsData(data)
-				return agents, err
-			},
-		},
-		{
-			endpoint:   "queue",
-			moduleName: "queues",
-			processor: func(data []byte) (interface{}, error) {
-				queues, err := processQueuesData(data)
-				return queues, err
-			},
-		},
-		{
-			endpoint:   "cdr",
-			moduleName: "cdrs",
-			processor: func(data []byte) (interface{}, error) {
-				cdrs, err := processCDRsData(data)
-				return cdrs, err
-			},
-		},
+	// Process Agents Data
+	fmt.Println("\n--- Processing agents ---")
+	rawAgentsData, err := service.ListMethod(ctx, "extension")
+	if err != nil {
+		return fmt.Errorf("failed to fetch agents: %w", err)
 	}
 
-	for _, dt := range dataTypes {
-		fmt.Printf("\n--- Processing %s ---\n", dt.moduleName)
-
-		// Fetch data
-		rawData, err := service.ListMethod(ctx, dt.endpoint)
-		if err != nil {
-			return fmt.Errorf("failed to fetch %s: %w", dt.moduleName, err)
-		}
-
-		// Process data
-		processedData, err := dt.processor(rawData)
-		if err != nil {
-			return fmt.Errorf("failed to process %s: %w", dt.moduleName, err)
-		}
-
-		// Send to Corteza
-		if err := service.SendDataToCorteza(ctx, dt.moduleName, processedData); err != nil {
-			return fmt.Errorf("failed to send %s to Corteza: %w", dt.moduleName, err)
-		}
-
-		fmt.Printf("✅ %s processed and sent to Corteza successfully!\n", dt.moduleName)
+	agents, err := processAgentsData(rawAgentsData)
+	if err != nil {
+		return fmt.Errorf("failed to process agents: %w", err)
 	}
+
+	if err := service.SendDataToCorteza(ctx, "agent", agents); err != nil {
+		return fmt.Errorf("failed to send agents to Corteza: %w", err)
+	}
+	fmt.Println("✅ agents processed and sent to Corteza successfully!")
+
+	// Process Queues Data
+	fmt.Println("\n--- Processing queues ---")
+	rawQueuesData, err := service.ListMethod(ctx, "queue")
+	if err != nil {
+		return fmt.Errorf("failed to fetch queues: %w", err)
+	}
+
+	queues, err := processQueuesData(rawQueuesData)
+	if err != nil {
+		return fmt.Errorf("failed to process queues: %w", err)
+	}
+
+	if err := service.SendDataToCorteza(ctx, "queue", queues); err != nil {
+		return fmt.Errorf("failed to send queues to Corteza: %w", err)
+	}
+	fmt.Println("✅ queues processed and sent to Corteza successfully!")
+
+	// Process CDRs Data
+	fmt.Println("\n--- Processing cdrs ---")
+	rawCDRsData, err := service.ListMethod(ctx, "cdr")
+	if err != nil {
+		return fmt.Errorf("failed to fetch cdrs: %w", err)
+	}
+
+	cdrs, err := processCDRsData(rawCDRsData)
+	if err != nil {
+		return fmt.Errorf("failed to process cdrs: %w", err)
+	}
+
+	if err := service.SendDataToCorteza(ctx, "cdr", cdrs); err != nil {
+		return fmt.Errorf("failed to send cdrs to Corteza: %w", err)
+	}
+	fmt.Println("✅ cdrs processed and sent to Corteza successfully!")
 
 	return nil
 }
