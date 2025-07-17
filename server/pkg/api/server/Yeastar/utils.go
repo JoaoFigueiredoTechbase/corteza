@@ -277,3 +277,49 @@ func processCDRsData(rawBody []byte) ([]CDR, error) {
 
 	return cdrs, nil
 }
+
+func processQueueMembersData(rawBody []byte) ([]QueueMember, error) {
+	var response struct {
+		ErrCode   int        `json:"errcode"`
+		ErrMsg    string     `json:"errmsg"`
+		QueueList []QueueRaw `json:"queue_list"`
+	}
+
+	if err := json.Unmarshal(rawBody, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal queue members: %w", err)
+	}
+	if response.ErrCode != 0 {
+		return nil, fmt.Errorf("queue members fetch failed: %s", response.ErrMsg)
+	}
+
+	var allMembers []QueueMember
+	for _, queue := range response.QueueList {
+		members := mapQueueMembers(queue)
+		allMembers = append(allMembers, members...)
+	}
+
+	return allMembers, nil
+}
+
+func mapQueueMembers(queue QueueRaw) []QueueMember {
+	var members []QueueMember
+
+	extractMembers := func(agentList []AgentEntry, memberType string) {
+		for _, entry := range agentList {
+			agentID := safeIntConvert(entry.Value)
+			members = append(members, QueueMember{
+				QueueID:   queue.ID,
+				QueueName: queue.Name,
+				AgentID:   agentID,
+				AgentExt:  entry.Text,
+				Type:      memberType,
+			})
+		}
+	}
+
+	extractMembers(queue.DynamicAgents, "dynamic")
+	extractMembers(queue.StaticAgents, "static")
+	extractMembers(queue.Managers, "manager")
+
+	return members
+}

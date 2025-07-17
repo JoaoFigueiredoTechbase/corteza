@@ -92,3 +92,28 @@ type APIResponse[T any] struct {
 type AgentResponse = APIResponse[Agent]
 type QueueResponse = APIResponse[Queue]
 type CDRResponse = APIResponse[CDR]
+
+type QueueMember struct {
+	QueueID   int    `json:"queue_id"`
+	QueueName string `json:"queue_name"`
+	AgentID   int    `json:"agent_id"`
+	AgentExt  string `json:"agent_ext"`
+	Type      string `json:"type"`
+}
+
+type AgentEntry struct {
+	Text  string `json:"text"`
+	Text2 string `json:"text2"`
+	Value string `json:"value"`
+	Type  string `json:"type"`
+}
+
+type QueueRaw struct {
+	ID            int          `json:"id"`
+	Name          string       `json:"name"`
+	Number        string       `json:"number"`
+	RingStrategy  string       `json:"ring_strategy"`
+	DynamicAgents []AgentEntry `json:"dynamic_agent_list"`
+	StaticAgents  []AgentEntry `json:"static_agent_list"`
+	Managers      []AgentEntry `json:"manager_list"`
+}

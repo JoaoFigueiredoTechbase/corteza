@@ -55,6 +55,7 @@ func SyncAll() error {
 	// Initialize service
 	service := NewYeastarService(GlobalConfigManager, GlobalTokenManager, cortezaClient)
 
+RESTART_SYNC:
 	// Trigger config and token push
 	fmt.Println("Triggering config and token push from Corteza...")
 	if err := cortezaClient.TriggerConfigPush(); err != nil {
@@ -72,7 +73,33 @@ func SyncAll() error {
 	}
 	fmt.Println("Service initialized successfully!")
 
-	// Process Agents Data
+	// Check if token is valid
+	if !GlobalTokenManager.IsTokenValid() {
+		fmt.Println("❌ Token from Corteza is already expired. Fetching new token from Yeastar...")
+
+		cfg := GlobalConfigManager.GetConfig()
+		if cfg == nil {
+			return fmt.Errorf("config not available for token refresh")
+		}
+
+		newToken, err := GlobalTokenManager.GetNewToken(ctx, cfg)
+		if err != nil {
+			return fmt.Errorf("failed to fetch new token from Yeastar: %w", err)
+		}
+
+		GlobalTokenManager.SetToken(newToken)
+
+		if err := cortezaClient.SaveToken(ctx, newToken); err != nil {
+			return fmt.Errorf("failed to push new token to Corteza: %w", err)
+		}
+
+		fmt.Println("✅ New token pushed to Corteza. Restarting sync process...")
+		goto RESTART_SYNC
+	}
+
+	// ----------- Begin Data Processing -----------
+
+	// Agents
 	fmt.Println("\n--- Processing agents ---")
 	rawAgentsData, err := service.ListMethod(ctx, "extension")
 	if err != nil {
@@ -89,7 +116,7 @@ func SyncAll() error {
 	}
 	fmt.Println("✅ agents processed and sent to Corteza successfully!")
 
-	// Process Queues Data
+	// Queues
 	fmt.Println("\n--- Processing queues ---")
 	rawQueuesData, err := service.ListMethod(ctx, "queue")
 	if err != nil {
@@ -106,7 +133,19 @@ func SyncAll() error {
 	}
 	fmt.Println("✅ queues processed and sent to Corteza successfully!")
 
-	// Process CDRs Data
+	// Members
+	fmt.Println("\n--- Processing queue members ---")
+	members, err := processQueueMembersData(rawQueuesData)
+	if err != nil {
+		return fmt.Errorf("failed to process queue members: %w", err)
+	}
+
+	if err := service.SendDataToCorteza(ctx, "member", members); err != nil {
+		return fmt.Errorf("failed to send queue members to Corteza: %w", err)
+	}
+	fmt.Println("✅ queue members processed and sent to Corteza successfully!")
+
+	// CDRs
 	fmt.Println("\n--- Processing cdrs ---")
 	rawCDRsData, err := service.ListMethod(ctx, "cdr")
 	if err != nil {
