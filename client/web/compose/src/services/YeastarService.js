@@ -98,7 +98,7 @@ export default class YeastarService {
     const baseUrl = window.CortezaAPI = 'http://localhost:80/api'
 
     try {
-      const responseCDR = await fetch(`${baseUrl}/sync/cdr`, {
+      const responseCDR = await fetch(`${baseUrl}/sync/all`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -107,28 +107,6 @@ export default class YeastarService {
 
       if (!responseCDR.ok) {
         throw new Error(`Failed to sync CDR: ${responseCDR.statusText}`)
-      }
-
-      const responseAgent = await fetch(`${baseUrl}/sync/agent`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!responseAgent.ok) {
-        throw new Error(`Failed to sync Agent: ${responseAgent.statusText}`)
-      }
-
-      const responseQueue = await fetch(`${baseUrl}/sync/queue`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!responseQueue.ok) {
-        throw new Error(`Failed to sync Queue: ${responseQueue.statusText}`)
       }
 
       return 200

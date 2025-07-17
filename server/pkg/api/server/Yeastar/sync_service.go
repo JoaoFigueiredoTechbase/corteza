@@ -66,11 +66,11 @@ func SyncAll() error {
 	}
 
 	// Wait for initialization
-	fmt.Println("⏳ Waiting for config and token from Corteza...")
+	fmt.Println("Waiting for config and token from Corteza...")
 	if err := service.WaitForInitialization(ctx); err != nil {
 		return fmt.Errorf("failed to initialize service: %w", err)
 	}
-	fmt.Println("✅ Service initialized successfully!")
+	fmt.Println("Service initialized successfully!")
 
 	// Process different data types
 	dataTypes := []struct {

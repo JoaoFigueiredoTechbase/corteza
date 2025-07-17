@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -66,6 +67,8 @@ func (cc *CortezaClient) TriggerTokenPush() error {
 func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) error {
 	url := fmt.Sprintf("%s/api/gateway/store/token", cc.baseURL)
 
+	fmt.Printf("Saving Token to Corteza: %+v\n", token)
+
 	jsonPayload, err := json.Marshal(token)
 	if err != nil {
 		return fmt.Errorf("failed to marshal token for saving: %w", err)
@@ -91,9 +94,14 @@ func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) er
 	return nil
 }
 
-// SendData sends processed data to Corteza
+// SendData sends processed data to Corteza using specific sync endpoints.
 func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data interface{}) error {
-	url := fmt.Sprintf("%s/api/gateway/store/%s", cc.baseURL, moduleName)
+	// Convert plural moduleName to singular for the endpoint path
+	// Example: "agents" -> "agent", "queues" -> "queue", "cdrs" -> "cdr"
+	singularModuleName := strings.TrimSuffix(moduleName, "s") // Simple plural to singular for these cases
+
+	// Construct the URL using the specific sync endpoint
+	url := fmt.Sprintf("%s/api/gateway/%s/sync/", cc.baseURL, singularModuleName)
 
 	jsonPayload, err := json.Marshal(data)
 	if err != nil {
@@ -113,7 +121,7 @@ func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data i
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(resp.Body) // Consider logging readErr here too
 		return fmt.Errorf("failed to store data remotely for module %s, status: %d, response: %s",
 			moduleName, resp.StatusCode, string(bodyBytes))
 	}

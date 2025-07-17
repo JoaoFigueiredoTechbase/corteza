@@ -3,6 +3,7 @@ package Yeastar
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,6 +28,9 @@ func NewTokenManager() *TokenManager {
 		readyChan: make(chan struct{}),
 		client: &http.Client{
 			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // DANGER! Only for development!
+			},
 		},
 	}
 }
@@ -41,6 +45,16 @@ func (tm *TokenManager) SetToken(token *TokenResponse) {
 		tm.isReady = true
 		close(tm.readyChan)
 	})
+}
+
+func (tm *TokenManager) ResetTokenState() {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	tm.token = nil
+	tm.isReady = false
+	tm.readyChan = make(chan struct{})
+	tm.onceReady = sync.Once{}
 }
 
 // GetToken returns the current token
@@ -92,7 +106,7 @@ func (tm *TokenManager) CanRefreshToken() bool {
 }
 
 // GetNewToken obtains a new token from the API
-func (tm *TokenManager) GetNewToken(ctx context.Context, cfg *Config) error {
+func (tm *TokenManager) GetNewToken(ctx context.Context, cfg *Config) (*TokenResponse, error) {
 	url := fmt.Sprintf("%s/openapi/v1.0/get_token", cfg.ApiBaseUrl)
 
 	payload := map[string]string{
@@ -102,49 +116,42 @@ func (tm *TokenManager) GetNewToken(ctx context.Context, cfg *Config) error {
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal token request: %w", err)
+		return nil, fmt.Errorf("failed to marshal token request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
 	if err != nil {
-		return fmt.Errorf("failed to create token request: %w", err)
+		return nil, fmt.Errorf("failed to create token request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := tm.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to request token: %w", err)
+		return nil, fmt.Errorf("failed to request token: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("token request failed: %d, body: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("token request failed: %d, body: %s", resp.StatusCode, string(body))
 	}
 
 	var tokenResp TokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return fmt.Errorf("failed to decode token response: %w", err)
+		return nil, fmt.Errorf("failed to decode token response: %w", err)
 	}
-
-	// if tokenResp.ErrCode != 0 {
-	// 	return fmt.Errorf("API error: errcode=%d", tokenResp.ErrCode)
-	// }
 
 	// Convert relative times to absolute timestamps
 	now := time.Now().Unix()
 	tokenResp.AccessTokenExpireTime = now + tokenResp.AccessTokenExpireTime
 	tokenResp.RefreshTokenExpireTime = now + tokenResp.RefreshTokenExpireTime
 
-	tm.SetToken(&tokenResp)
-	return nil
+	return &tokenResp, nil
 }
-
-// RefreshToken refreshes the current token
-func (tm *TokenManager) RefreshToken(ctx context.Context, cfg *Config) error {
+func (tm *TokenManager) RefreshToken(ctx context.Context, cfg *Config) (*TokenResponse, error) {
 	currentToken := tm.GetToken()
 	if currentToken == nil {
-		return fmt.Errorf("no current token to refresh")
+		return nil, fmt.Errorf("no current token to refresh")
 	}
 
 	url := fmt.Sprintf("%s/openapi/v1.0/refresh_token", cfg.ApiBaseUrl)
@@ -155,40 +162,35 @@ func (tm *TokenManager) RefreshToken(ctx context.Context, cfg *Config) error {
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal refresh request: %w", err)
+		return nil, fmt.Errorf("failed to marshal refresh request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
 	if err != nil {
-		return fmt.Errorf("failed to create refresh request: %w", err)
+		return nil, fmt.Errorf("failed to create refresh request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := tm.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to refresh token: %w", err)
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("token refresh failed: %d, body: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("token refresh failed: %d, body: %s", resp.StatusCode, string(body))
 	}
 
 	var tokenResp TokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return fmt.Errorf("failed to decode refresh response: %w", err)
+		return nil, fmt.Errorf("failed to decode refresh response: %w", err)
 	}
-
-	// if tokenResp.ErrCode != 0 {
-	// 	return fmt.Errorf("refresh API error: errcode=%d", tokenResp.ErrCode)
-	// }
 
 	// Convert relative times to absolute timestamps
 	now := time.Now().Unix()
 	tokenResp.AccessTokenExpireTime = now + tokenResp.AccessTokenExpireTime
 	tokenResp.RefreshTokenExpireTime = now + tokenResp.RefreshTokenExpireTime
 
-	tm.SetToken(&tokenResp)
-	return nil
+	return &tokenResp, nil
 }

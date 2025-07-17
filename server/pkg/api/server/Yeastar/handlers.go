@@ -56,7 +56,8 @@ func TokenCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate token
-	if token.AccessToken == "" || token.RefreshToken == "" {
+	if token.AccessToken == "" || token.RefreshToken == "" ||
+		token.AccessTokenExpireTime == 0 || token.RefreshTokenExpireTime == 0 {
 		http.Error(w, "Missing required token fields", http.StatusBadRequest)
 		return
 	}

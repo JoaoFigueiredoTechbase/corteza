@@ -9,10 +9,10 @@ type Config struct {
 
 // TokenResponse represents the token response from Yeastar API
 type TokenResponse struct {
-	AccessToken            string `json:"access_token"`
-	RefreshToken           string `json:"refresh_token"`
-	AccessTokenExpireTime  int64  `json:"access_token_expire_time"`
-	RefreshTokenExpireTime int64  `json:"refresh_token_expire_time"`
+	AccessToken            string `json:"AccessToken"`
+	RefreshToken           string `json:"RefreshToken"`
+	AccessTokenExpireTime  int64  `json:"AccessTokenExpireTime"`
+	RefreshTokenExpireTime int64  `json:"RefreshTokenExpireTime"`
 	//ErrCode                int    `json:"errcode"`
 }
 
