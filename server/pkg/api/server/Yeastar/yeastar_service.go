@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -120,16 +121,19 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 	for attempt := 0; attempt <= ys.maxRetries; attempt++ {
 		if attempt > 0 {
 			delay := ys.baseRetryDelay * time.Duration(attempt)
+			log.Printf("[Attempt %d] Waiting %s before retrying...", attempt, delay)
 			select {
 			case <-time.After(delay):
 			case <-ctx.Done():
+				log.Printf("[Attempt %d] Context done while waiting to retry: %v", attempt, ctx.Err())
 				return nil, ctx.Err()
 			}
 		}
 
-		// Ensure we have a valid token
+		log.Printf("[Attempt %d] Ensuring valid token for endpoint: %s", attempt, endpoint)
 		if err := ys.EnsureValidToken(ctx); err != nil {
 			lastErr = fmt.Errorf("failed to ensure valid token: %w", err)
+			log.Printf("[Attempt %d] Error ensuring valid token: %v", attempt, err)
 			continue
 		}
 
@@ -138,6 +142,7 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 
 		if config == nil || token == nil {
 			lastErr = fmt.Errorf("config or token not available")
+			log.Printf("[Attempt %d] Config or token not available", attempt)
 			continue
 		}
 
@@ -147,15 +152,18 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 			token.AccessToken,
 		)
 
+		log.Printf("[Attempt %d] Making GET request to URL: %s", attempt, url)
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			lastErr = fmt.Errorf("failed to create request: %w", err)
+			log.Printf("[Attempt %d] Error creating request: %v", attempt, err)
 			continue
 		}
 
 		resp, err := ys.httpClient.Do(req)
 		if err != nil {
 			lastErr = fmt.Errorf("API request failed: %w", err)
+			log.Printf("[Attempt %d] API request failed: %v", attempt, err)
 			continue
 		}
 		defer resp.Body.Close()
@@ -163,17 +171,20 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			lastErr = fmt.Errorf("failed to read response: %w", err)
+			log.Printf("[Attempt %d] Failed to read response body: %v", attempt, err)
 			continue
 		}
 
+		log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
+
 		if resp.StatusCode == http.StatusOK {
+			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
 			return body, nil
 		}
 
 		// Handle specific error codes
 		if resp.StatusCode == http.StatusUnauthorized {
-			// Token might be invalid, reset and force refresh on next attempt
-			fmt.Println("Received unauthorized response, resetting token...")
+			log.Printf("[Attempt %d] Unauthorized response received, resetting token and retrying", attempt)
 			ys.tokenManager.ResetTokenState()
 			lastErr = fmt.Errorf("unauthorized access, will retry with new token")
 			continue
@@ -181,13 +192,16 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 
 		lastErr = fmt.Errorf("unexpected status code %d from endpoint %s: %s",
 			resp.StatusCode, endpoint, string(body))
+		log.Printf("[Attempt %d] Unexpected status code: %d, response body: %s", attempt, resp.StatusCode, string(body))
 
 		// For non-recoverable errors, don't retry
 		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusUnauthorized {
+			log.Printf("[Attempt %d] Non-recoverable client error, not retrying", attempt)
 			break
 		}
 	}
 
+	log.Printf("Failed to get data from endpoint %s after %d attempts: %v", endpoint, ys.maxRetries+1, lastErr)
 	return nil, fmt.Errorf("failed after %d attempts: %w", ys.maxRetries+1, lastErr)
 }
 

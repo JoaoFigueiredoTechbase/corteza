@@ -44,31 +44,31 @@ type Queue struct {
 
 // CDR represents a Call Detail Record
 type CDR struct {
-	ID                  int    `json:"id"`
-	Time                string `json:"time"`
-	CallFrom            string `json:"call_from"`
-	CallTo              string `json:"call_to"`
-	Timestamp           int64  `json:"timestamp"`
-	UID                 string `json:"uid"`
-	SrcAddr             string `json:"src_addr"`
-	Duration            int    `json:"duration"`
-	RingDuration        int    `json:"ring_duration"`
-	TalkDuration        int    `json:"talk_duration"`
-	Disposition         string `json:"disposition"`
-	CallType            string `json:"call_type"`
-	Reason              string `json:"reason"`
-	CallFromNumber      string `json:"call_from_number"`
-	CallFromName        string `json:"call_from_name"`
-	CallToNumber        string `json:"call_to_number"`
-	CallToName          string `json:"call_to_name"`
-	CallID              string `json:"call_id"`
-	CallNote            string `json:"call_note"`
-	CallNoteType        string `json:"call_note_type"`
-	CallNoteDescription string `json:"call_note_description"`
-	CallNoteID          string `json:"call_note_id"`
-	EnbCallNote         int    `json:"enb_call_note"`
-	DID                 string `json:"did"`
-	DIDName             string `json:"did_name"`
+	ID                  int         `json:"id"`
+	Time                string      `json:"time"`
+	CallFrom            string      `json:"call_from"`
+	CallTo              string      `json:"call_to"`
+	Timestamp           int64       `json:"timestamp"`
+	UID                 string      `json:"uid"`
+	SrcAddr             string      `json:"src_addr"`
+	Duration            int         `json:"duration"`
+	RingDuration        int         `json:"ring_duration"`
+	TalkDuration        int         `json:"talk_duration"`
+	Disposition         string      `json:"disposition"`
+	CallType            string      `json:"call_type"`
+	Reason              string      `json:"reason"`
+	CallFromNumber      string      `json:"call_from_number"`
+	CallFromName        string      `json:"call_from_name"`
+	CallToNumber        string      `json:"call_to_number"`
+	CallToName          string      `json:"call_to_name"`
+	CallID              string      `json:"call_id"`
+	CallNote            interface{} `json:"call_note"`
+	CallNoteType        string      `json:"call_note_type"`
+	CallNoteDescription string      `json:"call_note_description"`
+	CallNoteID          string      `json:"call_note_id"`
+	EnbCallNote         int         `json:"enb_call_note"`
+	DID                 string      `json:"did"`
+	DIDName             string      `json:"did_name"`
 }
 
 type DispositionCode struct {
@@ -100,7 +100,12 @@ type APIResponse[T any] struct {
 }
 
 type AgentResponse = APIResponse[Agent]
-type QueueResponse = APIResponse[Queue]
+type QueueResponse struct {
+	ErrCode     int        `json:"errcode"`
+	ErrMsg      string     `json:"errmsg"`
+	TotalNumber int        `json:"total_number"`
+	QueueList   []QueueRaw `json:"queue_list"` // Matches API response
+}
 type CDRResponse = APIResponse[CDR]
 
 type QueueMember struct {

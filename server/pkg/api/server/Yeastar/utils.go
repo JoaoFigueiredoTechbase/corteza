@@ -130,12 +130,12 @@ func mapAgent(raw Agent) Agent {
 	return agent
 }
 
-func mapQueue(raw Queue) Queue {
+func mapQueue(raw QueueRaw) Queue {
 	queue := Queue{
 		Name:         safeStringConvert(raw.Name),
 		Number:       safeStringConvert(raw.Number),
 		RingStrategy: safeStringConvert(raw.RingStrategy),
-		SLATime:      safeIntConvert(raw.SLATime),
+		SLATime:      0, //safeIntConvert(raw.SLATime)
 	}
 
 	// Set default values for empty fields
@@ -245,8 +245,8 @@ func processQueuesData(rawBody []byte) ([]Queue, error) {
 		return nil, fmt.Errorf("queues fetch failed: %s", response.ErrMsg)
 	}
 
-	queues := make([]Queue, 0, len(response.Data))
-	for _, rawQueue := range response.Data {
+	queues := make([]Queue, 0, len(response.QueueList))
+	for _, rawQueue := range response.QueueList {
 		cleanQueue := mapQueue(rawQueue)
 		queues = append(queues, cleanQueue)
 		log.Printf("Mapped queue: Name=%s, Number=%s, RingStrategy=%s, SLATime=%d",

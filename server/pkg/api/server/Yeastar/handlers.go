@@ -99,7 +99,7 @@ func TokenCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Valid token received, updating global token manager")
 	GlobalTokenManager.SetToken(&token)
 
-	fmt.Printf("Access token expires at: %d\n", token.AccessTokenExpireTime)
+	fmt.Printf("Access token expires at: %f\n", token.AccessTokenExpireTime)
 
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]string{"status": "success"}); err != nil {

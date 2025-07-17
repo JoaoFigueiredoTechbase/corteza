@@ -112,7 +112,7 @@ func SyncAll() error {
 	if err := service.SendDataToCorteza(ctx, "agent", agents); err != nil {
 		return fmt.Errorf("failed to send agents to Corteza: %w", err)
 	}
-	fmt.Println("✅ agents processed and sent to Corteza successfully!")
+	fmt.Println("agents processed and sent to Corteza successfully!")
 
 	// Queues
 	fmt.Println("\n--- Processing queues ---")
