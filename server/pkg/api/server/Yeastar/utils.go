@@ -132,6 +132,7 @@ func mapAgent(raw Agent) Agent {
 
 func mapQueue(raw QueueRaw) Queue {
 	queue := Queue{
+		ID:           raw.ID,
 		Name:         safeStringConvert(raw.Name),
 		Number:       safeStringConvert(raw.Number),
 		RingStrategy: safeStringConvert(raw.RingStrategy),
@@ -308,11 +309,12 @@ func mapQueueMembers(queue QueueRaw) []QueueMember {
 		for _, entry := range agentList {
 			agentID := safeIntConvert(entry.Value)
 			members = append(members, QueueMember{
-				QueueID:   queue.ID,
-				QueueName: queue.Name,
-				AgentID:   agentID,
-				AgentExt:  entry.Text,
-				Type:      memberType,
+				QueueID:     queue.ID,
+				QueueName:   queue.Name,
+				QueueNumber: queue.Number,
+				AgentID:     agentID,
+				AgentExt:    entry.Text,
+				Type:        memberType,
 			})
 		}
 	}

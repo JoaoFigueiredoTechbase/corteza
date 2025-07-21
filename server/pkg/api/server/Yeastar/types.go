@@ -36,6 +36,7 @@ type Agent struct {
 
 // Queue represents a call queue
 type Queue struct {
+	ID           int    `json:"id"`
 	Name         string `json:"name"`
 	Number       string `json:"number"`
 	RingStrategy string `json:"ring_strategy"`
@@ -109,11 +110,12 @@ type QueueResponse struct {
 type CDRResponse = APIResponse[CDR]
 
 type QueueMember struct {
-	QueueID   int    `json:"queue_id"`
-	QueueName string `json:"queue_name"`
-	AgentID   int    `json:"agent_id"`
-	AgentExt  string `json:"agent_ext"`
-	Type      string `json:"type"`
+	QueueID     int    `json:"queue_id"`
+	QueueName   string `json:"queue_name"`
+	QueueNumber string `json:"queue_number"`
+	AgentID     int    `json:"agent_id"`
+	AgentExt    string `json:"agent_ext"`
+	Type        string `json:"type"`
 }
 
 type AgentEntry struct {
