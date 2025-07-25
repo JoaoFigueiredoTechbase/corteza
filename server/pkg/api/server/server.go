@@ -2,10 +2,13 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 
 	"github.com/cortezaproject/corteza/server/pkg/options"
+	yeastar "github.com/cortezaproject/corteza/server/pkg/yeastarWebSocket"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -88,9 +91,32 @@ func (s server) Serve(ctx context.Context) {
 		listener net.Listener
 	)
 
+	yeastar.InitializeGlobalManagers()
+	yeastarClient := yeastar.NewClient(s.opts.HTTPServer.BaseUrl, "")
+	processor := yeastar.NewEventProcessor(s.log, yeastarClient)
+
+	processor.AddHandler(30011, func(event map[string]interface{}) error {
+		// Process call status event
+		msg, ok := event["msg"].(string)
+		if !ok {
+			return fmt.Errorf("missing msg field")
+		}
+
+		var data map[string]interface{}
+		if err := json.Unmarshal([]byte(msg), &data); err != nil {
+			return err
+		}
+
+		return processor.BroadcastEvent(ctx, "call.status", data)
+	})
+
+	processor.AddHandler(30012, func(event map[string]interface{}) error {
+		// Process CDR event
+		return processor.BroadcastEvent(ctx, "cdr", event)
+	})
+
 	s.log.Info(
 		"starting HTTP server",
-
 		zap.String("path-prefix", s.opts.HTTPServer.BaseUrl),
 		zap.String("address", s.opts.HTTPServer.Addr),
 	)
@@ -112,6 +138,23 @@ func (s server) Serve(ctx context.Context) {
 		}
 		s.err = srv.Serve(listener)
 	}()
+
+	processor.Start(ctx)
+
+	go func() {
+		s.log.Info("Starting Yeastar WebSocket client...")
+		if err := yeastar.StartWebSocketClient(ctx, processor); err != nil {
+			s.log.Error("Yeastar WebSocket client error", zap.Error(err))
+		}
+	}()
+
+	go func() {
+		s.log.Info("Starting Yeastar listener...")
+		if err := yeastar.StartListener(ctx); err != nil {
+			s.log.Error("Yeastar listener error", zap.Error(err))
+		}
+	}()
+
 	<-ctx.Done()
 
 	if s.err == nil {
