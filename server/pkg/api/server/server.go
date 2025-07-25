@@ -2,10 +2,10 @@ package server
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/cortezaproject/corteza/server/pkg/options"
 	yeastar "github.com/cortezaproject/corteza/server/pkg/yeastarWebSocket"
@@ -94,26 +94,7 @@ func (s server) Serve(ctx context.Context) {
 	yeastar.InitializeGlobalManagers()
 	yeastarClient := yeastar.NewClient(s.opts.HTTPServer.BaseUrl, "")
 	processor := yeastar.NewEventProcessor(s.log, yeastarClient)
-
-	processor.AddHandler(30011, func(event map[string]interface{}) error {
-		// Process call status event
-		msg, ok := event["msg"].(string)
-		if !ok {
-			return fmt.Errorf("missing msg field")
-		}
-
-		var data map[string]interface{}
-		if err := json.Unmarshal([]byte(msg), &data); err != nil {
-			return err
-		}
-
-		return processor.BroadcastEvent(ctx, "call.status", data)
-	})
-
-	processor.AddHandler(30012, func(event map[string]interface{}) error {
-		// Process CDR event
-		return processor.BroadcastEvent(ctx, "cdr", event)
-	})
+	yeastar.RegisterDefaultHandlers(ctx, processor)
 
 	s.log.Info(
 		"starting HTTP server",
@@ -142,9 +123,12 @@ func (s server) Serve(ctx context.Context) {
 	processor.Start(ctx)
 
 	go func() {
-		s.log.Info("Starting Yeastar WebSocket client...")
-		if err := yeastar.StartWebSocketClient(ctx, processor); err != nil {
-			s.log.Error("Yeastar WebSocket client error", zap.Error(err))
+		for {
+			err := yeastar.StartWebSocketClient(ctx, processor)
+			if err != nil {
+				log.Printf("WebSocket client failed: %v. Reconnecting in 5s...", err)
+				time.Sleep(5 * time.Second)
+			}
 		}
 	}()
 
