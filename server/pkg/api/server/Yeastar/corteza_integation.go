@@ -129,7 +129,7 @@ func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data i
 		fmt.Printf("Error marshaling payload for module %s: %v\n", moduleName, err)
 		return fmt.Errorf("failed to marshal data for module %s: %w", moduleName, err)
 	}
-	fmt.Printf("JSON Payload:\n%s\n", string(jsonPayload))
+	//fmt.Printf("JSON Payload:\n%s\n", string(jsonPayload))
 
 	// Create HTTP request
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))

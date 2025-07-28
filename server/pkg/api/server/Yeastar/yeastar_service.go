@@ -3,6 +3,7 @@ package Yeastar
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -203,6 +204,113 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 
 	log.Printf("Failed to get data from endpoint %s after %d attempts: %v", endpoint, ys.maxRetries+1, lastErr)
 	return nil, fmt.Errorf("failed after %d attempts: %w", ys.maxRetries+1, lastErr)
+}
+
+func (ys *YeastarService) GetRecordingsList(ctx context.Context) ([]Recording, error) {
+	const endpoint = "recording"
+
+	log.Printf("[INFO] Fetching recordings list from endpoint: %s", endpoint)
+
+	rawData, err := ys.ListMethod(ctx, endpoint)
+	if err != nil {
+		log.Printf("[ERROR] Failed to fetch recordings: %v", err)
+		return nil, fmt.Errorf("failed to fetch recordings: %w", err)
+	}
+
+	log.Printf("[DEBUG] Raw response data: %s", string(rawData))
+
+	var response struct {
+		ErrCode     int         `json:"errcode"`
+		ErrMsg      string      `json:"errmsg"`
+		TotalNumber int         `json:"total_number"`
+		Data        []Recording `json:"data"`
+	}
+
+	if err := json.Unmarshal(rawData, &response); err != nil {
+		log.Printf("[ERROR] Failed to unmarshal recordings: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal recordings: %w", err)
+	}
+
+	if response.ErrCode != 0 {
+		log.Printf("[ERROR] Recordings fetch failed: %s", response.ErrMsg)
+		return nil, fmt.Errorf("recordings fetch failed: %s", response.ErrMsg)
+	}
+
+	log.Printf("[INFO] Successfully fetched %d recordings", len(response.Data))
+	return response.Data, nil
+}
+
+func (ys *YeastarService) GetRecordingDownloadURL(ctx context.Context, recordingID int) (string, error) {
+	log.Printf("[INFO] Getting download URL for recording ID: %d", recordingID)
+
+	if err := ys.EnsureValidToken(ctx); err != nil {
+		log.Printf("[ERROR] Token validation failed: %v", err)
+		return "", fmt.Errorf("failed to ensure valid token: %w", err)
+	}
+
+	config := ys.configManager.GetConfig()
+	token := ys.tokenManager.GetToken()
+
+	if config == nil || token == nil {
+		log.Printf("[ERROR] Missing config or token")
+		return "", fmt.Errorf("config or token not available")
+	}
+
+	url := fmt.Sprintf("%s/openapi/v1.0/recording/download?access_token=%s&id=%d",
+		config.ApiBaseUrl,
+		token.AccessToken,
+		recordingID,
+	)
+
+	log.Printf("[DEBUG] Constructed request URL: %s", url)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		log.Printf("[ERROR] Failed to create HTTP request: %v", err)
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := ys.httpClient.Do(req)
+	if err != nil {
+		log.Printf("[ERROR] HTTP request failed: %v", err)
+		return "", fmt.Errorf("API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[ERROR] Failed to read response body: %v", err)
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	log.Printf("[DEBUG] Response body: %s", string(body))
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[ERROR] Unexpected status code: %d", resp.StatusCode)
+		return "", fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	var downloadResp struct {
+		ErrCode             int    `json:"errcode"`
+		ErrMsg              string `json:"errmsg"`
+		File                string `json:"file"`
+		DownloadResourceURL string `json:"download_resource_url"`
+	}
+
+	if err := json.Unmarshal(body, &downloadResp); err != nil {
+		log.Printf("[ERROR] Failed to unmarshal download response: %v", err)
+		return "", fmt.Errorf("failed to unmarshal download response: %w", err)
+	}
+
+	if downloadResp.ErrCode != 0 {
+		log.Printf("[ERROR] API returned error: %s", downloadResp.ErrMsg)
+		return "", fmt.Errorf("download API error: %s", downloadResp.ErrMsg)
+	}
+
+	fullURL := config.ApiBaseUrl + downloadResp.DownloadResourceURL
+	log.Printf("[INFO] Successfully obtained download URL: %s", fullURL)
+
+	return fullURL, nil
 }
 
 // SendDataToCorteza sends processed data to Corteza

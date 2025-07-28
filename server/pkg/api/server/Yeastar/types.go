@@ -70,6 +70,8 @@ type CDR struct {
 	EnbCallNote         int         `json:"enb_call_note"`
 	DID                 string      `json:"did"`
 	DIDName             string      `json:"did_name"`
+	RecordFile          string      `json:"record_file"`
+	RecordingURL        string      `json:"recording_url"`
 }
 
 type DispositionCode struct {
@@ -133,4 +135,20 @@ type QueueRaw struct {
 	DynamicAgents []AgentEntry `json:"dynamic_agent_list"`
 	StaticAgents  []AgentEntry `json:"static_agent_list"`
 	Managers      []AgentEntry `json:"manager_list"`
+}
+
+type Recording struct {
+	ID             int    `json:"id"`
+	Time           string `json:"time"`
+	UID            string `json:"uid"`
+	CallFrom       string `json:"call_from"`
+	CallTo         string `json:"call_to"`
+	Duration       int    `json:"duration"`
+	Size           int    `json:"size"`
+	CallType       string `json:"call_type"`
+	File           string `json:"file"`
+	CallFromNumber string `json:"call_from_number"`
+	CallFromName   string `json:"call_from_name"`
+	CallToNumber   string `json:"call_to_number"`
+	CallToName     string `json:"call_to_name"`
 }

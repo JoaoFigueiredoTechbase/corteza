@@ -150,9 +150,13 @@ func SyncAll() error {
 		return fmt.Errorf("failed to fetch cdrs: %w", err)
 	}
 
-	cdrs, err := processCDRsData(rawCDRsData)
+	cdrs, err := processCDRsData(service, rawCDRsData)
 	if err != nil {
 		return fmt.Errorf("failed to process cdrs: %w", err)
+	}
+
+	if err := dumpCDRsToFile(cdrs); err != nil {
+		log.Printf("Warning: failed to dump CDRs to file: %v", err)
 	}
 
 	if err := service.SendDataToCorteza(ctx, "cdr", cdrs); err != nil {

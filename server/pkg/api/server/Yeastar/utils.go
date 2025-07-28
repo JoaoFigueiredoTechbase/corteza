@@ -1,11 +1,15 @@
 package Yeastar
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"path"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func safeStringConvert(value interface{}) string {
@@ -155,6 +159,7 @@ func mapQueue(raw QueueRaw) Queue {
 
 	return queue
 }
+
 func mapCDR(raw CDR) CDR {
 	noteText, noteType, noteDescription := extractCallNoteInfo(raw.CallNote)
 
@@ -257,7 +262,7 @@ func processQueuesData(rawBody []byte) ([]Queue, error) {
 	return queues, nil
 }
 
-func processCDRsData(rawBody []byte) ([]CDR, error) {
+func processCDRsData(service *YeastarService, rawBody []byte) ([]CDR, error) {
 	var response CDRResponse
 	if err := json.Unmarshal(rawBody, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal CDRs response: %w", err)
@@ -267,9 +272,30 @@ func processCDRsData(rawBody []byte) ([]CDR, error) {
 		return nil, fmt.Errorf("CDRs fetch failed: %s", response.ErrMsg)
 	}
 
+	recordings, err := service.GetRecordingsList(context.Background())
+	if err != nil {
+		log.Printf("Warning: failed to get recordings list: %v", err)
+	}
+
+	recordingMap := make(map[string]Recording)
+	for _, rec := range recordings {
+		recordingMap[rec.UID] = rec
+	}
+
 	cdrs := make([]CDR, 0, len(response.Data))
 	for _, rawCDR := range response.Data {
 		cleanCDR := mapCDR(rawCDR)
+
+		key := path.Base(cleanCDR.RecordFile)
+		if rec, exists := recordingMap[key]; exists {
+			downloadURL, err := service.GetRecordingDownloadURL(context.Background(), rec.ID)
+			if err != nil {
+				log.Printf("Failed to get download URL for recording %d: %v", rec.ID, err)
+			} else {
+				cleanCDR.RecordingURL = downloadURL
+			}
+		}
+
 		cdrs = append(cdrs, cleanCDR)
 		log.Printf("Mapped CDR: ID=%d, From=%s, To=%s, Duration=%d, NoteType=%s, NoteDesc=%s",
 			cleanCDR.ID, cleanCDR.CallFrom, cleanCDR.CallTo, cleanCDR.Duration,
@@ -324,4 +350,23 @@ func mapQueueMembers(queue QueueRaw) []QueueMember {
 	extractMembers(queue.Managers, "manager")
 
 	return members
+}
+
+func dumpCDRsToFile(cdrs []CDR) error {
+	filename := fmt.Sprintf("cdrs_dump_%s.json", time.Now().Format("20060102_150405"))
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create dump file: %w", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	if err := encoder.Encode(cdrs); err != nil {
+		return fmt.Errorf("failed to write CDRs to file: %w", err)
+	}
+
+	fmt.Println("CDRs written to", filename)
+	return nil
 }
