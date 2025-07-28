@@ -304,6 +304,7 @@ func processCDRsData(service *YeastarService, rawBody []byte) ([]CDR, error) {
 				log.Printf("[WARN] Failed to get download URL for recording %d: %v", recording.ID, err)
 			} else {
 				cleanCDR.RecordingURL = downloadURL
+				cleanCDR.RecordFile = recording.File
 				matchedCount++
 				log.Printf("[INFO] ✓ Matched CDR %d with recording %d via %s. URL: %s",
 					cleanCDR.ID, recording.ID, matchType, downloadURL)

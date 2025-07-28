@@ -70,7 +70,7 @@ type CDR struct {
 	EnbCallNote         int         `json:"enb_call_note"`
 	DID                 string      `json:"did"`
 	DIDName             string      `json:"did_name"`
-	RecordFile          string      `json:"record_file"`
+	RecordFile          string      `json:"recording_file"`
 	RecordingURL        string      `json:"recording_url"`
 }
 
