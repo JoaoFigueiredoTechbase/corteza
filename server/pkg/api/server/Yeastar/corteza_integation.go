@@ -29,79 +29,85 @@ func NewCortezaClient(baseURL string) *CortezaClient {
 // TriggerConfigPush triggers configuration push from Corteza
 func (cc *CortezaClient) TriggerConfigPush() error {
 	url := fmt.Sprintf("%s/api/gateway/get/config", cc.baseURL)
+	fmt.Printf("[CortezaClient] Triggering config push: %s\n", url)
 
 	resp, err := cc.client.Get(url)
 	if err != nil {
+		fmt.Printf("[CortezaClient] ❌ Config trigger request failed: %v\n", err)
 		return fmt.Errorf("failed to trigger config push: %w", err)
 	}
 	defer resp.Body.Close()
 
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("[CortezaClient] Config trigger response: %d - %s\n", resp.StatusCode, string(body))
+
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("Corteza config trigger failed: %d, body: %s", resp.StatusCode, string(body))
 	}
 
+	fmt.Println("[CortezaClient] ✅ Config push triggered successfully")
 	return nil
 }
 
 // TriggerTokenPush triggers token push from Corteza
 func (cc *CortezaClient) TriggerTokenPush() error {
 	url := fmt.Sprintf("%s/api/gateway/get/token", cc.baseURL)
+	fmt.Printf("[CortezaClient] Triggering token push: %s\n", url)
 
 	resp, err := cc.client.Get(url)
 	if err != nil {
+		fmt.Printf("[CortezaClient] ❌ Token trigger request failed: %v\n", err)
 		return fmt.Errorf("failed to trigger token push: %w", err)
 	}
 	defer resp.Body.Close()
 
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("[CortezaClient] Token trigger response: %d - %s\n", resp.StatusCode, string(body))
+
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("Corteza token trigger failed: %d, body: %s", resp.StatusCode, string(body))
 	}
 
+	fmt.Println("[CortezaClient] ✅ Token push triggered successfully")
 	return nil
 }
 
 // SaveToken saves token to Corteza storage
 func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) error {
-	fmt.Println("Starting to save token to Corteza")
+	fmt.Println("[CortezaClient] Starting to save token to Corteza...")
 
 	url := fmt.Sprintf("%s/api/gateway/store/token", cc.baseURL)
-	fmt.Printf("Save token URL: %s\n", url)
-
-	fmt.Printf("Token being saved: %+v\n", token)
+	fmt.Printf("[CortezaClient] Save token URL: %s\n", url)
 
 	jsonPayload, err := json.Marshal(token)
 	if err != nil {
-		fmt.Printf("Failed to marshal token: %v\n", err)
+		fmt.Printf("[CortezaClient] ❌ Failed to marshal token: %v\n", err)
 		return fmt.Errorf("failed to marshal token for saving: %w", err)
 	}
-	fmt.Printf("JSON payload: %s\n", string(jsonPayload))
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
 	if err != nil {
-		fmt.Printf("Failed to create request: %v\n", err)
+		fmt.Printf("[CortezaClient] ❌ Failed to create request: %v\n", err)
 		return fmt.Errorf("failed to create save request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	fmt.Println("Sending token to Corteza token storage API")
+	fmt.Println("[CortezaClient] Sending token to Corteza storage API...")
 	resp, err := cc.client.Do(req)
 	if err != nil {
-		fmt.Printf("Failed to send request: %v\n", err)
+		fmt.Printf("[CortezaClient] ❌ Failed to send request: %v\n", err)
 		return fmt.Errorf("failed to send token to storage API: %w", err)
 	}
 	defer resp.Body.Close()
 
-	fmt.Printf("Received response with status code: %d\n", resp.StatusCode)
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("[CortezaClient] Save token response: %d - %s\n", resp.StatusCode, string(body))
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("Token storage failed: %d - %s\n", resp.StatusCode, string(body))
 		return fmt.Errorf("failed to store token remotely, status: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	fmt.Println("Token successfully saved to Corteza")
+	fmt.Println("[CortezaClient] ✅ Token successfully saved to Corteza")
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/cortezaproject/corteza/server/pkg/api/server/Yeastar"
 	"github.com/cortezaproject/corteza/server/pkg/options"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -19,7 +20,8 @@ type (
 		// last error
 		err error
 
-		demux *demux
+		demux   *demux
+		yeastar *Yeastar.YeastarIntegration
 	}
 )
 
@@ -49,6 +51,11 @@ func New(log *zap.Logger, opts *options.Options) *server {
 	s.demux = Demux(waiting, waitingRoutes(s.log.Named("waiting"), s.opts.HTTPServer))
 	s.demux.Router(shutdown, shutdownRoutes())
 
+	s.yeastar = Yeastar.NewYeastarIntegration(
+		log.Named("yeastar"),
+		opts.HTTPServer.BaseUrl, // Use HTTP server's BaseURL
+	)
+
 	return s
 }
 
@@ -75,6 +82,12 @@ func (s *server) Activate(mm ...func(chi.Router)) {
 
 	s.log.Debug("entering active state")
 	s.demux.State(active)
+
+	go func() {
+		if err := s.yeastar.Start(context.Background()); err != nil {
+			s.log.Error("Failed to start Yeastar integration", zap.Error(err))
+		}
+	}()
 }
 
 // Shutdown reconfigures server to use shutdown routes
@@ -113,6 +126,14 @@ func (s server) Serve(ctx context.Context) {
 		s.err = srv.Serve(listener)
 	}()
 	<-ctx.Done()
+
+	if s.yeastar != nil {
+		if monitor := s.yeastar.GetEventMonitor(); monitor != nil {
+			if err := monitor.Stop(); err != nil {
+				s.log.Error("Failed to stop Yeastar event monitor", zap.Error(err))
+			}
+		}
+	}
 
 	if s.err == nil {
 		s.err = ctx.Err()
