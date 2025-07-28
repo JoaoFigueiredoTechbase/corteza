@@ -1,6 +1,6 @@
 export default class YeastarService {
   async syncALL () {
-    const baseUrl = window.location.protocol + '//' +window.location.host + '/api';
+    const baseUrl = window.location.protocol + '//' + window.location.host + '/api'
 
     try {
       const responseCDR = await fetch(`${baseUrl}/sync/all`, {

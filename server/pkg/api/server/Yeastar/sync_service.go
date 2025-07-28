@@ -28,8 +28,15 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	protocol := "http"
+	if r.TLS != nil {
+		protocol = "https"
+	}
+
+	baseURL := fmt.Sprintf("%s://%s", protocol, r.Host)
+
 	// Call your existing HandleSyncAll logic
-	err := SyncAll() // This is your core sync logic
+	err := SyncAll(baseURL)
 
 	if err != nil {
 		log.Printf("Error during full sync: %v", err) // Log the detailed error
@@ -42,12 +49,12 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("Full synchronization process completed successfully.")
 }
 
-func SyncAll() error {
+func SyncAll(baseUrl string) error {
 	InitializeGlobalManagers()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	cortezaClient := NewCortezaClient("http://localhost:80")
+	cortezaClient := NewCortezaClient(baseUrl)
 	service := NewYeastarService(GlobalConfigManager, GlobalTokenManager, cortezaClient)
 
 	// Get config first

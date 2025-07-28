@@ -76,6 +76,17 @@ func Test(o *options.Options) error {
 	return nil
 }
 
+func getLocalIP() (string, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String(), nil
+}
+
 // Activate reconfigures server to use active routes
 func (s *server) Activate(mm ...func(chi.Router)) {
 	s.demux.Router(active, activeRoutes(s.log, mm, s.opts))
@@ -84,7 +95,13 @@ func (s *server) Activate(mm ...func(chi.Router)) {
 	s.demux.State(active)
 
 	go func() {
-		if err := s.yeastar.Start(context.Background()); err != nil {
+		ip, err := getLocalIP()
+		if err != nil {
+			s.log.Error("Could not get local IP", zap.Error(err))
+			return
+		}
+
+		if err := s.yeastar.Start(context.Background(), ip); err != nil {
 			s.log.Error("Failed to start Yeastar integration", zap.Error(err))
 		}
 	}()

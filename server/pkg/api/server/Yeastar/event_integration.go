@@ -26,7 +26,7 @@ func NewYeastarIntegration(log *zap.Logger, cortezaURL string) *YeastarIntegrati
 }
 
 // Start initializes and starts the Yeastar integration
-func (yi *YeastarIntegration) Start(ctx context.Context) error {
+func (yi *YeastarIntegration) Start(ctx context.Context, host string) error {
 	yi.log.Info("Starting Yeastar integration")
 
 	// Initialize global managers
@@ -35,7 +35,8 @@ func (yi *YeastarIntegration) Start(ctx context.Context) error {
 
 	// Create Corteza client
 	yi.log.Info("Creating Corteza client")
-	cortezaClient := NewCortezaClient("http://localhost:80")
+	url := "http://" + host
+	cortezaClient := NewCortezaClient(url)
 
 	// Create event monitor
 	yi.log.Info("Initializing event monitor")
