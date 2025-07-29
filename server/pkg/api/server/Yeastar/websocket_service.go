@@ -54,13 +54,22 @@ type YeastarEvent struct {
 // Common event IDs from Yeastar API
 
 const (
-	EventCallStatusChanged = 30011
-
-	EventNewCDR = 30012
-
-	EventAgentStatusChanged = 30013
-
-	EventQueueStatusChanged = 30014
+	EventExtensionRegistration   = 30007
+	EventExtensionCallStatus     = 30008
+	EventExtensionPresenceStatus = 30009
+	EventCallStatusChanged       = 30011
+	EventNewCDR                  = 30012
+	EventCallTransfer            = 30013
+	EventCallFoward              = 30014
+	EventCallStatus              = 30015
+	EventSatisfaction            = 30019
+	EventUaCSTACall              = 30020
+	EventExtensionConfiguration  = 30022
+	EventAgentPause              = 30025
+	EventAgentRingTimeout        = 30026
+	EventReportDownload          = 30027
+	EventCallNoteStatusChanged   = 30028
+	EventAgentStatusChanged      = 30029
 )
 
 func NewWebSocketService(configManager *ConfigManager, tokenManager *TokenManager, cortezaClient *CortezaClient) *WebSocketService {
@@ -293,16 +302,57 @@ func (ws *WebSocketService) processEvent(ctx context.Context, event map[string]i
 	}
 
 	switch int(eventID) {
+	case EventExtensionRegistration:
+		log.Println("[WebSocketService] EventExtensionRegistration")
+		_, err := handleEventExtensionRegistration(event)
+		if err != nil {
+			log.Printf("Failed to handle extension registration: %v", err)
+			return err
+		}
+	case EventExtensionCallStatus:
+		log.Println("[WebSocketService] EventExtensionCallStatus")
+		handleEventExtensionCallStatus(event)
+	case EventExtensionPresenceStatus:
+		log.Println("[WebSocketService] EventExtensionPresenceStatus")
+		handleEventExtensionPresenceStatus(event)
 	case EventCallStatusChanged:
-		log.Println("[WebSocketService] 📞 Call status changed")
+		log.Println("[WebSocketService] EventCallStatusChanged")
+		handleEventCallStatusChanged(event)
 	case EventNewCDR:
-		log.Println("[WebSocketService] 📋 New CDR event")
+		log.Println("[WebSocketService] EventNewCDR")
+		handleEventNewCDR(event)
+	case EventCallTransfer:
+		log.Println("[WebSocketService] EventCallTransfer")
+		handleEventCallTransfer(event)
+	case EventCallFoward:
+		log.Println("[WebSocketService] EventCallFoward")
+		handleEventCallFoward(event)
+	case EventCallStatus:
+		log.Println("[WebSocketService] EventCallStatus")
+		handleEventCallStatus(event)
+	case EventSatisfaction:
+		log.Println("[WebSocketService] EventSatisfaction")
+		handleEventSatisfaction(event)
+	case EventUaCSTACall:
+		log.Println("[WebSocketService] EventUaCSTACall")
+		handleEventUaCSTACall(event)
+	case EventExtensionConfiguration:
+		log.Println("[WebSocketService] EventExtensionConfiguration")
+		handleEventExtensionConfiguration(event)
+	case EventAgentPause:
+		log.Println("[WebSocketService] EventAgentPause")
+		handleEventAgentPause(event)
+	case EventAgentRingTimeout:
+		log.Println("[WebSocketService] EventAgentRingTimeout")
+		handleEventAgentRingTimeout(event)
+	case EventCallNoteStatusChanged:
+		log.Println("[WebSocketService] EventCallNoteStatusChanged")
+		handleEventCallNoteStatusChanged(event)
 	case EventAgentStatusChanged:
-		log.Println("[WebSocketService] 👤 Agent status changed")
-	case EventQueueStatusChanged:
-		log.Println("[WebSocketService] 📊 Queue status changed")
+		log.Println("[WebSocketService] EventAgentStatusChanged")
+		handleEventAgentStatusChanged(event)
 	default:
-		log.Printf("[WebSocketService] ❓ Unknown event ID received: %.0f\n", eventID)
+		log.Printf("[WebSocketService] Unknown event ID received: %.0f\n", eventID)
 	}
 
 	return nil

@@ -58,10 +58,22 @@ func (em *EventMonitor) Start(ctx context.Context) error {
 	}
 
 	eventIDs := []int{
+		EventExtensionRegistration,
+		EventExtensionCallStatus,
+		EventExtensionPresenceStatus,
 		EventCallStatusChanged,
 		EventNewCDR,
+		EventCallTransfer,
+		EventCallFoward,
+		EventCallStatus,
+		EventSatisfaction,
+		EventUaCSTACall,
+		EventExtensionConfiguration,
+		EventAgentPause,
+		EventAgentRingTimeout,
+		EventReportDownload,
+		EventCallNoteStatusChanged,
 		EventAgentStatusChanged,
-		EventQueueStatusChanged,
 	}
 
 	log.Printf("[EventMonitor] Subscribing to event topics: %v", eventIDs)
@@ -125,10 +137,22 @@ func (em *EventMonitor) reconnect(ctx context.Context) error {
 	}
 
 	eventIDs := []int{
+		EventExtensionRegistration,
+		EventExtensionCallStatus,
+		EventExtensionPresenceStatus,
 		EventCallStatusChanged,
 		EventNewCDR,
+		EventCallTransfer,
+		EventCallFoward,
+		EventCallStatus,
+		EventSatisfaction,
+		EventUaCSTACall,
+		EventExtensionConfiguration,
+		EventAgentPause,
+		EventAgentRingTimeout,
+		EventReportDownload,
+		EventCallNoteStatusChanged,
 		EventAgentStatusChanged,
-		EventQueueStatusChanged,
 	}
 
 	log.Printf("[EventMonitor] Resubscribing to event topics: %v", eventIDs)
