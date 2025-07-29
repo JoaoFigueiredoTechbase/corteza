@@ -38,3 +38,28 @@ func mapToEventCallStatusChanged(events map[string]interface{}, msg map[string]i
 		Members:   members,
 	}
 }
+
+func mapToNewCDR(events map[string]interface{}, msg map[string]interface{}) *NewCDREvent {
+	return &NewCDREvent{
+		TypeName:      "NewCDR",
+		EventType:     getStringPointer(events, "type"),
+		SN:            getStringPointer(events, "sn"),
+		CallID:        getStringPointer(msg, "call_id"),
+		TimeStart:     getStringPointer(msg, "time_start"),
+		CallFrom:      getStringPointer(msg, "call_from"),
+		CallTo:        getStringPointer(msg, "call_to"),
+		CallDuration:  getIntPointer(msg, "call_duration"),
+		TalkDuration:  getIntPointer(msg, "talk_duration"),
+		SrcTrunkName:  getStringPointer(msg, "src_trunk_name"),
+		DstTrunkName:  getStringPointer(msg, "dst_trunk_name"),
+		PinCode:       getStringPointer(msg, "pin_code"),
+		Status:        getStringPointer(msg, "status"),
+		CallType:      getStringPointer(msg, "type"),
+		Recording:     getStringPointer(msg, "recording"),
+		DIDNumber:     getStringPointer(msg, "did_number"),
+		AgentRingTime: getIntPointer(msg, "agent_ring_time"),
+		UID:           getStringPointer(msg, "uid"),
+		CallNoteID:    getStringPointer(msg, "call_note_id"),
+		EnbCallNote:   getIntPointer(msg, "enb_call_note"),
+	}
+}

@@ -42,3 +42,26 @@ type CallMember struct {
 	Status    *string `json:"status,omitempty"`
 	CallPath  *string `json:"call_path,omitempty"`
 }
+
+type NewCDREvent struct {
+	TypeName      string  `json:"type"`
+	EventType     *string `json:"event_type,omitempty"`
+	SN            *string `json:"sn,omitempty"`
+	CallID        *string `json:"call_id,omitempty"`
+	TimeStart     *string `json:"time_start,omitempty"`
+	CallFrom      *string `json:"call_from,omitempty"`
+	CallTo        *string `json:"call_to,omitempty"`
+	CallDuration  *int    `json:"call_duration,omitempty"`
+	TalkDuration  *int    `json:"talk_duration,omitempty"`
+	SrcTrunkName  *string `json:"src_trunk_name,omitempty"`
+	DstTrunkName  *string `json:"dst_trunk_name,omitempty"`
+	PinCode       *string `json:"pin_code,omitempty"`
+	Status        *string `json:"status,omitempty"`
+	CallType      *string `json:"call_type,omitempty"`
+	Recording     *string `json:"recording,omitempty"`
+	DIDNumber     *string `json:"did_number,omitempty"`
+	AgentRingTime *int    `json:"agent_ring_time,omitempty"`
+	UID           *string `json:"uid,omitempty"`
+	CallNoteID    *string `json:"call_note_id,omitempty"`
+	EnbCallNote   *int    `json:"enb_call_note,omitempty"`
+}
