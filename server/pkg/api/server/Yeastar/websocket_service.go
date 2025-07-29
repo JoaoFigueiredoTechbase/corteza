@@ -287,19 +287,20 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 func (ws *WebSocketService) processEvent(ctx context.Context, event map[string]interface{}) error {
 	log.Printf("[WebSocketService] Received event: %+v\n", event)
 
-	eventType, _ := event["event_type"].(string)
-	eventID, _ := event["event_id"].(float64)
+	// Get the correct field names from the nested event_data
+	eventID, _ := event["type"].(float64) // "type" field contains the event ID
+	sn, _ := event["sn"].(string)         // "sn" field
 
-	log.Printf("[WebSocketService] Processing event - Type: %s, ID: %.0f\n", eventType, eventID)
+	log.Printf("[WebSocketService] Processing event - SN: %s, ID: %.0f\n", sn, eventID)
 
 	// if err := ws.cortezaClient.SendData(ctx, "events", event); err != nil {
 	// 	log.Printf("[WebSocketService] Failed to send event to Corteza: %v\n", err)
 	// }
 
-	webhookURL := "https://webhook.site/f138fe58-2d58-4255-a3c3-9f92649e1339"
-	if err := sendEventToWebhook(ctx, webhookURL, event); err != nil {
-		log.Printf("[WebSocketService] ❌ Failed to send event to webhook: %v\n", err)
-	}
+	// webhookURL := "https://webhook.site/f138fe58-2d58-4255-a3c3-9f92649e1339"
+	// if err := sendEventToWebhook(ctx, webhookURL, event); err != nil {
+	// 	log.Printf("[WebSocketService] ❌ Failed to send event to webhook: %v\n", err)
+	// }
 
 	switch int(eventID) {
 	case EventExtensionRegistration:

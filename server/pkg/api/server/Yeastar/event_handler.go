@@ -3,7 +3,6 @@ package Yeastar
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 )
 
@@ -31,10 +30,12 @@ var baseURL string
 
 // Initialize base URL
 func init() {
-	baseURL = os.Getenv("API_BASE_URL")
-	if baseURL == "" {
-		baseURL = "https://webhook.site/f138fe58-2d58-4255-a3c3-9f92649e1339" // default
-	}
+	baseURL = "https://webhook.site/f138fe58-2d58-4255-a3c3-9f92649e1339" // default
+
+	// baseURL = os.Getenv("API_BASE_URL")
+	// if baseURL == "" {
+
+	// }
 }
 
 // Base URL function
