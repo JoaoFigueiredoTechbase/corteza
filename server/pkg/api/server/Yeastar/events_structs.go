@@ -32,6 +32,15 @@ type CallStatusChangedEvent struct {
 	Members   []CallMember `json:"members,omitempty"`
 }
 
+type CallEvent struct {
+	TypeName  string       `json:"type_name"`
+	EventType *string      `json:"event_type,omitempty"`
+	SN        *string      `json:"sn,omitempty"` // Only used by CallTransfer
+	CallID    *string      `json:"call_id,omitempty"`
+	Reason    *string      `json:"reason,omitempty"` // Only used by CallStatusChanged
+	Members   []CallMember `json:"members,omitempty"`
+}
+
 type CallMember struct {
 	Type      string  `json:"type"`
 	Number    *string `json:"number,omitempty"`     // for extension
@@ -64,4 +73,7 @@ type NewCDREvent struct {
 	UID           *string `json:"uid,omitempty"`
 	CallNoteID    *string `json:"call_note_id,omitempty"`
 	EnbCallNote   *int    `json:"enb_call_note,omitempty"`
+}
+
+type CallTransferEvent struct {
 }

@@ -63,3 +63,14 @@ func mapToNewCDR(events map[string]interface{}, msg map[string]interface{}) *New
 		EnbCallNote:   getIntPointer(msg, "enb_call_note"),
 	}
 }
+
+func mapToCallEvent(events map[string]interface{}, msg map[string]interface{}, typeName string) *CallEvent {
+	return &CallEvent{
+		TypeName:  typeName,
+		EventType: getStringPointer(events, "type"),
+		SN:        getStringPointer(events, "sn"), // Will be nil for CallStatusChanged
+		CallID:    getStringPointer(msg, "call_id"),
+		Reason:    getStringPointer(msg, "reason"), // Will be nil for CallTransfer
+		Members:   processMembers(msg),
+	}
+}

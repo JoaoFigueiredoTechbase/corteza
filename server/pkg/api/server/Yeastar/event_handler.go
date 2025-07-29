@@ -63,15 +63,13 @@ func handleEventExtensionPresenceStatus(event map[string]interface{}) (*Extensio
 }
 
 // 30011
-func handleEventCallStatusChanged(event map[string]interface{}) (*CallStatusChangedEvent, error) {
+func handleEventCallStatusChanged(event map[string]interface{}) (*CallEvent, error) {
 	msg, err := verifyMessageWithCleaning(event)
 	if err != nil {
 		return nil, err
 	}
 
-	members := processMembers(msg)
-
-	eventData := mapToEventCallStatusChanged(event, msg, members)
+	eventData := mapToCallEvent(event, msg, "CallStatusChanged")
 	log.Printf("Successfully mapped CallStatusChanged: %+v", eventData)
 
 	endpoint := "https://your-api.com/events"
@@ -103,13 +101,22 @@ func handleEventNewCDR(event map[string]interface{}) (*NewCDREvent, error) {
 }
 
 // 30013
-func handleEventCallTransfer(event map[string]interface{}) error {
-	msg, err := verifyMessage(event)
+func handleEventCallTransfer(event map[string]interface{}) (*CallEvent, error) {
+	msg, err := verifyMessageWithCleaning(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	eventData := mapToCallEvent(event, msg, "CallTransfer")
+	log.Printf("Successfully mapped CallTransfer: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // 30014
