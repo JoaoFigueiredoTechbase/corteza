@@ -99,3 +99,17 @@ type ExtensionConfigurationEvent struct {
 	Extension *string `json:"extension,omitempty"`
 	Option    *string `json:"option,omitempty"`
 }
+
+type AgentAutoPauseEvent struct {
+	TypeName    string     `json:"type_name"`
+	EventType   *string    `json:"event_type,omitempty"`
+	QueueNumber *string    `json:"queue_number,omitempty"`
+	AgentNumber *string    `json:"agent_number,omitempty"`
+	Calls       []CallInfo `json:"calls,omitempty"`
+}
+
+type CallInfo struct {
+	Type         string  `json:"type"`
+	CallerNumber *string `json:"caller_number,omitempty"`
+	CallID       *string `json:"call_id,omitempty"`
+}

@@ -105,3 +105,13 @@ func mapToExtensionConfiguration(events map[string]interface{}, msg map[string]i
 		Option:    getStringPointer(msg, "option"),
 	}
 }
+
+func mapToAgentAutoPause(events map[string]interface{}, msg map[string]interface{}) *AgentAutoPauseEvent {
+	return &AgentAutoPauseEvent{
+		TypeName:    "AgentAutoPause",
+		EventType:   getStringPointer(events, "type"),
+		QueueNumber: getStringPointer(msg, "queue_number"),
+		AgentNumber: getStringPointer(msg, "agent_number"),
+		Calls:       processCalls(msg),
+	}
+}

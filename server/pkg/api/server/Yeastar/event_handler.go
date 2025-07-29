@@ -215,13 +215,22 @@ func handleEventExtensionConfiguration(event map[string]interface{}) (*Extension
 }
 
 // 30025
-func handleEventAgentPause(event map[string]interface{}) error {
-	msg, err := verifyMessage(event)
+func handleEventAgentPause(event map[string]interface{}) (*AgentAutoPauseEvent, error) {
+	msg, err := verifyMessageWithCleaning(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	eventData := mapToAgentAutoPause(event, msg)
+	log.Printf("Successfully mapped AgentAutoPause: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // 30026

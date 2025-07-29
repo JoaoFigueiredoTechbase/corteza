@@ -172,3 +172,37 @@ func processMembers(msg map[string]interface{}) []CallMember {
 
 	return members
 }
+
+func processCalls(msg map[string]interface{}) []CallInfo {
+	var calls []CallInfo
+
+	callsData, exists := msg["calls"]
+	if !exists {
+		return calls
+	}
+
+	callsArray, ok := callsData.([]interface{})
+	if !ok {
+		return calls
+	}
+
+	for _, callData := range callsArray {
+		call, ok := callData.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check for call_info
+		if callInfoData, exists := call["call_info"]; exists {
+			if callInfo, ok := callInfoData.(map[string]interface{}); ok {
+				calls = append(calls, CallInfo{
+					Type:         "call_info",
+					CallerNumber: getStringPointer(callInfo, "caller_number"),
+					CallID:       getStringPointer(callInfo, "call_id"),
+				})
+			}
+		}
+	}
+
+	return calls
+}
