@@ -74,3 +74,13 @@ func mapToCallEvent(events map[string]interface{}, msg map[string]interface{}, t
 		Members:   processMembers(msg),
 	}
 }
+
+func mapToSatisfaction(events map[string]interface{}, msg map[string]interface{}) *SatisfactionEvent {
+	return &SatisfactionEvent{
+		TypeName:     "Satisfaction",
+		EventType:    getStringPointer(events, "type"),
+		SN:           getStringPointer(events, "sn"),
+		CallID:       getStringPointer(msg, "call_id"),
+		SurveyResult: getStringPointer(msg, "survey_result"),
+	}
+}

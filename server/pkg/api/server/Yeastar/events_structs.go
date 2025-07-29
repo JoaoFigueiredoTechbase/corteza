@@ -75,5 +75,10 @@ type NewCDREvent struct {
 	EnbCallNote   *int    `json:"enb_call_note,omitempty"`
 }
 
-type CallTransferEvent struct {
+type SatisfactionEvent struct {
+	TypeName     string  `json:"type"`
+	EventType    *string `json:"event_type,omitempty"`
+	SN           *string `json:"sn,omitempty"`
+	CallID       *string `json:"call_id,omitempty"`
+	SurveyResult *string `json:"survey_result,omitempty"`
 }

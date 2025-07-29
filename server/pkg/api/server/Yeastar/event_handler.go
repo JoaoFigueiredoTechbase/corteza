@@ -158,13 +158,22 @@ func handleEventCallStatus(event map[string]interface{}) (*CallEvent, error) {
 }
 
 // 30019
-func handleEventSatisfaction(event map[string]interface{}) error {
+func handleEventSatisfaction(event map[string]interface{}) (*SatisfactionEvent, error) {
 	msg, err := verifyMessage(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	eventData := mapToSatisfaction(event, msg)
+	log.Printf("Successfully mapped NewCDR: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // 30020
