@@ -10,3 +10,13 @@ func mapToExtensionRegistration(events map[string]interface{}, msg map[string]in
 		RegisteredIP: getStringPointer(msg, "registered_ip"),
 	}
 }
+
+func mapToExtensionCallStatus(events map[string]interface{}, msg map[string]interface{}) *ExtensionCallStatusEvent {
+	return &ExtensionCallStatusEvent{
+		TypeName:  "ExtensionCallStatus",
+		EventType: getStringPointer(events, "type"),
+		SN:        getStringPointer(events, "sn"),
+		Extension: getStringPointer(msg, "extension"),
+		Status:    getStringPointer(msg, "status"),
+	}
+}

@@ -8,3 +8,11 @@ type ExtensionRegistrationEvent struct {
 	Status       *string `json:"status,omitempty"`
 	RegisteredIP *string `json:"registered_ip,omitempty"`
 }
+
+type ExtensionCallStatusEvent struct {
+	TypeName  string  `json:"type_name"`
+	EventType *string `json:"event_type,omitempty"`
+	SN        *string `json:"sn,omitempty"`
+	Extension *string `json:"extension,omitempty"`
+	Status    *string `json:"status,omitempty"`
+}

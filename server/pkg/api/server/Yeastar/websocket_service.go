@@ -311,46 +311,102 @@ func (ws *WebSocketService) processEvent(ctx context.Context, event map[string]i
 		}
 	case EventExtensionCallStatus:
 		log.Println("[WebSocketService] EventExtensionCallStatus")
-		handleEventExtensionCallStatus(event)
+		_, err := handleEventExtensionCallStatus(event)
+		if err != nil {
+			log.Printf("Failed to handle extension call status: %v", err)
+			return err
+		}
 	case EventExtensionPresenceStatus:
 		log.Println("[WebSocketService] EventExtensionPresenceStatus")
-		handleEventExtensionPresenceStatus(event)
+		_, err := handleEventExtensionPresenceStatus(event)
+		if err != nil {
+			log.Printf("Failed to handle extension presence status: %v", err)
+			return err
+		}
 	case EventCallStatusChanged:
 		log.Println("[WebSocketService] EventCallStatusChanged")
-		handleEventCallStatusChanged(event)
+		_, err := handleEventCallStatusChanged(event)
+		if err != nil {
+			log.Printf("Failed to handle call status changed: %v", err)
+			return err
+		}
 	case EventNewCDR:
 		log.Println("[WebSocketService] EventNewCDR")
-		handleEventNewCDR(event)
+		_, err := handleEventNewCDR(event)
+		if err != nil {
+			log.Printf("Failed to handle new call: %v", err)
+			return err
+		}
 	case EventCallTransfer:
 		log.Println("[WebSocketService] EventCallTransfer")
-		handleEventCallTransfer(event)
+		_, err := handleEventCallTransfer(event)
+		if err != nil {
+			log.Printf("Failed to handle call transfer: %v", err)
+			return err
+		}
 	case EventCallFoward:
 		log.Println("[WebSocketService] EventCallFoward")
-		handleEventCallFoward(event)
+		_, err := handleEventCallFoward(event)
+		if err != nil {
+			log.Printf("Failed to handle call foward: %v", err)
+			return err
+		}
 	case EventCallStatus:
 		log.Println("[WebSocketService] EventCallStatus")
-		handleEventCallStatus(event)
+		_, err := handleEventCallStatus(event)
+		if err != nil {
+			log.Printf("Failed to handle call status: %v", err)
+			return err
+		}
 	case EventSatisfaction:
 		log.Println("[WebSocketService] EventSatisfaction")
-		handleEventSatisfaction(event)
+		_, err := handleEventSatisfaction(event)
+		if err != nil {
+			log.Printf("Failed to handle satisfaction status: %v", err)
+			return err
+		}
 	case EventUaCSTACall:
 		log.Println("[WebSocketService] EventUaCSTACall")
-		handleEventUaCSTACall(event)
+		_, err := handleEventUaCSTACall(event)
+		if err != nil {
+			log.Printf("Failed to handle uacsta call: %v", err)
+			return err
+		}
 	case EventExtensionConfiguration:
 		log.Println("[WebSocketService] EventExtensionConfiguration")
-		handleEventExtensionConfiguration(event)
+		_, err := handleEventExtensionConfiguration(event)
+		if err != nil {
+			log.Printf("Failed to handle extension configuration status: %v", err)
+			return err
+		}
 	case EventAgentPause:
 		log.Println("[WebSocketService] EventAgentPause")
-		handleEventAgentPause(event)
+		_, err := handleEventAgentPause(event)
+		if err != nil {
+			log.Printf("Failed to handle extension pause status: %v", err)
+			return err
+		}
 	case EventAgentRingTimeout:
 		log.Println("[WebSocketService] EventAgentRingTimeout")
-		handleEventAgentRingTimeout(event)
+		_, err := handleEventAgentRingTimeout(event)
+		if err != nil {
+			log.Printf("Failed to handle extension timeout status: %v", err)
+			return err
+		}
 	case EventCallNoteStatusChanged:
 		log.Println("[WebSocketService] EventCallNoteStatusChanged")
-		handleEventCallNoteStatusChanged(event)
+		_, err := handleEventCallNoteStatusChanged(event)
+		if err != nil {
+			log.Printf("Failed to handle call note status: %v", err)
+			return err
+		}
 	case EventAgentStatusChanged:
 		log.Println("[WebSocketService] EventAgentStatusChanged")
-		handleEventAgentStatusChanged(event)
+		_, err := handleEventAgentStatusChanged(event)
+		if err != nil {
+			log.Printf("Failed to handle extension change status: %v", err)
+			return err
+		}
 	default:
 		log.Printf("[WebSocketService] Unknown event ID received: %.0f\n", eventID)
 	}

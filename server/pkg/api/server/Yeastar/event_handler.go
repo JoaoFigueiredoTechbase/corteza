@@ -43,7 +43,7 @@ func getStringPointer(data map[string]interface{}, key string) *string {
 	return nil
 }
 
-func sendEventToEndpoint(event *ExtensionRegistrationEvent, endpoint string) error {
+func sendEventToEndpoint(event interface{}, endpoint string) error {
 	jsonData, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event to JSON: %w", err)
@@ -63,8 +63,6 @@ func sendEventToEndpoint(event *ExtensionRegistrationEvent, endpoint string) err
 
 	return nil
 }
-
-// struct
 
 // 30007
 func handleEventExtensionRegistration(event map[string]interface{}) (*ExtensionRegistrationEvent, error) {
@@ -87,20 +85,29 @@ func handleEventExtensionRegistration(event map[string]interface{}) (*ExtensionR
 }
 
 // 30008
-func handleEventExtensionCallStatus(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+func handleEventExtensionCallStatus(event map[string]interface{}) (*ExtensionCallStatusEvent, error) {
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	eventData := mapToExtensionCallStatus(event, msg)
+	log.Printf("Successfully mapped EventExtensionCallStatus: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // 3009
 func handleEventExtensionPresenceStatus(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -108,9 +115,9 @@ func handleEventExtensionPresenceStatus(event map[string]interface{}) error {
 
 // 30011
 func handleEventCallStatusChanged(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -118,9 +125,9 @@ func handleEventCallStatusChanged(event map[string]interface{}) error {
 
 // 30012
 func handleEventNewCDR(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -128,9 +135,9 @@ func handleEventNewCDR(event map[string]interface{}) error {
 
 // 30013
 func handleEventCallTransfer(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -138,9 +145,9 @@ func handleEventCallTransfer(event map[string]interface{}) error {
 
 // 30014
 func handleEventCallFoward(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -148,9 +155,9 @@ func handleEventCallFoward(event map[string]interface{}) error {
 
 // 30015
 func handleEventCallStatus(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -158,9 +165,9 @@ func handleEventCallStatus(event map[string]interface{}) error {
 
 // 30019
 func handleEventSatisfaction(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -168,9 +175,9 @@ func handleEventSatisfaction(event map[string]interface{}) error {
 
 // 30020
 func handleEventUaCSTACall(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -178,9 +185,9 @@ func handleEventUaCSTACall(event map[string]interface{}) error {
 
 // 30022
 func handleEventExtensionConfiguration(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -188,9 +195,9 @@ func handleEventExtensionConfiguration(event map[string]interface{}) error {
 
 // 30025
 func handleEventAgentPause(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -198,9 +205,9 @@ func handleEventAgentPause(event map[string]interface{}) error {
 
 // 30026
 func handleEventAgentRingTimeout(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -213,9 +220,9 @@ func handleEventAgentRingTimeout(event map[string]interface{}) error {
 
 // 30028
 func handleEventCallNoteStatusChanged(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
@@ -223,9 +230,9 @@ func handleEventCallNoteStatusChanged(event map[string]interface{}) error {
 
 // 30029
 func handleEventAgentStatusChanged(event map[string]interface{}) error {
-	_, err := verifyMessage(event)
+	msg, err := verifyMessage(event)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return nil
