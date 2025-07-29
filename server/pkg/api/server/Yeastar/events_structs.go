@@ -82,3 +82,13 @@ type SatisfactionEvent struct {
 	CallID       *string `json:"call_id,omitempty"`
 	SurveyResult *string `json:"survey_result,omitempty"`
 }
+
+type UaCSTACallEvent struct {
+	TypeName  string  `json:"type"`
+	EventType *string `json:"event_type,omitempty"`
+	SN        *string `json:"sn,omitempty"`
+	Operation *string `json:"operation,omitempty"`
+	Extension *string `json:"extension,omitempty"`
+	CallID    *string `json:"call_id,omitempty"`
+	IPAddress *string `json:"ip_address,omitempty"`
+}
