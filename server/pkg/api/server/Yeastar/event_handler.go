@@ -277,11 +277,20 @@ func handleEventCallNoteStatusChanged(event map[string]interface{}) (*CallNoteSt
 }
 
 // 30029
-func handleEventAgentStatusChanged(event map[string]interface{}) error {
+func handleEventAgentStatusChanged(event map[string]interface{}) (*AgentStatusChangedEvent, error) {
 	msg, err := verifyMessage(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	eventData := mapToAgentStatusChanged(event, msg)
+	log.Printf("Successfully mapped AgentStatusChanged: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }

@@ -140,3 +140,15 @@ func mapToCallNoteStatus(events map[string]interface{}, msg map[string]interface
 		Channel:    getStringPointer(msg, "channel"),
 	}
 }
+
+func mapToAgentStatusChanged(events map[string]interface{}, msg map[string]interface{}) *AgentStatusChangedEvent {
+	return &AgentStatusChangedEvent{
+		TypeName:    "AgentStatusChanged",
+		EventType:   getStringPointer(events, "type"),
+		SN:          getStringPointer(events, "sn"),
+		QueueNumber: getStringPointer(msg, "queue_number"),
+		AgentNumber: getStringPointer(msg, "agent_number"),
+		Status:      getStringPointer(msg, "status"),
+		Reason:      getStringPointer(msg, "reason"),
+	}
+}

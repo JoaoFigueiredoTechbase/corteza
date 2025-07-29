@@ -134,3 +134,13 @@ type CallNoteStatusEvent struct {
 	ExtNum     *string `json:"ext_num,omitempty"`
 	Channel    *string `json:"channel,omitempty"`
 }
+
+type AgentStatusChangedEvent struct {
+	TypeName    string  `json:"type_name"`
+	EventType   *string `json:"event_type,omitempty"`
+	SN          *string `json:"sn,omitempty"`
+	QueueNumber *string `json:"queue_number,omitempty"`
+	AgentNumber *string `json:"agent_number,omitempty"`
+	Status      *string `json:"status,omitempty"`
+	Reason      *string `json:"reason,omitempty"`
+}
