@@ -20,3 +20,12 @@ func mapToExtensionCallStatus(events map[string]interface{}, msg map[string]inte
 		Status:    getStringPointer(msg, "status"),
 	}
 }
+
+func mapToExtensionPresenceStatus(events map[string]interface{}, msg map[string]interface{}) *ExtensionPresenceStatusEvent {
+	return &ExtensionPresenceStatusEvent{
+		TypeName:  "ExtensionPresenceStatus",
+		EventType: getStringPointer(events, "type"),
+		Extension: getStringPointer(msg, "extension"),
+		Status:    getStringPointer(msg, "status"),
+	}
+}

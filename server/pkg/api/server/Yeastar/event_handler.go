@@ -104,13 +104,22 @@ func handleEventExtensionCallStatus(event map[string]interface{}) (*ExtensionCal
 }
 
 // 3009
-func handleEventExtensionPresenceStatus(event map[string]interface{}) error {
+func handleEventExtensionPresenceStatus(event map[string]interface{}) (*ExtensionPresenceStatusEvent, error) {
 	msg, err := verifyMessage(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	eventData := mapToExtensionPresenceStatus(event, msg)
+	log.Printf("Successfully mapped ExtensionPresenceStatus: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // 30011

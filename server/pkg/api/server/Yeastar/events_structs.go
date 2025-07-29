@@ -16,3 +16,10 @@ type ExtensionCallStatusEvent struct {
 	Extension *string `json:"extension,omitempty"`
 	Status    *string `json:"status,omitempty"`
 }
+
+type ExtensionPresenceStatusEvent struct {
+	TypeName  string  `json:"type_name"`
+	EventType *string `json:"event_type,omitempty"`
+	Extension *string `json:"extension,omitempty"`
+	Status    *string `json:"status,omitempty"`
+}
