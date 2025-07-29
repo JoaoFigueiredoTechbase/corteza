@@ -1,8 +1,53 @@
 package Yeastar
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"strings"
 )
+
+const (
+	EventExtensionRegistrationPath   = "/event/30007"
+	EventExtensionCallStatusPath     = "/event/30008"
+	EventExtensionPresenceStatusPath = "/event/30009"
+	EventCallStatusChangedPath       = "/event/30011"
+	EventNewCDRPath                  = "/event/30012"
+	EventCallTransferPath            = "/event/30013"
+	EventCallFowardPath              = "/event/30014"
+	EventCallStatusPath              = "/event/30015"
+	EventSatisfactionPath            = "/event/30019"
+	EventUaCSTACallPath              = "/event/30020"
+	EventExtensionConfigurationPath  = "/event/30022"
+	EventAgentPausePath              = "/event/30025"
+	EventAgentRingTimeoutPath        = "/event/30026"
+	EventReportDownloadPath          = "/event/30027"
+	EventCallNoteStatusChangedPath   = "/event/30028"
+	EventAgentStatusChangedPath      = "/event/30029"
+)
+
+// Global base URL (can be overridden by environment variable)
+var baseURL string
+
+// Initialize base URL
+func init() {
+	baseURL = os.Getenv("API_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://webhook.site/f138fe58-2d58-4255-a3c3-9f92649e1339" // default
+	}
+}
+
+// Base URL function
+func getBaseURL() string {
+	return baseURL
+}
+
+// Build endpoint URL
+func buildURL(path string) string {
+	base := strings.TrimRight(getBaseURL(), "/")
+	path = strings.TrimLeft(path, "/")
+	return fmt.Sprintf("%s/%s", base, path)
+}
 
 // 30007
 func handleEventExtensionRegistration(event map[string]interface{}) (*ExtensionRegistrationEvent, error) {
@@ -15,8 +60,7 @@ func handleEventExtensionRegistration(event map[string]interface{}) (*ExtensionR
 
 	log.Printf("Successfully mapped ExtensionRegistration: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventExtensionRegistrationPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -34,8 +78,7 @@ func handleEventExtensionCallStatus(event map[string]interface{}) (*ExtensionCal
 	eventData := mapToExtensionCallStatus(event, msg)
 	log.Printf("Successfully mapped EventExtensionCallStatus: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventExtensionCallStatusPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -53,8 +96,7 @@ func handleEventExtensionPresenceStatus(event map[string]interface{}) (*Extensio
 	eventData := mapToExtensionPresenceStatus(event, msg)
 	log.Printf("Successfully mapped ExtensionPresenceStatus: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventExtensionPresenceStatusPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -72,8 +114,7 @@ func handleEventCallStatusChanged(event map[string]interface{}) (*CallEvent, err
 	eventData := mapToCallEvent(event, msg, "CallStatusChanged")
 	log.Printf("Successfully mapped CallStatusChanged: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventCallStatusChangedPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -91,8 +132,7 @@ func handleEventNewCDR(event map[string]interface{}) (*NewCDREvent, error) {
 	eventData := mapToNewCDR(event, msg)
 	log.Printf("Successfully mapped NewCDR: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventNewCDRPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -110,8 +150,7 @@ func handleEventCallTransfer(event map[string]interface{}) (*CallEvent, error) {
 	eventData := mapToCallEvent(event, msg, "CallTransfer")
 	log.Printf("Successfully mapped CallTransfer: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventCallTransferPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -129,8 +168,7 @@ func handleEventCallFoward(event map[string]interface{}) (*CallEvent, error) {
 	eventData := mapToCallEvent(event, msg, "CallFoward")
 	log.Printf("Successfully mapped CallFoward: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventCallFowardPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -148,8 +186,7 @@ func handleEventCallStatus(event map[string]interface{}) (*CallEvent, error) {
 	eventData := mapToCallEvent(event, msg, "CallStatus")
 	log.Printf("Successfully mapped CallStatus: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventCallStatusPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -167,8 +204,7 @@ func handleEventSatisfaction(event map[string]interface{}) (*SatisfactionEvent, 
 	eventData := mapToSatisfaction(event, msg)
 	log.Printf("Successfully mapped Satisfaction: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventSatisfactionPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -186,8 +222,7 @@ func handleEventUaCSTACall(event map[string]interface{}) (*UaCSTACallEvent, erro
 	eventData := mapToUaCSTACall(event, msg)
 	log.Printf("Successfully mapped UaCSTACall: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventUaCSTACallPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -205,8 +240,7 @@ func handleEventExtensionConfiguration(event map[string]interface{}) (*Extension
 	eventData := mapToExtensionConfiguration(event, msg)
 	log.Printf("Successfully mapped NewCDR: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventExtensionConfigurationPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -224,8 +258,7 @@ func handleEventAgentPause(event map[string]interface{}) (*AgentAutoPauseEvent, 
 	eventData := mapToAgentAutoPause(event, msg)
 	log.Printf("Successfully mapped AgentAutoPause: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventAgentPausePath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -243,8 +276,7 @@ func handleEventAgentRingTimeout(event map[string]interface{}) (*AgentRingingTim
 	eventData := mapToAgentRingingTimeout(event, msg)
 	log.Printf("Successfully mapped AgentRingingTimeout: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventAgentRingTimeoutPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -267,8 +299,7 @@ func handleEventCallNoteStatusChanged(event map[string]interface{}) (*CallNoteSt
 	eventData := mapToCallNoteStatus(event, msg)
 	log.Printf("Successfully mapped CallNoteStatus: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventCallNoteStatusChangedPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
@@ -286,8 +317,7 @@ func handleEventAgentStatusChanged(event map[string]interface{}) (*AgentStatusCh
 	eventData := mapToAgentStatusChanged(event, msg)
 	log.Printf("Successfully mapped AgentStatusChanged: %+v", eventData)
 
-	endpoint := "https://your-api.com/events"
-	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+	if err := sendEventToEndpoint(eventData, buildURL(EventAgentStatusChangedPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
