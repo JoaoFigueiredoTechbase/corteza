@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
+	"strings"
 )
 
 // utils
@@ -27,6 +29,34 @@ func verifyMessage(event map[string]interface{}) (map[string]interface{}, error)
 	var msg map[string]interface{}
 	if err := json.Unmarshal([]byte(msgString), &msg); err != nil {
 		log.Printf("ERROR: Failed to decode msg JSON: %s, error: %v", msgString, err)
+		return nil, fmt.Errorf("failed to decode msg JSON: %w", err)
+	}
+
+	log.Printf("Successfully decoded msg: %+v", msg)
+	return msg, nil
+}
+
+// Create a separate function for cleaning if needed
+func verifyMessageWithCleaning(event map[string]interface{}) (map[string]interface{}, error) {
+	eventMessage, exists := event["msg"]
+	if !exists {
+		eventJSON, _ := json.Marshal(event)
+		log.Printf("ERROR: msg field missing in the event: %s", string(eventJSON))
+		return nil, fmt.Errorf("msg field missing in event")
+	}
+
+	msgString, ok := eventMessage.(string)
+	if !ok {
+		log.Printf("ERROR: msg field is not a string: %+v", eventMessage)
+		return nil, fmt.Errorf("msg field is not a string, got type %T", eventMessage)
+	}
+
+	// Clean the message (equivalent to PHP's trim and preg_replace)
+	cleanedMsg := cleanWhitespace(msgString)
+
+	var msg map[string]interface{}
+	if err := json.Unmarshal([]byte(cleanedMsg), &msg); err != nil {
+		log.Printf("ERROR: Failed to decode msg JSON: %s, error: %v", cleanedMsg, err)
 		return nil, fmt.Errorf("failed to decode msg JSON: %w", err)
 	}
 
@@ -62,6 +92,78 @@ func sendEventToEndpoint(event interface{}, endpoint string) error {
 	}
 
 	return nil
+}
+
+func cleanWhitespace(input string) string {
+	re := regexp.MustCompile(`\s+`)
+	cleaned := re.ReplaceAllString(input, " ")
+	return strings.TrimSpace(cleaned)
+}
+
+func processMembers(msg map[string]interface{}) []CallMember {
+	var members []CallMember
+
+	membersData, exists := msg["members"]
+	if !exists {
+		return members
+	}
+
+	membersArray, ok := membersData.([]interface{})
+	if !ok {
+		return members
+	}
+
+	for _, memberData := range membersArray {
+		member, ok := memberData.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check for extension
+		if extensionData, exists := member["extension"]; exists {
+			if ext, ok := extensionData.(map[string]interface{}); ok {
+				members = append(members, CallMember{
+					Type:      "extension",
+					Number:    getStringPointer(ext, "number"),
+					ChannelID: getStringPointer(ext, "channel_id"),
+					Status:    getStringPointer(ext, "member_status"),
+					CallPath:  getStringPointer(ext, "call_path"),
+				})
+			}
+		}
+
+		// Check for inbound
+		if inboundData, exists := member["inbound"]; exists {
+			if inb, ok := inboundData.(map[string]interface{}); ok {
+				members = append(members, CallMember{
+					Type:      "inbound",
+					From:      getStringPointer(inb, "from"),
+					To:        getStringPointer(inb, "to"),
+					TrunkName: getStringPointer(inb, "trunk_name"),
+					ChannelID: getStringPointer(inb, "channel_id"),
+					Status:    getStringPointer(inb, "member_status"),
+					CallPath:  getStringPointer(inb, "call_path"),
+				})
+			}
+		}
+
+		// Check for outbound
+		if outboundData, exists := member["outbound"]; exists {
+			if out, ok := outboundData.(map[string]interface{}); ok {
+				members = append(members, CallMember{
+					Type:      "outbound",
+					From:      getStringPointer(out, "from"),
+					To:        getStringPointer(out, "to"),
+					TrunkName: getStringPointer(out, "trunk_name"),
+					ChannelID: getStringPointer(out, "channel_id"),
+					Status:    getStringPointer(out, "member_status"),
+					CallPath:  getStringPointer(out, "call_path"),
+				})
+			}
+		}
+	}
+
+	return members
 }
 
 // 30007
@@ -123,13 +225,24 @@ func handleEventExtensionPresenceStatus(event map[string]interface{}) (*Extensio
 }
 
 // 30011
-func handleEventCallStatusChanged(event map[string]interface{}) error {
-	msg, err := verifyMessage(event)
+func handleEventCallStatusChanged(event map[string]interface{}) (*CallStatusChangedEvent, error) {
+	msg, err := verifyMessageWithCleaning(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	members := processMembers(msg)
+
+	eventData := mapToEventCallStatusChanged(event, msg, members)
+	log.Printf("Successfully mapped CallStatusChanged: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // 30012
