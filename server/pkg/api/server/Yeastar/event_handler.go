@@ -165,7 +165,7 @@ func handleEventSatisfaction(event map[string]interface{}) (*SatisfactionEvent, 
 	}
 
 	eventData := mapToSatisfaction(event, msg)
-	log.Printf("Successfully mapped NewCDR: %+v", eventData)
+	log.Printf("Successfully mapped Satisfaction: %+v", eventData)
 
 	endpoint := "https://your-api.com/events"
 	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
@@ -184,7 +184,7 @@ func handleEventUaCSTACall(event map[string]interface{}) (*UaCSTACallEvent, erro
 	}
 
 	eventData := mapToUaCSTACall(event, msg)
-	log.Printf("Successfully mapped NewCDR: %+v", eventData)
+	log.Printf("Successfully mapped UaCSTACall: %+v", eventData)
 
 	endpoint := "https://your-api.com/events"
 	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
@@ -196,13 +196,22 @@ func handleEventUaCSTACall(event map[string]interface{}) (*UaCSTACallEvent, erro
 }
 
 // 30022
-func handleEventExtensionConfiguration(event map[string]interface{}) error {
+func handleEventExtensionConfiguration(event map[string]interface{}) (*ExtensionConfigurationEvent, error) {
 	msg, err := verifyMessage(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	eventData := mapToExtensionConfiguration(event, msg)
+	log.Printf("Successfully mapped NewCDR: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // 30025

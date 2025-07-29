@@ -96,3 +96,12 @@ func mapToUaCSTACall(events map[string]interface{}, msg map[string]interface{}) 
 		IPAddress: getStringPointer(msg, "ip_address"),
 	}
 }
+
+func mapToExtensionConfiguration(events map[string]interface{}, msg map[string]interface{}) *ExtensionConfigurationEvent {
+	return &ExtensionConfigurationEvent{
+		TypeName:  "UaCSTACall",
+		EventType: getStringPointer(events, "type"),
+		Extension: getStringPointer(msg, "extension"),
+		Option:    getStringPointer(msg, "option"),
+	}
+}

@@ -92,3 +92,10 @@ type UaCSTACallEvent struct {
 	CallID    *string `json:"call_id,omitempty"`
 	IPAddress *string `json:"ip_address,omitempty"`
 }
+
+type ExtensionConfigurationEvent struct {
+	TypeName  string  `json:"type"`
+	EventType *string `json:"event_type,omitempty"`
+	Extension *string `json:"extension,omitempty"`
+	Option    *string `json:"option,omitempty"`
+}
