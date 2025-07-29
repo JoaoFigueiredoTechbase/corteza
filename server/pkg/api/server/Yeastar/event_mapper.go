@@ -126,3 +126,17 @@ func mapToAgentRingingTimeout(events map[string]interface{}, msg map[string]inte
 		CallID:       getStringPointer(msg, "call_id"),
 	}
 }
+
+func mapToCallNoteStatus(events map[string]interface{}, msg map[string]interface{}) *CallNoteStatusEvent {
+	return &CallNoteStatusEvent{
+		TypeName:   "CallNoteStatus",
+		EventType:  getStringPointer(events, "type"),
+		Display:    getStringPointer(msg, "display"),
+		Trigger:    getStringPointer(msg, "trigger_call_note_pop_up"),
+		SipCallID:  getStringPointer(msg, "sip_call_id"),
+		CallNoteID: getStringPointer(msg, "call_note_id"),
+		GroupID:    getStringPointer(msg, "group_id"),
+		ExtNum:     getStringPointer(msg, "ext_num"),
+		Channel:    getStringPointer(msg, "channel"),
+	}
+}

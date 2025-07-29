@@ -258,13 +258,22 @@ func handleEventAgentRingTimeout(event map[string]interface{}) (*AgentRingingTim
 // }
 
 // 30028
-func handleEventCallNoteStatusChanged(event map[string]interface{}) error {
+func handleEventCallNoteStatusChanged(event map[string]interface{}) (*CallNoteStatusEvent, error) {
 	msg, err := verifyMessage(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	eventData := mapToCallNoteStatus(event, msg)
+	log.Printf("Successfully mapped CallNoteStatus: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // 30029
