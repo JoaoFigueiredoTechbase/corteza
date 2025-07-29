@@ -99,7 +99,7 @@ func mapToUaCSTACall(events map[string]interface{}, msg map[string]interface{}) 
 
 func mapToExtensionConfiguration(events map[string]interface{}, msg map[string]interface{}) *ExtensionConfigurationEvent {
 	return &ExtensionConfigurationEvent{
-		TypeName:  "UaCSTACall",
+		TypeName:  "ExtensionConfiguration",
 		EventType: getStringPointer(events, "type"),
 		Extension: getStringPointer(msg, "extension"),
 		Option:    getStringPointer(msg, "option"),
@@ -113,5 +113,16 @@ func mapToAgentAutoPause(events map[string]interface{}, msg map[string]interface
 		QueueNumber: getStringPointer(msg, "queue_number"),
 		AgentNumber: getStringPointer(msg, "agent_number"),
 		Calls:       processCalls(msg),
+	}
+}
+
+func mapToAgentRingingTimeout(events map[string]interface{}, msg map[string]interface{}) *AgentRingingTimeoutEvent {
+	return &AgentRingingTimeoutEvent{
+		TypeName:     "AgentRingingTimeout",
+		EventType:    getStringPointer(events, "type"),
+		QueueNumber:  getStringPointer(msg, "queue_number"),
+		AgentNumber:  getStringPointer(msg, "agent_number"),
+		CallerNumber: getStringPointer(msg, "caller_number"),
+		CallID:       getStringPointer(msg, "call_id"),
 	}
 }

@@ -113,3 +113,12 @@ type CallInfo struct {
 	CallerNumber *string `json:"caller_number,omitempty"`
 	CallID       *string `json:"call_id,omitempty"`
 }
+
+type AgentRingingTimeoutEvent struct {
+	TypeName     string  `json:"type_name"`
+	EventType    *string `json:"event_type,omitempty"`
+	QueueNumber  *string `json:"queue_number,omitempty"`
+	AgentNumber  *string `json:"agent_number,omitempty"`
+	CallerNumber *string `json:"caller_number,omitempty"`
+	CallID       *string `json:"call_id,omitempty"`
+}

@@ -234,13 +234,22 @@ func handleEventAgentPause(event map[string]interface{}) (*AgentAutoPauseEvent, 
 }
 
 // 30026
-func handleEventAgentRingTimeout(event map[string]interface{}) error {
+func handleEventAgentRingTimeout(event map[string]interface{}) (*AgentRingingTimeoutEvent, error) {
 	msg, err := verifyMessage(event)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil
+	eventData := mapToAgentRingingTimeout(event, msg)
+	log.Printf("Successfully mapped AgentRingingTimeout: %+v", eventData)
+
+	endpoint := "https://your-api.com/events"
+	if err := sendEventToEndpoint(eventData, endpoint); err != nil {
+		log.Printf("Failed to send event to endpoint: %v", err)
+		return nil, err
+	}
+
+	return eventData, nil
 }
 
 // //30027
