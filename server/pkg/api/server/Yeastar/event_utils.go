@@ -73,8 +73,20 @@ func getStringPointer(data map[string]interface{}, key string) *string {
 
 func getIntPointer(data map[string]interface{}, key string) *int {
 	if value, exists := data[key]; exists {
-		if intVal, ok := value.(int); ok {
+		switch v := value.(type) {
+		case int:
+			return &v
+		case float64:
+			intVal := int(v)
 			return &intVal
+		case int64:
+			intVal := int(v)
+			return &intVal
+		case json.Number:
+			if intVal, err := v.Int64(); err == nil {
+				result := int(intVal)
+				return &result
+			}
 		}
 	}
 	return nil

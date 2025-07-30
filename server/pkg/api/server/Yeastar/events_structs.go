@@ -33,12 +33,13 @@ type CallStatusChangedEvent struct {
 }
 
 type CallEvent struct {
-	TypeName  string       `json:"type_name"`
-	EventType *string      `json:"event_type,omitempty"`
-	SN        *string      `json:"sn,omitempty"` // Only used by CallTransfer
-	CallID    *string      `json:"call_id,omitempty"`
-	Reason    *string      `json:"reason,omitempty"` // Only used by CallStatusChanged
-	Members   []CallMember `json:"members,omitempty"`
+	TypeName    string       `json:"type_name"`
+	EventType   *string      `json:"event_type,omitempty"`
+	EventNumber *int         `json:"event_number,omitempty"`
+	SN          *string      `json:"sn,omitempty"` // Only used by CallTransfer
+	CallID      *string      `json:"call_id,omitempty"`
+	Reason      *string      `json:"reason"` // Only used by CallStatusChanged
+	Members     []CallMember `json:"members,omitempty"`
 }
 
 type CallMember struct {
