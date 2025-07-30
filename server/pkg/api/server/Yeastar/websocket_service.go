@@ -60,7 +60,7 @@ const (
 	EventNewCDR                  = 30012
 	EventCallTransfer            = 30013
 	EventCallFoward              = 30014
-	EventCallStatus              = 30015
+	EventCallFailed              = 30015
 	EventSatisfaction            = 30019
 	EventUaCSTACall              = 30020
 	EventExtensionConfiguration  = 30022
@@ -351,9 +351,9 @@ func (ws *WebSocketService) processEvent(event map[string]interface{}) error {
 			log.Printf("Failed to handle call foward: %v", err)
 			return err
 		}
-	case EventCallStatus:
+	case EventCallFailed:
 		log.Println("[WebSocketService] EventCallStatus")
-		_, err := handleEventCallStatus(event)
+		_, err := handleEventCallFailedStatus(event)
 		if err != nil {
 			log.Printf("Failed to handle call status: %v", err)
 			return err

@@ -191,13 +191,13 @@ func handleEventCallFoward(event map[string]interface{}) (*CallEvent, error) {
 }
 
 // 30015
-func handleEventCallStatus(event map[string]interface{}) (*CallEvent, error) {
+func handleEventCallFailedStatus(event map[string]interface{}) (*CallEvent, error) {
 	msg, err := verifyMessageWithCleaning(event)
 	if err != nil {
 		return nil, err
 	}
 
-	eventData := mapToCallEvent(event, msg, "CallStatus")
+	eventData := mapToCallEvent(event, msg, "CallFailed")
 	log.Printf("Successfully mapped CallStatus: %+v", eventData)
 
 	if err := sendEventToEndpoint(eventData, buildURL(EventCallStatusPath)); err != nil {

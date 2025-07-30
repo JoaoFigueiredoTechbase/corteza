@@ -127,8 +127,8 @@ type AgentRingingTimeoutEvent struct {
 type CallNoteStatusEvent struct {
 	TypeName   string  `json:"type_name"`
 	EventType  *string `json:"event_type,omitempty"`
-	Display    *string `json:"display,omitempty"`
-	Trigger    *string `json:"trigger_call_note_pop_up,omitempty"`
+	Display    *int    `json:"display,omitempty"`
+	Trigger    *int    `json:"trigger_call_note_popup,omitempty"`
 	SipCallID  *string `json:"sip_call_id,omitempty"`
 	CallNoteID *string `json:"call_note_id,omitempty"`
 	GroupID    *string `json:"group_id,omitempty"`

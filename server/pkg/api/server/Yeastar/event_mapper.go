@@ -108,7 +108,7 @@ func mapToExtensionConfiguration(events map[string]interface{}, msg map[string]i
 	return &ExtensionConfigurationEvent{
 		TypeName:  "ExtensionConfiguration",
 		EventType: getStringPointer(events, "type"),
-		Extension: getStringPointer(msg, "extension"),
+		Extension: getStringPointer(msg, "ext_number"),
 		Option:    getStringPointer(msg, "option"),
 	}
 }
@@ -138,8 +138,8 @@ func mapToCallNoteStatus(events map[string]interface{}, msg map[string]interface
 	return &CallNoteStatusEvent{
 		TypeName:   "CallNoteStatus",
 		EventType:  getStringPointer(events, "type"),
-		Display:    getStringPointer(msg, "display"),
-		Trigger:    getStringPointer(msg, "trigger_call_note_pop_up"),
+		Display:    getIntPointer(msg, "display"),
+		Trigger:    getIntPointer(msg, "trigger_call_note_popup"),
 		SipCallID:  getStringPointer(msg, "sip_call_id"),
 		CallNoteID: getStringPointer(msg, "call_note_id"),
 		GroupID:    getStringPointer(msg, "group_id"),
