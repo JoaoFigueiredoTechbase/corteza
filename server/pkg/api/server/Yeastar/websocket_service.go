@@ -1,7 +1,6 @@
 package Yeastar
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -274,7 +273,7 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 				}
 
 				// Process the JSON event
-				if err := ws.processEvent(ctx, event); err != nil {
+				if err := ws.processEvent(event); err != nil {
 					log.Printf("[WebSocketService] Error processing event: %v\n", err)
 				}
 			} else {
@@ -284,7 +283,7 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 	}
 }
 
-func (ws *WebSocketService) processEvent(ctx context.Context, event map[string]interface{}) error {
+func (ws *WebSocketService) processEvent(event map[string]interface{}) error {
 	log.Printf("[WebSocketService] Received event: %+v\n", event)
 
 	// Get the correct field names from the nested event_data
@@ -413,48 +412,6 @@ func (ws *WebSocketService) processEvent(ctx context.Context, event map[string]i
 	}
 
 	return nil
-}
-
-// Add this helper function to the same file
-func sendEventToWebhook(ctx context.Context, webhookURL string, event map[string]interface{}) error {
-	// Create enriched payload
-	payload := map[string]interface{}{
-		"timestamp":  time.Now().Unix(),
-		"source":     "yeastar-integration",
-		"event_data": event,
-	}
-
-	jsonData, err := json.MarshalIndent(payload, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal event: %w", err)
-	}
-
-	log.Printf("[WebhookService] Sending to webhook: %s\n", webhookURL)
-	log.Printf("[WebhookService] Payload:\n%s\n", string(jsonData))
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewReader(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Yeastar-Integration/1.0")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("webhook request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	log.Printf("[WebhookService] Response status: %d\n", resp.StatusCode)
-
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		log.Println("[WebhookService] ✅ Event sent successfully")
-		return nil
-	}
-
-	return fmt.Errorf("webhook returned status %d", resp.StatusCode)
 }
 
 func (ws *WebSocketService) Close() error {

@@ -3,6 +3,7 @@ package Yeastar
 import (
 	"fmt"
 	"log"
+	"net"
 	"strings"
 )
 
@@ -25,12 +26,24 @@ const (
 	EventAgentStatusChangedPath      = "/event/30029"
 )
 
+func getLocalIP() (string, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String(), nil
+}
+
 // Global base URL (can be overridden by environment variable)
 var baseURL string
 
 // Initialize base URL
 func init() {
-	baseURL = "https://webhook.site/f138fe58-2d58-4255-a3c3-9f92649e1339" // default
+	baseURL, _ = getLocalIP()
+	//baseURL = "https://webhook.site/f138fe58-2d58-4255-a3c3-9f92649e1339" // default
 
 	// baseURL = os.Getenv("API_BASE_URL")
 	// if baseURL == "" {
@@ -47,7 +60,7 @@ func getBaseURL() string {
 func buildURL(path string) string {
 	base := strings.TrimRight(getBaseURL(), "/")
 	path = strings.TrimLeft(path, "/")
-	return fmt.Sprintf("%s/%s", base, path)
+	return fmt.Sprintf("http://%s/api/gateway/%s", base, path)
 }
 
 // 30007
