@@ -181,9 +181,26 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 		log.Printf("Warning: failed to dump CDRs to file: %v", err)
 	}
 
-	if err := service.SendDataToCorteza(ctx, "cdr", cdrs); err != nil {
-		return fmt.Errorf("failed to send cdrs to Corteza: %w", err)
+	batchSize := 50
+	totalCDRs := len(cdrs)
+	processed := 0
+
+	for i := 0; i < totalCDRs; i += batchSize {
+		end := i + batchSize
+		if end > totalCDRs {
+			end = totalCDRs
+		}
+
+		batch := cdrs[i:end]
+		if err := service.SendDataToCorteza(ctx, "cdr", batch); err != nil {
+			return fmt.Errorf("failed to send cdrs batch [%d-%d] to Corteza: %w", i, end, err)
+		}
+
+		processed += len(batch)
+		fmt.Printf("Processed batch %d-%d of %d (%.1f%%)\n",
+			i+1, end, totalCDRs, float64(processed)/float64(totalCDRs)*100)
 	}
+
 	fmt.Println("cdrs processed and sent to Corteza successfully!")
 	return nil
 }
