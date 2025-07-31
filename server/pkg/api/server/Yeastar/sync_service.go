@@ -49,17 +49,20 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("Full synchronization process completed successfully.")
 }
 
-func SyncAll(baseUrl string) error {
+func setupSyncService(baseUrl string) (*YeastarService, context.Context, context.CancelFunc, error) {
 	InitializeGlobalManagers()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
 	cortezaClient := NewCortezaClient(baseUrl)
 	service := NewYeastarService(GlobalConfigManager, GlobalTokenManager, cortezaClient)
 
+	return service, ctx, cancel, nil
+}
+
+func setupAuth(ctx context.Context, service *YeastarService) error {
 	// Get config first
 	fmt.Println("Triggering config push from Corteza...")
-	if err := cortezaClient.TriggerConfigPush(); err != nil {
+	if err := service.cortezaClient.TriggerConfigPush(); err != nil {
 		return fmt.Errorf("failed to trigger config push: %w", err)
 	}
 
@@ -71,7 +74,7 @@ func SyncAll(baseUrl string) error {
 
 	// Try to get token from Corteza first
 	fmt.Println("Triggering token push from Corteza...")
-	if err := cortezaClient.TriggerTokenPush(); err != nil {
+	if err := service.cortezaClient.TriggerTokenPush(); err != nil {
 		fmt.Printf("Warning: failed to trigger token push: %v\n", err)
 	}
 
@@ -89,7 +92,7 @@ func SyncAll(baseUrl string) error {
 		}
 
 		fmt.Println("Saving fresh token to Corteza...")
-		if err := cortezaClient.SaveToken(ctx, token); err != nil {
+		if err := service.cortezaClient.SaveToken(ctx, token); err != nil {
 			return fmt.Errorf("failed to save token to Corteza: %w", err)
 		}
 
@@ -102,9 +105,10 @@ func SyncAll(baseUrl string) error {
 		return fmt.Errorf("no valid token available after all attempts")
 	}
 
-	// ----------- Begin Data Processing -----------
+	return nil
+}
 
-	// Agents
+func syncAgents(ctx context.Context, service *YeastarService) error {
 	fmt.Println("\n--- Processing agents ---")
 	rawAgentsData, err := service.ListMethod(ctx, "extension")
 	if err != nil {
@@ -120,8 +124,10 @@ func SyncAll(baseUrl string) error {
 		return fmt.Errorf("failed to send agents to Corteza: %w", err)
 	}
 	fmt.Println("agents processed and sent to Corteza successfully!")
+	return nil
+}
 
-	// Queues
+func syncQueues(ctx context.Context, service *YeastarService) error {
 	fmt.Println("\n--- Processing queues ---")
 	rawQueuesData, err := service.ListMethod(ctx, "queue")
 	if err != nil {
@@ -137,9 +143,16 @@ func SyncAll(baseUrl string) error {
 		return fmt.Errorf("failed to send queues to Corteza: %w", err)
 	}
 	fmt.Println("queues processed and sent to Corteza successfully!")
+	return nil
+}
 
-	// Members
+func syncQueueMembers(ctx context.Context, service *YeastarService) error {
 	fmt.Println("\n--- Processing queue members ---")
+	rawQueuesData, err := service.ListMethod(ctx, "queue")
+	if err != nil {
+		return fmt.Errorf("failed to fetch queues: %w", err)
+	}
+
 	members, err := processQueueMembersData(rawQueuesData)
 	if err != nil {
 		return fmt.Errorf("failed to process queue members: %w", err)
@@ -149,8 +162,10 @@ func SyncAll(baseUrl string) error {
 		return fmt.Errorf("failed to send queue members to Corteza: %w", err)
 	}
 	fmt.Println("queue members processed and sent to Corteza successfully!")
+	return nil
+}
 
-	// CDRs
+func syncCDRs(ctx context.Context, service *YeastarService) error {
 	fmt.Println("\n--- Processing cdrs ---")
 	rawCDRsData, err := service.ListMethod(ctx, "cdr")
 	if err != nil {
@@ -170,6 +185,78 @@ func SyncAll(baseUrl string) error {
 		return fmt.Errorf("failed to send cdrs to Corteza: %w", err)
 	}
 	fmt.Println("cdrs processed and sent to Corteza successfully!")
+	return nil
+}
+
+func SyncAll(baseUrl string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncAgents(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncQueues(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncQueueMembers(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncCDRs(ctx, service); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+// Now you can easily create individual sync functions
+func SyncAgentsOnly(baseUrl string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	return syncAgents(ctx, service)
+}
+
+func SyncQueuesOnly(baseUrl string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	return syncQueues(ctx, service)
+}
+
+func SyncCDRsOnly(baseUrl string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	return syncCDRs(ctx, service)
 }
