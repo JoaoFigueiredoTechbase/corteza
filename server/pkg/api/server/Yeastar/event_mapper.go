@@ -1,5 +1,7 @@
 package Yeastar
 
+import "strings"
+
 func mapToExtensionRegistration(events map[string]interface{}, msg map[string]interface{}) *ExtensionRegistrationEvent {
 	return &ExtensionRegistrationEvent{
 		TypeName:     "ExtensionRegistration",
@@ -153,9 +155,20 @@ func mapToAgentStatusChanged(events map[string]interface{}, msg map[string]inter
 		TypeName:    "AgentStatusChanged",
 		EventType:   getStringPointer(events, "type"),
 		SN:          getStringPointer(events, "sn"),
-		QueueNumber: getStringPointer(msg, "queue_number"),
+		QueueNumber: stripQueuePrefix(getStringPointer(msg, "queue_number")),
 		AgentNumber: getStringPointer(msg, "agent_number"),
 		Status:      getStringPointer(msg, "status"),
 		Reason:      getStringPointer(msg, "reason"),
 	}
+}
+
+func stripQueuePrefix(val *string) *string {
+	if val == nil {
+		return nil
+	}
+	str := *val
+	if strings.HasPrefix(str, "queue-") {
+		str = strings.TrimPrefix(str, "queue-")
+	}
+	return &str
 }
