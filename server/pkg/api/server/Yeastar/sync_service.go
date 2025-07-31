@@ -177,9 +177,9 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}
 
-	if err := dumpCDRsToFile(cdrs); err != nil {
-		log.Printf("Warning: failed to dump CDRs to file: %v", err)
-	}
+	// if err := dumpCDRsToFile(cdrs); err != nil {
+	// 	log.Printf("Warning: failed to dump CDRs to file: %v", err)
+	// }
 
 	batchSize := 50
 	totalCDRs := len(cdrs)
