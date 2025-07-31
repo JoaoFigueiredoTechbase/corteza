@@ -56,6 +56,11 @@ func getBaseURL() string {
 	return baseURL
 }
 
+func getSyncURL() string {
+	syncURL := "http://" + getBaseURL()
+	return syncURL
+}
+
 // Build endpoint URL
 func buildURL(path string) string {
 	base := strings.TrimRight(getBaseURL(), "/")
@@ -150,6 +155,15 @@ func handleEventNewCDR(event map[string]interface{}) (*NewCDREvent, error) {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
+
+	go func() {
+		log.Printf("New CDR event received, syncing all CDRs...")
+		if err := SyncCDRsOnly(getSyncURL()); err != nil {
+			log.Printf("Warning: Failed to sync CDRs after new CDR event: %v", err)
+		} else {
+			log.Printf("CDRs synced successfully after new CDR event")
+		}
+	}()
 
 	return eventData, nil
 }

@@ -32,14 +32,14 @@ func mapToExtensionPresenceStatus(events map[string]interface{}, msg map[string]
 	}
 }
 
-func mapToEventCallStatusChanged(events map[string]interface{}, msg map[string]interface{}, members []CallMember) *CallStatusChangedEvent {
-	return &CallStatusChangedEvent{
-		TypeName:  "CallStatusChanged",
-		EventType: getStringPointer(events, "type"),
-		CallID:    getStringPointer(msg, "call_id"),
-		Members:   members,
-	}
-}
+// func mapToEventCallStatusChanged(events map[string]interface{}, msg map[string]interface{}, members []CallMember) *CallStatusChangedEvent {
+// 	return &CallStatusChangedEvent{
+// 		TypeName:  "CallStatusChanged",
+// 		EventType: getStringPointer(events, "type"),
+// 		CallID:    getStringPointer(msg, "call_id"),
+// 		Members:   members,
+// 	}
+// }
 
 func mapToNewCDR(events map[string]interface{}, msg map[string]interface{}) *NewCDREvent {
 	return &NewCDREvent{
