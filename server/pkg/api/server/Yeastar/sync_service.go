@@ -307,19 +307,19 @@ func SearchNewCDR(baseUrl, uid string) error {
 		return fmt.Errorf("failed to search cdrs: %w", err)
 	}
 
-	log.Printf("Raw CDRs data length: %d", len(rawCDRsData))
-	log.Printf("Raw CDRs data: %+v", rawCDRsData)
+	// log.Printf("Raw CDRs data length: %d", len(rawCDRsData))
+	// log.Printf("Raw CDRs data: %+v", rawCDRsData)
 
 	cdrs, err := processCDRsData(service, rawCDRsData)
 	if err != nil {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}
 
-	log.Printf("Processed CDRs count: %d", len(cdrs))
+	// log.Printf("Processed CDRs count: %d", len(cdrs))
 	for i, cdr := range cdrs {
 		log.Printf("CDR[%d]: UID=%s", i, cdr.UID)
 	}
-	log.Printf("Looking for UID: %s", uid)
+	// log.Printf("Looking for UID: %s", uid)
 
 	results, err := findCDRsByUID(cdrs, uid)
 	if err != nil {

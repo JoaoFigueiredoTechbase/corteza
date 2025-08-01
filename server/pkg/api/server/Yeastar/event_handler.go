@@ -125,19 +125,24 @@ func handleEventExtensionPresenceStatus(event map[string]interface{}) (*Extensio
 
 // 30011
 func handleEventCallStatusChanged(event map[string]interface{}) (*CallEvent, error) {
+	Log("info", "Got here - 30011")
+
 	msg, err := verifyMessageWithCleaning(event)
 	if err != nil {
 		return nil, err
 	}
 
+	Log("info", "Mapper 30011")
 	eventData := mapToCallEvent(event, msg, "CallStatusChanged")
 	log.Printf("Successfully mapped CallStatusChanged: %+v", eventData)
 
+	Log("info", "Sending 30011")
 	if err := sendEventToEndpoint(eventData, buildURL(EventCallStatusChangedPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
 		return nil, err
 	}
 
+	Log("info", "End")
 	return eventData, nil
 }
 

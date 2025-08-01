@@ -131,7 +131,7 @@ func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data i
 	// Marshal payload
 	jsonPayload, err := json.MarshalIndent(payload, "", "  ") // Pretty-print
 	if err != nil {
-		fmt.Printf("Error marshaling payload for module %s: %v\n", moduleName, err)
+		//fmt.Printf("Error marshaling payload for module %s: %v\n", moduleName, err)
 		return fmt.Errorf("failed to marshal data for module %s: %w", moduleName, err)
 	}
 	// fmt.Printf("JSON Payload:\n%s\n", string(jsonPayload))
@@ -145,8 +145,8 @@ func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data i
 	req.Header.Set("Content-Type", "application/json")
 
 	// Log request metadata
-	fmt.Printf("Request Method: %s\n", req.Method)
-	fmt.Printf("Request Headers:\n")
+	//fmt.Printf("Request Method: %s\n", req.Method)
+	//fmt.Printf("Request Headers:\n")
 	for k, v := range req.Header {
 		fmt.Printf("  %s: %v\n", k, v)
 	}

@@ -270,15 +270,15 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 func (ys *YeastarService) GetRecordingsList(ctx context.Context) ([]Recording, error) {
 	const endpoint = "recording"
 
-	log.Printf("[INFO] Fetching recordings list from endpoint: %s", endpoint)
+	// log.Printf("[INFO] Fetching recordings list from endpoint: %s", endpoint)
 
 	rawData, err := ys.ListMethod(ctx, endpoint)
 	if err != nil {
-		log.Printf("[ERROR] Failed to fetch recordings: %v", err)
+		// log.Printf("[ERROR] Failed to fetch recordings: %v", err)
 		return nil, fmt.Errorf("failed to fetch recordings: %w", err)
 	}
 
-	log.Printf("[DEBUG] Raw response data: %s", string(rawData))
+	//log.Printf("[DEBUG] Raw response data: %s", string(rawData))
 
 	var response struct {
 		ErrCode     int         `json:"errcode"`
@@ -288,12 +288,12 @@ func (ys *YeastarService) GetRecordingsList(ctx context.Context) ([]Recording, e
 	}
 
 	if err := json.Unmarshal(rawData, &response); err != nil {
-		log.Printf("[ERROR] Failed to unmarshal recordings: %v", err)
+		// log.Printf("[ERROR] Failed to unmarshal recordings: %v", err)
 		return nil, fmt.Errorf("failed to unmarshal recordings: %w", err)
 	}
 
 	if response.ErrCode != 0 {
-		log.Printf("[ERROR] Recordings fetch failed: %s", response.ErrMsg)
+		// log.Printf("[ERROR] Recordings fetch failed: %s", response.ErrMsg)
 		return nil, fmt.Errorf("recordings fetch failed: %s", response.ErrMsg)
 	}
 
@@ -359,12 +359,12 @@ func (ys *YeastarService) GetRecordingDownloadURL(ctx context.Context, recording
 	}
 
 	if err := json.Unmarshal(body, &downloadResp); err != nil {
-		log.Printf("[ERROR] Failed to unmarshal download response: %v", err)
+		// log.Printf("[ERROR] Failed to unmarshal download response: %v", err)
 		return "", fmt.Errorf("failed to unmarshal download response: %w", err)
 	}
 
 	if downloadResp.ErrCode != 0 {
-		log.Printf("[ERROR] API returned error: %s", downloadResp.ErrMsg)
+		// log.Printf("[ERROR] API returned error: %s", downloadResp.ErrMsg)
 		return "", fmt.Errorf("download API error: %s", downloadResp.ErrMsg)
 	}
 
