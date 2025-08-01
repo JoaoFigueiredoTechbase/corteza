@@ -365,13 +365,13 @@ func (ws *WebSocketService) processEvent(event map[string]interface{}) error {
 			log.Printf("Failed to handle satisfaction status: %v", err)
 			return err
 		}
-	case EventUaCSTACall:
-		log.Println("[WebSocketService] EventUaCSTACall")
-		_, err := handleEventUaCSTACall(event)
-		if err != nil {
-			log.Printf("Failed to handle uacsta call: %v", err)
-			return err
-		}
+	// case EventUaCSTACall:
+	// 	log.Println("[WebSocketService] EventUaCSTACall")
+	// 	_, err := handleEventUaCSTACall(event)
+	// 	if err != nil {
+	// 		log.Printf("Failed to handle uacsta call: %v", err)
+	// 		return err
+	// 	}
 	case EventExtensionConfiguration:
 		log.Println("[WebSocketService] EventExtensionConfiguration")
 		_, err := handleEventExtensionConfiguration(event)
