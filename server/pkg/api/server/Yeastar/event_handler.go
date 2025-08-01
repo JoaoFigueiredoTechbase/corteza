@@ -156,14 +156,14 @@ func handleEventNewCDR(event map[string]interface{}) (*NewCDREvent, error) {
 		return nil, err
 	}
 
-	// go func() {
-	// 	log.Printf("New CDR event received, syncing all CDRs...")
-	// 	if err := SyncCDRsOnly(getSyncURL()); err != nil {
-	// 		log.Printf("Warning: Failed to sync CDRs after new CDR event: %v", err)
-	// 	} else {
-	// 		log.Printf("CDRs synced successfully after new CDR event")
-	// 	}
-	// }()
+	if eventData.UID != nil {
+		err := SearchNewCDR(getSyncURL(), *eventData.UID)
+		if err != nil {
+			log.Printf("SearchNewCDR failed: %v", err)
+		}
+	} else {
+		log.Println("UID is missing in eventData")
+	}
 
 	return eventData, nil
 }

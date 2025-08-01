@@ -33,7 +33,7 @@ func (cc *CortezaClient) TriggerConfigPush() error {
 
 	resp, err := cc.client.Get(url)
 	if err != nil {
-		fmt.Printf("[CortezaClient] ❌ Config trigger request failed: %v\n", err)
+		fmt.Printf("[CortezaClient]   Config trigger request failed: %v\n", err)
 		return fmt.Errorf("failed to trigger config push: %w", err)
 	}
 	defer resp.Body.Close()
@@ -45,7 +45,7 @@ func (cc *CortezaClient) TriggerConfigPush() error {
 		return fmt.Errorf("Corteza config trigger failed: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	fmt.Println("[CortezaClient] ✅ Config push triggered successfully")
+	fmt.Println("[CortezaClient]   Config push triggered successfully")
 	return nil
 }
 
@@ -56,7 +56,7 @@ func (cc *CortezaClient) TriggerTokenPush() error {
 
 	resp, err := cc.client.Get(url)
 	if err != nil {
-		fmt.Printf("[CortezaClient] ❌ Token trigger request failed: %v\n", err)
+		fmt.Printf("[CortezaClient]   Token trigger request failed: %v\n", err)
 		return fmt.Errorf("failed to trigger token push: %w", err)
 	}
 	defer resp.Body.Close()
@@ -68,7 +68,7 @@ func (cc *CortezaClient) TriggerTokenPush() error {
 		return fmt.Errorf("Corteza token trigger failed: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	fmt.Println("[CortezaClient] ✅ Token push triggered successfully")
+	fmt.Println("[CortezaClient]   Token push triggered successfully")
 	return nil
 }
 
@@ -81,13 +81,13 @@ func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) er
 
 	jsonPayload, err := json.Marshal(token)
 	if err != nil {
-		fmt.Printf("[CortezaClient] ❌ Failed to marshal token: %v\n", err)
+		fmt.Printf("[CortezaClient]   Failed to marshal token: %v\n", err)
 		return fmt.Errorf("failed to marshal token for saving: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))
 	if err != nil {
-		fmt.Printf("[CortezaClient] ❌ Failed to create request: %v\n", err)
+		fmt.Printf("[CortezaClient]   Failed to create request: %v\n", err)
 		return fmt.Errorf("failed to create save request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -95,7 +95,7 @@ func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) er
 	fmt.Println("[CortezaClient] Sending token to Corteza storage API...")
 	resp, err := cc.client.Do(req)
 	if err != nil {
-		fmt.Printf("[CortezaClient] ❌ Failed to send request: %v\n", err)
+		fmt.Printf("[CortezaClient] Failed to send request: %v\n", err)
 		return fmt.Errorf("failed to send token to storage API: %w", err)
 	}
 	defer resp.Body.Close()
@@ -107,11 +107,10 @@ func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) er
 		return fmt.Errorf("failed to store token remotely, status: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	fmt.Println("[CortezaClient] ✅ Token successfully saved to Corteza")
+	fmt.Println("[CortezaClient] Token successfully saved to Corteza")
 	return nil
 }
 
-// SendData sends processed data to Corteza using specific sync endpoints.
 // SendData sends processed data to Corteza using specific sync endpoints.
 func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data interface{}) error {
 	fmt.Println("Starting SendData to Corteza")

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -70,7 +71,7 @@ func (ys *YeastarService) WaitForInitialization(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to wait for config: %w", err)
 	}
-	fmt.Println("[YeastarService] ✅ Config received successfully")
+	fmt.Println("[YeastarService]  Config received successfully")
 
 	// Trigger token push from Corteza
 	fmt.Println("[YeastarService] Triggering token push from Corteza...")
@@ -101,9 +102,9 @@ func (ys *YeastarService) WaitForInitialization(ctx context.Context) error {
 
 		// Set the token directly since we just got it
 		ys.tokenManager.SetToken(freshToken)
-		fmt.Println("[YeastarService] ✅ Fresh token obtained and set")
+		fmt.Println("[YeastarService]  Fresh token obtained and set")
 	} else {
-		fmt.Println("[YeastarService] ✅ Token received from Corteza")
+		fmt.Println("[YeastarService]  Token received from Corteza")
 	}
 
 	// Verify we have a valid token
@@ -111,7 +112,7 @@ func (ys *YeastarService) WaitForInitialization(ctx context.Context) error {
 		return fmt.Errorf("no valid token available after all attempts")
 	}
 
-	fmt.Println("[YeastarService] ✅ Initialization completed successfully")
+	fmt.Println("[YeastarService]  Initialization completed successfully")
 	return nil
 }
 
@@ -376,4 +377,98 @@ func (ys *YeastarService) GetRecordingDownloadURL(ctx context.Context, recording
 // SendDataToCorteza sends processed data to Corteza
 func (ys *YeastarService) SendDataToCorteza(ctx context.Context, moduleName string, data interface{}) error {
 	return ys.cortezaClient.SendData(ctx, moduleName, data)
+}
+
+func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]byte, error) {
+	var lastErr error
+
+	for attempt := 0; attempt <= ys.maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := ys.baseRetryDelay * time.Duration(attempt)
+			log.Printf("[Attempt %d] Waiting %s before retrying...", attempt, delay)
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				log.Printf("[Attempt %d] Context done while waiting to retry: %v", attempt, ctx.Err())
+				return nil, ctx.Err()
+			}
+		}
+
+		log.Printf("[Attempt %d] Ensuring valid token for endpoint: %s", attempt, endpoint)
+		if err := ys.EnsureValidToken(ctx); err != nil {
+			lastErr = fmt.Errorf("failed to ensure valid token: %w", err)
+			log.Printf("[Attempt %d] Error ensuring valid token: %v", attempt, err)
+			continue
+		}
+
+		config := ys.configManager.GetConfig()
+		token := ys.tokenManager.GetToken()
+
+		if config == nil || token == nil {
+			lastErr = fmt.Errorf("config or token not available")
+			log.Printf("[Attempt %d] Config or token not available", attempt)
+			continue
+		}
+
+		now := time.Now()
+		startTime := now.Add(-15*time.Minute - 1*time.Hour).Format("02/01/2006 15:04:05")
+		endTime := now.Add(15*time.Minute - 1*time.Hour).Format("02/01/2006 15:04:05")
+
+		url := fmt.Sprintf("%s/openapi/v1.0/%s/search?access_token=%s&start_time=%s&end_time=%s",
+			config.ApiBaseUrl,
+			endpoint,
+			token.AccessToken,
+			url.QueryEscape(startTime),
+			url.QueryEscape(endTime),
+		)
+
+		log.Printf("[Attempt %d] Making GET request to URL: %s", attempt, url)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to create request: %w", err)
+			log.Printf("[Attempt %d] Error creating request: %v", attempt, err)
+			continue
+		}
+
+		resp, err := ys.httpClient.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("API request failed: %w", err)
+			log.Printf("[Attempt %d] API request failed: %v", attempt, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to read response: %w", err)
+			log.Printf("[Attempt %d] Failed to read response body: %v", attempt, err)
+			continue
+		}
+
+		log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
+
+		if resp.StatusCode == http.StatusOK {
+			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
+			return body, nil
+		}
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			log.Printf("[Attempt %d] Unauthorized response received, resetting token and retrying", attempt)
+			ys.tokenManager.ResetTokenState()
+			lastErr = fmt.Errorf("unauthorized access, will retry with new token")
+			continue
+		}
+
+		lastErr = fmt.Errorf("unexpected status code %d from endpoint %s: %s",
+			resp.StatusCode, endpoint, string(body))
+		log.Printf("[Attempt %d] Unexpected status code: %d, response body: %s", attempt, resp.StatusCode, string(body))
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusUnauthorized {
+			log.Printf("[Attempt %d] Non-recoverable client error, not retrying", attempt)
+			break
+		}
+	}
+
+	log.Printf("Failed to get data from endpoint %s after %d attempts: %v", endpoint, ys.maxRetries+1, lastErr)
+	return nil, fmt.Errorf("failed after %d attempts: %w", ys.maxRetries+1, lastErr)
 }
