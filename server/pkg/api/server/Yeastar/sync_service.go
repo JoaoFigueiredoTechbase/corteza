@@ -28,8 +28,15 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	protocol := "http"
+	if r.TLS != nil {
+		protocol = "https"
+	}
+
+	baseURL := fmt.Sprintf("%s://%s", protocol, r.Host)
+
 	// Call your existing HandleSyncAll logic
-	err := SyncAll() // This is your core sync logic
+	err := SyncAll(baseURL)
 
 	if err != nil {
 		log.Printf("Error during full sync: %v", err) // Log the detailed error
@@ -42,17 +49,20 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("Full synchronization process completed successfully.")
 }
 
-func SyncAll() error {
+func setupSyncService(baseUrl string) (*YeastarService, context.Context, context.CancelFunc, error) {
 	InitializeGlobalManagers()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
-	cortezaClient := NewCortezaClient("http://localhost:80")
+	cortezaClient := NewCortezaClient(baseUrl)
 	service := NewYeastarService(GlobalConfigManager, GlobalTokenManager, cortezaClient)
 
+	return service, ctx, cancel, nil
+}
+
+func setupAuth(ctx context.Context, service *YeastarService) error {
 	// Get config first
 	fmt.Println("Triggering config push from Corteza...")
-	if err := cortezaClient.TriggerConfigPush(); err != nil {
+	if err := service.cortezaClient.TriggerConfigPush(); err != nil {
 		return fmt.Errorf("failed to trigger config push: %w", err)
 	}
 
@@ -64,7 +74,7 @@ func SyncAll() error {
 
 	// Try to get token from Corteza first
 	fmt.Println("Triggering token push from Corteza...")
-	if err := cortezaClient.TriggerTokenPush(); err != nil {
+	if err := service.cortezaClient.TriggerTokenPush(); err != nil {
 		fmt.Printf("Warning: failed to trigger token push: %v\n", err)
 	}
 
@@ -82,7 +92,7 @@ func SyncAll() error {
 		}
 
 		fmt.Println("Saving fresh token to Corteza...")
-		if err := cortezaClient.SaveToken(ctx, token); err != nil {
+		if err := service.cortezaClient.SaveToken(ctx, token); err != nil {
 			return fmt.Errorf("failed to save token to Corteza: %w", err)
 		}
 
@@ -95,9 +105,10 @@ func SyncAll() error {
 		return fmt.Errorf("no valid token available after all attempts")
 	}
 
-	// ----------- Begin Data Processing -----------
+	return nil
+}
 
-	// Agents
+func syncAgents(ctx context.Context, service *YeastarService) error {
 	fmt.Println("\n--- Processing agents ---")
 	rawAgentsData, err := service.ListMethod(ctx, "extension")
 	if err != nil {
@@ -113,8 +124,10 @@ func SyncAll() error {
 		return fmt.Errorf("failed to send agents to Corteza: %w", err)
 	}
 	fmt.Println("agents processed and sent to Corteza successfully!")
+	return nil
+}
 
-	// Queues
+func syncQueues(ctx context.Context, service *YeastarService) error {
 	fmt.Println("\n--- Processing queues ---")
 	rawQueuesData, err := service.ListMethod(ctx, "queue")
 	if err != nil {
@@ -130,9 +143,16 @@ func SyncAll() error {
 		return fmt.Errorf("failed to send queues to Corteza: %w", err)
 	}
 	fmt.Println("queues processed and sent to Corteza successfully!")
+	return nil
+}
 
-	// Members
+func syncQueueMembers(ctx context.Context, service *YeastarService) error {
 	fmt.Println("\n--- Processing queue members ---")
+	rawQueuesData, err := service.ListMethod(ctx, "queue")
+	if err != nil {
+		return fmt.Errorf("failed to fetch queues: %w", err)
+	}
+
 	members, err := processQueueMembersData(rawQueuesData)
 	if err != nil {
 		return fmt.Errorf("failed to process queue members: %w", err)
@@ -142,8 +162,10 @@ func SyncAll() error {
 		return fmt.Errorf("failed to send queue members to Corteza: %w", err)
 	}
 	fmt.Println("queue members processed and sent to Corteza successfully!")
+	return nil
+}
 
-	// CDRs
+func syncCDRs(ctx context.Context, service *YeastarService) error {
 	fmt.Println("\n--- Processing cdrs ---")
 	rawCDRsData, err := service.ListMethod(ctx, "cdr")
 	if err != nil {
@@ -155,14 +177,163 @@ func SyncAll() error {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}
 
-	if err := dumpCDRsToFile(cdrs); err != nil {
-		log.Printf("Warning: failed to dump CDRs to file: %v", err)
+	// if err := dumpCDRsToFile(cdrs); err != nil {
+	// 	log.Printf("Warning: failed to dump CDRs to file: %v", err)
+	// }
+
+	batchSize := 50
+	totalCDRs := len(cdrs)
+	processed := 0
+
+	for i := 0; i < totalCDRs; i += batchSize {
+		end := i + batchSize
+		if end > totalCDRs {
+			end = totalCDRs
+		}
+
+		batch := cdrs[i:end]
+		if err := service.SendDataToCorteza(ctx, "cdr", batch); err != nil {
+			return fmt.Errorf("failed to send cdrs batch [%d-%d] to Corteza: %w", i, end, err)
+		}
+
+		processed += len(batch)
+		fmt.Printf("Processed batch %d-%d of %d (%.1f%%)\n",
+			i+1, end, totalCDRs, float64(processed)/float64(totalCDRs)*100)
 	}
 
-	if err := service.SendDataToCorteza(ctx, "cdr", cdrs); err != nil {
+	fmt.Println("cdrs processed and sent to Corteza successfully!")
+	return nil
+}
+
+func SyncAll(baseUrl string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncAgents(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncQueues(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncQueueMembers(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncCDRs(ctx, service); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Now you can easily create individual sync functions
+func SyncAgentsOnly(baseUrl string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	return syncAgents(ctx, service)
+}
+
+func SyncQueuesOnly(baseUrl string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	return syncQueues(ctx, service)
+}
+
+func SyncCDRsOnly(baseUrl string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	return syncCDRs(ctx, service)
+}
+
+func findCDRsByUID(cdrs []CDR, uid string) ([]CDR, error) {
+	var results []CDR
+	for _, cdr := range cdrs {
+		if cdr.UID == uid {
+			results = append(results, cdr)
+		}
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no CDRs found with UID %s", uid)
+	}
+	return results, nil
+}
+
+func SearchNewCDR(baseUrl, uid string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	rawCDRsData, err := service.SearchMethod(ctx, "cdr")
+	if err != nil {
+		return fmt.Errorf("failed to search cdrs: %w", err)
+	}
+
+	// log.Printf("Raw CDRs data length: %d", len(rawCDRsData))
+	// log.Printf("Raw CDRs data: %+v", rawCDRsData)
+
+	cdrs, err := processCDRsData(service, rawCDRsData)
+	if err != nil {
+		return fmt.Errorf("failed to process cdrs: %w", err)
+	}
+
+	// log.Printf("Processed CDRs count: %d", len(cdrs))
+	for i, cdr := range cdrs {
+		log.Printf("CDR[%d]: UID=%s", i, cdr.UID)
+	}
+	// log.Printf("Looking for UID: %s", uid)
+
+	results, err := findCDRsByUID(cdrs, uid)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	} else {
+		for _, cdr := range results {
+			fmt.Printf("Found CDR: %+v\n", cdr)
+		}
+	}
+
+	if err := service.SendDataToCorteza(ctx, "cdr", results); err != nil {
 		return fmt.Errorf("failed to send cdrs to Corteza: %w", err)
 	}
-	fmt.Println("cdrs processed and sent to Corteza successfully!")
 
+	fmt.Println("cdrs processed and sent to Corteza successfully!")
 	return nil
 }

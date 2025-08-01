@@ -27,11 +27,12 @@ type YeastarTokenResponse struct {
 }
 
 type Agent struct {
-	ID       int    `json:"id"`
-	Presence string `json:"presence_status"`
-	Number   string `json:"number"`
-	Name     string `json:"caller_id_name"`
-	Email    string `json:"email_addr"`
+	ID             int    `json:"id"`
+	Presence       string `json:"presence_status"`
+	Number         string `json:"number"`
+	Name           string `json:"caller_id_name"`
+	Email          string `json:"email_addr"`
+	CustomPresence string `json:"custom_presence_status"`
 }
 
 // Queue represents a call queue

@@ -110,11 +110,12 @@ func extractCallNoteInfo(callNote interface{}) (noteText, noteType, noteDescript
 
 func mapAgent(raw Agent) Agent {
 	agent := Agent{
-		ID:       raw.ID,
-		Presence: safeStringConvert(raw.Presence), // Use safeStringConvert for consistency, though raw.Presence is already string
-		Number:   safeStringConvert(raw.Number),
-		Name:     safeStringConvert(raw.Name),
-		Email:    safeStringConvert(raw.Email),
+		ID:             raw.ID,
+		Presence:       safeStringConvert(raw.Presence), // Use safeStringConvert for consistency, though raw.Presence is already string
+		Number:         safeStringConvert(raw.Number),
+		Name:           safeStringConvert(raw.Name),
+		Email:          safeStringConvert(raw.Email),
+		CustomPresence: safeStringConvert(raw.CustomPresence),
 	}
 
 	// Set default values for empty fields
@@ -129,6 +130,9 @@ func mapAgent(raw Agent) Agent {
 	}
 	if agent.Email == "" {
 		agent.Email = "" // Explicitly keep it as empty string if missing
+	}
+	if agent.CustomPresence == "" {
+		agent.CustomPresence = "" // Explicitly keep it as empty string if missing
 	}
 
 	return agent
@@ -234,8 +238,7 @@ func processAgentsData(rawBody []byte) ([]Agent, error) {
 	for _, rawAgent := range response.Data {
 		cleanAgent := mapAgent(rawAgent)
 		agents = append(agents, cleanAgent)
-		log.Printf("Mapped agent: ID=%d, Name=%s, Number=%s, Presence=%s",
-			cleanAgent.ID, cleanAgent.Name, cleanAgent.Number, cleanAgent.Presence)
+		//log.Printf("Mapped agent: ID=%d, Name=%s, Number=%s, Presence=%s",cleanAgent.ID, cleanAgent.Name, cleanAgent.Number, cleanAgent.Presence)
 	}
 
 	return agents, nil
@@ -255,8 +258,7 @@ func processQueuesData(rawBody []byte) ([]Queue, error) {
 	for _, rawQueue := range response.QueueList {
 		cleanQueue := mapQueue(rawQueue)
 		queues = append(queues, cleanQueue)
-		log.Printf("Mapped queue: Name=%s, Number=%s, RingStrategy=%s, SLATime=%d",
-			cleanQueue.Name, cleanQueue.Number, cleanQueue.RingStrategy, cleanQueue.SLATime)
+		//log.Printf("Mapped queue: Name=%s, Number=%s, RingStrategy=%s, SLATime=%d",cleanQueue.Name, cleanQueue.Number, cleanQueue.RingStrategy, cleanQueue.SLATime)
 	}
 
 	return queues, nil
@@ -275,13 +277,13 @@ func processCDRsData(service *YeastarService, rawBody []byte) ([]CDR, error) {
 	// Get recordings list
 	recordings, err := service.GetRecordingsList(context.Background())
 	if err != nil {
-		log.Printf("Warning: failed to get recordings list: %v", err)
+		//log.Printf("Warning: failed to get recordings list: %v", err)
 		// Continue without recordings if fetch fails
 		recordings = []Recording{}
 	}
 
-	log.Printf("[DEBUG] Total recordings fetched: %d", len(recordings))
-	log.Printf("[DEBUG] Total CDRs to process: %d", len(response.Data))
+	// log.Printf("[DEBUG] Total recordings fetched: %d", len(recordings))
+	// log.Printf("[DEBUG] Total CDRs to process: %d", len(response.Data))
 
 	// Create multiple mapping strategies for better matching
 	recordingMaps := createRecordingMaps(recordings)
@@ -292,26 +294,24 @@ func processCDRsData(service *YeastarService, rawBody []byte) ([]CDR, error) {
 	for i, rawCDR := range response.Data {
 		cleanCDR := mapCDR(rawCDR)
 
-		log.Printf("[DEBUG] Processing CDR %d: ID=%d, UID=%s, RecordFile=%s",
-			i+1, cleanCDR.ID, cleanCDR.UID, cleanCDR.RecordFile)
+		log.Printf("[DEBUG] Processing CDR %d: ID=%d, UID=%s, RecordFile=%s", i+1, cleanCDR.ID, cleanCDR.UID, cleanCDR.RecordFile)
 
 		// Try multiple matching strategies
-		recording, matchType := findMatchingRecording(cleanCDR, recordingMaps)
+		//recording, matchType := findMatchingRecording(cleanCDR, recordingMaps)
+		recording, _ := findMatchingRecording(cleanCDR, recordingMaps)
 
 		if recording != nil {
 			downloadURL, err := service.GetRecordingDownloadURL(context.Background(), recording.ID)
 			if err != nil {
-				log.Printf("[WARN] Failed to get download URL for recording %d: %v", recording.ID, err)
+				//log.Printf("[WARN] Failed to get download URL for recording %d: %v", recording.ID, err)
 			} else {
 				cleanCDR.RecordingURL = downloadURL
 				cleanCDR.RecordFile = recording.File
 				matchedCount++
-				log.Printf("[INFO] ✓ Matched CDR %d with recording %d via %s. URL: %s",
-					cleanCDR.ID, recording.ID, matchType, downloadURL)
+				//log.Printf("[INFO] ✓ Matched CDR %d with recording %d via %s. URL: %s",cleanCDR.ID, recording.ID, matchType, downloadURL)
 			}
 		} else {
-			log.Printf("[WARN] ✗ No matching recording found for CDR %d (UID: %s, RecordFile: %s)",
-				cleanCDR.ID, cleanCDR.UID, cleanCDR.RecordFile)
+			log.Printf("[WARN] ✗ No matching recording found for CDR %d (UID: %s, RecordFile: %s)", cleanCDR.ID, cleanCDR.UID, cleanCDR.RecordFile)
 		}
 
 		cdrs = append(cdrs, cleanCDR)
@@ -401,8 +401,7 @@ func createRecordingMaps(recordings []Recording) map[string]map[string]Recording
 	maps["time"] = make(map[string]Recording)
 
 	for _, rec := range recordings {
-		log.Printf("[DEBUG] Recording: ID=%d, UID=%s, File=%s, Time=%s",
-			rec.ID, rec.UID, rec.File, rec.Time)
+		//log.Printf("[DEBUG] Recording: ID=%d, UID=%s, File=%s, Time=%s",rec.ID, rec.UID, rec.File, rec.Time)
 
 		// Map by UID
 		if rec.UID != "" {
@@ -431,8 +430,7 @@ func createRecordingMaps(recordings []Recording) map[string]map[string]Recording
 		}
 	}
 
-	log.Printf("[DEBUG] Created mapping indices: uid=%d, filename=%d, filepath=%d, time=%d",
-		len(maps["uid"]), len(maps["filename"]), len(maps["filepath"]), len(maps["time"]))
+	//log.Printf("[DEBUG] Created mapping indices: uid=%d, filename=%d, filepath=%d, time=%d",len(maps["uid"]), len(maps["filename"]), len(maps["filepath"]), len(maps["time"]))
 
 	return maps
 }
@@ -509,7 +507,7 @@ func fuzzyMatchCDRToRecording(cdr CDR, rec Recording) bool {
 	}
 
 	// If we get here, it's likely a match
-	log.Printf("[DEBUG] Fuzzy match found: CDR %d matches Recording %d", cdr.ID, rec.ID)
+	//log.Printf("[DEBUG] Fuzzy match found: CDR %d matches Recording %d", cdr.ID, rec.ID)
 	return true
 }
 
@@ -541,26 +539,24 @@ func (ys *YeastarService) GetRecordingsListWithDebug(ctx context.Context) ([]Rec
 	}
 
 	if err := json.Unmarshal(rawData, &response); err != nil {
-		log.Printf("[ERROR] Failed to unmarshal recordings: %v", err)
-		log.Printf("[DEBUG] Raw data that failed to unmarshal: %s", string(rawData))
+		//log.Printf("[ERROR] Failed to unmarshal recordings: %v", err)
+		//log.Printf("[DEBUG] Raw data that failed to unmarshal: %s", string(rawData))
 		return nil, fmt.Errorf("failed to unmarshal recordings: %w", err)
 	}
 
 	if response.ErrCode != 0 {
-		log.Printf("[ERROR] Recordings fetch failed: %s", response.ErrMsg)
+		//log.Printf("[ERROR] Recordings fetch failed: %s", response.ErrMsg)
 		return nil, fmt.Errorf("recordings fetch failed: %s", response.ErrMsg)
 	}
 
-	log.Printf("[INFO] Successfully fetched %d recordings (total reported: %d)",
-		len(response.Data), response.TotalNumber)
+	//log.Printf("[INFO] Successfully fetched %d recordings (total reported: %d)",len(response.Data), response.TotalNumber)
 
 	// Log first few recordings for debugging
-	for i, rec := range response.Data {
-		if i < 5 { // Log first 5 recordings
-			log.Printf("[DEBUG] Recording %d: ID=%d, UID=%s, File=%s, CallFrom=%s, CallTo=%s, Duration=%d",
-				i+1, rec.ID, rec.UID, rec.File, rec.CallFrom, rec.CallTo, rec.Duration)
-		}
-	}
+	// for i, rec := range response.Data {
+	// 	if i < 5 { // Log first 5 recordings
+	// 		log.Printf("[DEBUG] Recording %d: ID=%d, UID=%s, File=%s, CallFrom=%s, CallTo=%s, Duration=%d",i+1, rec.ID, rec.UID, rec.File, rec.CallFrom, rec.CallTo, rec.Duration)
+	// 	}
+	// }
 
 	return response.Data, nil
 }
@@ -583,8 +579,8 @@ func DiagnoseRecordingMatching(cdrs []CDR, recordings []Recording) {
 		}
 	}
 
-	log.Printf("CDRs with RecordFile: %d", cdrWithRecordFile)
-	log.Printf("CDRs with UID: %d", cdrWithUID)
+	//log.Printf("CDRs with RecordFile: %d", cdrWithRecordFile)
+	//log.Printf("CDRs with UID: %d", cdrWithUID)
 
 	// Analyze Recording patterns
 	recWithFile := 0
@@ -598,15 +594,13 @@ func DiagnoseRecordingMatching(cdrs []CDR, recordings []Recording) {
 		}
 	}
 
-	log.Printf("Recordings with File: %d", recWithFile)
-	log.Printf("Recordings with UID: %d", recWithUID)
+	//log.Printf("Recordings with File: %d", recWithFile)
+	//log.Printf("Recordings with UID: %d", recWithUID)
 
 	// Sample data comparison
-	if len(cdrs) > 0 && len(recordings) > 0 {
-		log.Printf("\nSample CDR: ID=%d, UID='%s', RecordFile='%s'",
-			cdrs[0].ID, cdrs[0].UID, cdrs[0].RecordFile)
-		log.Printf("Sample Recording: ID=%d, UID='%s', File='%s'",
-			recordings[0].ID, recordings[0].UID, recordings[0].File)
-	}
-	log.Printf("=== END DIAGNOSIS ===\n")
+	// if len(cdrs) > 0 && len(recordings) > 0 {
+	// 	log.Printf("\nSample CDR: ID=%d, UID='%s', RecordFile='%s'",cdrs[0].ID, cdrs[0].UID, cdrs[0].RecordFile)
+	// 	log.Printf("Sample Recording: ID=%d, UID='%s', File='%s'",recordings[0].ID, recordings[0].UID, recordings[0].File)
+	// }
+	// log.Printf("=== END DIAGNOSIS ===\n")
 }
