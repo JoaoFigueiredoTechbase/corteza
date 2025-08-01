@@ -11,6 +11,7 @@ import (
 
 	"github.com/cortezaproject/corteza/server/assets"
 	"github.com/cortezaproject/corteza/server/pkg/api"
+	"github.com/cortezaproject/corteza/server/pkg/api/server/Yeastar"
 	"github.com/cortezaproject/corteza/server/pkg/auth"
 	"github.com/cortezaproject/corteza/server/pkg/errors"
 	"github.com/cortezaproject/corteza/server/pkg/healthcheck"
@@ -120,6 +121,18 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 			metricsMount(r, httpOpt.MetricsUsername, httpOpt.MetricsPassword)
 		}
 
+		// Api
+		// r.Post("/api/fetch-cdr", Yeastar.HandleFetchCDRs)
+		// r.Get("/api/db-cdr", Yeastar.HandleCDRDB)
+
+		// r.Get("/api/sync/cdr", Yeastar.HandleSyncCDR)
+		// r.Get("/api/sync/agent", Yeastar.HandleSyncAgent)
+		// r.Get("/api/sync/queue", Yeastar.HandleSyncQueue)
+
+		r.Get("/api/sync/all", Yeastar.HandleSyncAllHTTP)
+
+		r.Post("/api/receive/token", Yeastar.TokenCallbackHandler)
+		r.Post("/api/receive/config", Yeastar.ConfigCallbackHandler)
 	})
 
 	if httpOpt.BaseUrl != "/" {
@@ -178,7 +191,8 @@ func mountServiceHandlers(r chi.Router, log *zap.Logger, opt options.HttpServerO
 }
 
 // @todo move all these routes under /console and
-//       output JSON instead of plain raw text
+//
+//	output JSON instead of plain raw text
 func mountDebugHandler(r chi.Router, log *zap.Logger) {
 	log.Debug("route debugger enabled: /__routes")
 	r.Get("/__routes", debugRoutes(r))

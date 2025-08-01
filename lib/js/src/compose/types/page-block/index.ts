@@ -17,6 +17,8 @@ export { PageBlockProgress } from './progress'
 export { PageBlockNavigation } from './navigation'
 export { PageBlockTab } from './tabs'
 export { PageBlockGeometry } from './geometry'
+export { PageBlockHelloBox } from './hello-box'
+export { PageBlockSyncBox } from './sync-box'
 
 export function PageBlockMaker<T extends PageBlock> (i: { kind: string }): T {
   const PageBlockTemp = Registry.get(i.kind)
