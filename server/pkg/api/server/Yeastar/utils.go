@@ -110,11 +110,12 @@ func extractCallNoteInfo(callNote interface{}) (noteText, noteType, noteDescript
 
 func mapAgent(raw Agent) Agent {
 	agent := Agent{
-		ID:       raw.ID,
-		Presence: safeStringConvert(raw.Presence), // Use safeStringConvert for consistency, though raw.Presence is already string
-		Number:   safeStringConvert(raw.Number),
-		Name:     safeStringConvert(raw.Name),
-		Email:    safeStringConvert(raw.Email),
+		ID:             raw.ID,
+		Presence:       safeStringConvert(raw.Presence), // Use safeStringConvert for consistency, though raw.Presence is already string
+		Number:         safeStringConvert(raw.Number),
+		Name:           safeStringConvert(raw.Name),
+		Email:          safeStringConvert(raw.Email),
+		CustomPresence: safeStringConvert(raw.CustomPresence),
 	}
 
 	// Set default values for empty fields
@@ -129,6 +130,9 @@ func mapAgent(raw Agent) Agent {
 	}
 	if agent.Email == "" {
 		agent.Email = "" // Explicitly keep it as empty string if missing
+	}
+	if agent.CustomPresence == "" {
+		agent.CustomPresence = "" // Explicitly keep it as empty string if missing
 	}
 
 	return agent
