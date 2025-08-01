@@ -64,7 +64,11 @@ func verifyMessageWithCleaning(event map[string]interface{}) (map[string]interfa
 
 func getStringPointer(data map[string]interface{}, key string) *string {
 	if value, exists := data[key]; exists {
-		if str, ok := value.(string); ok {
+		switch v := value.(type) {
+		case string:
+			return &v
+		case int, int32, int64, float64:
+			str := fmt.Sprintf("%v", v)
 			return &str
 		}
 	}

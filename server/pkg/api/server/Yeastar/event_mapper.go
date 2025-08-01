@@ -166,9 +166,6 @@ func stripQueuePrefix(val *string) *string {
 	if val == nil {
 		return nil
 	}
-	str := *val
-	if strings.HasPrefix(str, "queue-") {
-		str = strings.TrimPrefix(str, "queue-")
-	}
+	str := strings.TrimPrefix(*val, "queue-")
 	return &str
 }
