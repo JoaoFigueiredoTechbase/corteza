@@ -167,7 +167,7 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 		return fmt.Errorf("failed to fetch cdrs: %w", err)
 	}
 
-	cdrs, err := processCDRsData(service, rawCDRsData)
+	cdrs, err := processCDRsData(rawCDRsData)
 	if err != nil {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}
@@ -305,7 +305,7 @@ func SearchNewCDR(baseUrl, uid string) error {
 	// log.Printf("Raw CDRs data length: %d", len(rawCDRsData))
 	// log.Printf("Raw CDRs data: %+v", rawCDRsData)
 
-	cdrs, err := processCDRsData(service, rawCDRsData)
+	cdrs, err := processCDRsData(rawCDRsData)
 	if err != nil {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}

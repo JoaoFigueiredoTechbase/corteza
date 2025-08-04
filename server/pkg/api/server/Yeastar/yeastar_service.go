@@ -197,7 +197,7 @@ func (ys *YeastarService) GetRecordingsList(ctx context.Context) ([]Recording, e
 }
 
 func (ys *YeastarService) GetRecordingDownloadURL(ctx context.Context, recordingID int) (string, error) {
-	log.Printf("[INFO] Getting download URL for recording ID: %d", recordingID)
+	// log.Printf("[INFO] Getting download URL for recording ID: %d", recordingID)
 
 	if err := ys.EnsureValidToken(ctx); err != nil {
 		log.Printf("[ERROR] Token validation failed: %v", err)
@@ -218,7 +218,7 @@ func (ys *YeastarService) GetRecordingDownloadURL(ctx context.Context, recording
 		recordingID,
 	)
 
-	log.Printf("[DEBUG] Constructed request URL: %s", url)
+	//log.Printf("[DEBUG] Constructed request URL: %s", url)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -239,7 +239,7 @@ func (ys *YeastarService) GetRecordingDownloadURL(ctx context.Context, recording
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
-	log.Printf("[DEBUG] Response body: %s", string(body))
+	// log.Printf("[DEBUG] Response body: %s", string(body))
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("[ERROR] Unexpected status code: %d", resp.StatusCode)
@@ -264,7 +264,7 @@ func (ys *YeastarService) GetRecordingDownloadURL(ctx context.Context, recording
 	}
 
 	fullURL := config.ApiBaseUrl + downloadResp.DownloadResourceURL
-	log.Printf("[INFO] Successfully obtained download URL: %s", fullURL)
+	// log.Printf("[INFO] Successfully obtained download URL: %s", fullURL)
 
 	return fullURL, nil
 }

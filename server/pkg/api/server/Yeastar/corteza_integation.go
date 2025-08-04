@@ -20,7 +20,7 @@ type CortezaClient struct {
 func NewCortezaClient(baseURL string) *CortezaClient {
 	return &CortezaClient{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 5 * time.Minute,
 		},
 		baseURL: baseURL,
 	}
