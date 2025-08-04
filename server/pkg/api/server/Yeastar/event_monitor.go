@@ -43,7 +43,7 @@ func (em *EventMonitor) Start(ctx context.Context) error {
 
 	// This will now trigger config and token pushes from Corteza
 	log.Println("[EventMonitor] Initializing Yeastar service (will trigger Corteza pushes)...")
-	if err := em.yeastarService.WaitForInitialization(ctx); err != nil {
+	if err := setupAuth(ctx, em.yeastarService); err != nil {
 		return fmt.Errorf("failed to initialize Yeastar service: %w", err)
 	}
 

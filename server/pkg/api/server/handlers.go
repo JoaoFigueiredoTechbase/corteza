@@ -130,9 +130,6 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		// r.Get("/api/sync/queue", Yeastar.HandleSyncQueue)
 
 		r.Get("/api/sync/all", Yeastar.HandleSyncAllHTTP)
-
-		r.Post("/api/receive/token", Yeastar.TokenCallbackHandler)
-		r.Post("/api/receive/config", Yeastar.ConfigCallbackHandler)
 	})
 
 	if httpOpt.BaseUrl != "/" {
