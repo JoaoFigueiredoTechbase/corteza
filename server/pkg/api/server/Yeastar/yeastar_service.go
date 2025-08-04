@@ -39,84 +39,6 @@ func NewYeastarService(configManager *ConfigManager, tokenManager *TokenManager,
 	}
 }
 
-// WaitForInitialization waits for both config and token to be ready
-// func (ys *YeastarService) WaitForInitialization(ctx context.Context) error {
-// 	// Wait for config
-// 	_, err := ys.configManager.WaitForConfig(ctx)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to wait for config: %w", err)
-// 	}
-
-// 	// Wait for token
-// 	_, err = ys.tokenManager.WaitForToken(ctx)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to wait for token: %w", err)
-// 	}
-
-// 	return nil
-// }
-
-func (ys *YeastarService) WaitForInitialization(ctx context.Context) error {
-	fmt.Println("[YeastarService] Starting initialization with Corteza triggers...")
-
-	// Trigger config push from Corteza first
-	fmt.Println("[YeastarService] Triggering config push from Corteza...")
-	if err := ys.cortezaClient.TriggerConfigPush(); err != nil {
-		return fmt.Errorf("failed to trigger config push: %w", err)
-	}
-
-	// Wait for config
-	fmt.Println("[YeastarService] Waiting for config from Corteza...")
-	config, err := ys.configManager.WaitForConfig(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to wait for config: %w", err)
-	}
-	fmt.Println("[YeastarService]  Config received successfully")
-
-	// Trigger token push from Corteza
-	fmt.Println("[YeastarService] Triggering token push from Corteza...")
-	if err := ys.cortezaClient.TriggerTokenPush(); err != nil {
-		fmt.Printf("[YeastarService] Warning: failed to trigger token push: %v\n", err)
-	}
-
-	// Wait for token with timeout and fallback
-	tokenCtx, tokenCancel := context.WithTimeout(ctx, 15*time.Second)
-	defer tokenCancel()
-
-	fmt.Println("[YeastarService] Waiting for token from Corteza...")
-	token, err := ys.tokenManager.WaitForToken(tokenCtx)
-	if err != nil || token == nil || token.AccessToken == "" {
-		fmt.Println("[YeastarService] No valid token from Corteza, getting fresh one from Yeastar...")
-
-		// Get fresh token directly from Yeastar
-		freshToken, err := ys.tokenManager.GetNewToken(ctx, config)
-		if err != nil {
-			return fmt.Errorf("failed to get fresh token from Yeastar: %w", err)
-		}
-
-		fmt.Println("[YeastarService] Saving fresh token to Corteza...")
-		if err := ys.cortezaClient.SaveToken(ctx, freshToken); err != nil {
-			// Log warning but don't fail - we have a working token
-			fmt.Printf("[YeastarService] Warning: failed to save token to Corteza: %v\n", err)
-		}
-
-		// Set the token directly since we just got it
-		ys.tokenManager.SetToken(freshToken)
-		fmt.Println("[YeastarService]  Fresh token obtained and set")
-	} else {
-		fmt.Println("[YeastarService]  Token received from Corteza")
-	}
-
-	// Verify we have a valid token
-	if !ys.tokenManager.IsTokenValid() {
-		return fmt.Errorf("no valid token available after all attempts")
-	}
-
-	fmt.Println("[YeastarService]  Initialization completed successfully")
-	return nil
-}
-
-// EnsureValidToken ensures we have a valid token, refreshing if necessary
 func (ys *YeastarService) EnsureValidToken(ctx context.Context) error {
 	if ys.tokenManager.IsTokenValid() {
 		return nil
@@ -127,51 +49,32 @@ func (ys *YeastarService) EnsureValidToken(ctx context.Context) error {
 		return fmt.Errorf("config not available")
 	}
 
-	var newToken *TokenResponse
+	var token *TokenResponse
 	var err error
 
-	// Try to refresh token first, if possible
 	if ys.tokenManager.CanRefreshToken() {
-		fmt.Println("Attempting to refresh token...")
-		newToken, err = ys.tokenManager.RefreshToken(ctx, config)
+		fmt.Println("[EnsureValidToken] Refreshing token...")
+		token, err = ys.tokenManager.RefreshToken(ctx, config)
 		if err != nil {
-			fmt.Printf("Token refresh failed: %v. Getting new token...\n", err)
-			newToken, err = ys.tokenManager.GetNewToken(ctx, config)
+			fmt.Printf("[EnsureValidToken] Refresh failed: %v. Getting new token...\n", err)
+			token, err = ys.tokenManager.GetNewToken(ctx, config)
 		}
 	} else {
-		fmt.Println("Getting new token...")
-		newToken, err = ys.tokenManager.GetNewToken(ctx, config)
+		fmt.Println("[EnsureValidToken] Getting new token...")
+		token, err = ys.tokenManager.GetNewToken(ctx, config)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to get valid token: %w", err)
+		return fmt.Errorf("failed to acquire valid token: %w", err)
 	}
 
-	// Save the new token to Corteza
-	if err := ys.cortezaClient.SaveToken(ctx, newToken); err != nil {
-		// Log error but don't fail the operation
-		fmt.Printf("Warning: failed to save token to Corteza: %v\n", err)
+	// Save to Corteza (optional, for syncing)
+	if err := ys.cortezaClient.SaveToken(ctx, token); err != nil {
+		fmt.Printf("[EnsureValidToken] Warning: failed to save token to Corteza: %v\n", err)
 	}
 
-	// Reset token manager state and trigger Corteza to send the updated token
-	ys.tokenManager.ResetTokenState()
-
-	// Trigger Corteza to send the updated token back
-	if err := ys.cortezaClient.TriggerTokenPush(); err != nil {
-		// If trigger fails, fall back to using the token directly
-		fmt.Printf("Warning: failed to trigger token push from Corteza: %v. Using token directly.\n", err)
-		ys.tokenManager.SetToken(newToken)
-		return nil
-	}
-
-	// Wait for the token to be received from Corteza
-	fmt.Println("Waiting for updated token from Corteza...")
-	_, err = ys.tokenManager.WaitForToken(ctx)
-	if err != nil {
-		// If waiting fails, fall back to using the token directly
-		fmt.Printf("Warning: failed to receive token from Corteza: %v. Using token directly.\n", err)
-		ys.tokenManager.SetToken(newToken)
-	}
+	// Use token directly
+	ys.tokenManager.SetToken(token)
 
 	return nil
 }
@@ -242,14 +145,6 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 		if resp.StatusCode == http.StatusOK {
 			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
 			return body, nil
-		}
-
-		// Handle specific error codes
-		if resp.StatusCode == http.StatusUnauthorized {
-			log.Printf("[Attempt %d] Unauthorized response received, resetting token and retrying", attempt)
-			ys.tokenManager.ResetTokenState()
-			lastErr = fmt.Errorf("unauthorized access, will retry with new token")
-			continue
 		}
 
 		lastErr = fmt.Errorf("unexpected status code %d from endpoint %s: %s",
@@ -450,13 +345,6 @@ func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]
 		if resp.StatusCode == http.StatusOK {
 			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
 			return body, nil
-		}
-
-		if resp.StatusCode == http.StatusUnauthorized {
-			log.Printf("[Attempt %d] Unauthorized response received, resetting token and retrying", attempt)
-			ys.tokenManager.ResetTokenState()
-			lastErr = fmt.Errorf("unauthorized access, will retry with new token")
-			continue
 		}
 
 		lastErr = fmt.Errorf("unexpected status code %d from endpoint %s: %s",
