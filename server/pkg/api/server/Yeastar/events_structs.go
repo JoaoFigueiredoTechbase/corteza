@@ -99,6 +99,7 @@ type ExtensionConfigurationEvent struct {
 	EventType *string `json:"event_type,omitempty"`
 	Extension *string `json:"extension,omitempty"`
 	Option    *string `json:"option,omitempty"`
+	Agent     *Agent  `json:"agent,omitempty"`
 }
 
 type AgentAutoPauseEvent struct {

@@ -360,3 +360,156 @@ func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]
 	log.Printf("Failed to get data from endpoint %s after %d attempts: %v", endpoint, ys.maxRetries+1, lastErr)
 	return nil, fmt.Errorf("failed after %d attempts: %w", ys.maxRetries+1, lastErr)
 }
+
+func (ys *YeastarService) SearchExtension(ctx context.Context, searchValue string) ([]byte, error) {
+	var lastErr error
+
+	for attempt := 0; attempt <= ys.maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := ys.baseRetryDelay * time.Duration(attempt)
+			log.Printf("[Attempt %d] Waiting %s before retrying...", attempt, delay)
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				log.Printf("[Attempt %d] Context done while waiting to retry: %v", attempt, ctx.Err())
+				return nil, ctx.Err()
+			}
+		}
+
+		if err := ys.EnsureValidToken(ctx); err != nil {
+			lastErr = fmt.Errorf("failed to ensure valid token: %w", err)
+			log.Printf("[Attempt %d] Error ensuring valid token: %v", attempt, err)
+			continue
+		}
+
+		config := ys.configManager.GetConfig()
+		token := ys.tokenManager.GetToken()
+
+		if config == nil || token == nil {
+			lastErr = fmt.Errorf("config or token not available")
+			log.Printf("[Attempt %d] Config or token not available", attempt)
+			continue
+		}
+
+		url := fmt.Sprintf("%s/openapi/v1.0/extension/search?access_token=%s&search_value=%s",
+			config.ApiBaseUrl,
+			token.AccessToken,
+			searchValue,
+		)
+
+		log.Printf("[Attempt %d] Making GET request to URL: %s", attempt, url)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to create request: %w", err)
+			log.Printf("[Attempt %d] Error creating request: %v", attempt, err)
+			continue
+		}
+
+		resp, err := ys.httpClient.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("API request failed: %w", err)
+			log.Printf("[Attempt %d] API request failed: %v", attempt, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to read response: %w", err)
+			log.Printf("[Attempt %d] Failed to read response body: %v", attempt, err)
+			continue
+		}
+
+		log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
+
+		if resp.StatusCode == http.StatusOK {
+			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
+			return body, nil
+		}
+
+		log.Printf("[Attempt %d] Unexpected status code: %d, response body: %s", attempt, resp.StatusCode, string(body))
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusUnauthorized {
+			log.Printf("[Attempt %d] Non-recoverable client error, not retrying", attempt)
+			break
+		}
+	}
+
+	log.Printf("Failed to get data  after %d attempts: %v", ys.maxRetries+1, lastErr)
+	return nil, fmt.Errorf("failed after %d attempts: %w", ys.maxRetries+1, lastErr)
+}
+
+func SearchNewCDR(baseUrl, uid string) error {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	rawCDRsData, err := service.SearchMethod(ctx, "cdr")
+	if err != nil {
+		return fmt.Errorf("failed to search cdrs: %w", err)
+	}
+
+	// log.Printf("Raw CDRs data length: %d", len(rawCDRsData))
+	// log.Printf("Raw CDRs data: %+v", rawCDRsData)
+
+	cdrs, err := processCDRsData(rawCDRsData)
+	if err != nil {
+		return fmt.Errorf("failed to process cdrs: %w", err)
+	}
+
+	// log.Printf("Processed CDRs count: %d", len(cdrs))
+	for i, cdr := range cdrs {
+		log.Printf("CDR[%d]: UID=%s", i, cdr.UID)
+	}
+	// log.Printf("Looking for UID: %s", uid)
+
+	results, err := findCDRsByUID(cdrs, uid)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	} else {
+		for _, cdr := range results {
+			fmt.Printf("Found CDR: %+v\n", cdr)
+		}
+	}
+
+	if err := service.SendDataToCorteza(ctx, "cdr", results); err != nil {
+		return fmt.Errorf("failed to send cdrs to Corteza: %w", err)
+	}
+
+	fmt.Println("cdrs processed and sent to Corteza successfully!")
+	return nil
+}
+
+func SearchExtensionContext(baseUrl, searchValue string) (Agent, error) {
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return Agent{}, err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return Agent{}, err
+	}
+
+	rawExtension, err := service.SearchExtension(ctx, searchValue)
+	if err != nil {
+		return Agent{}, fmt.Errorf("failed to search cdrs: %w", err)
+	}
+
+	agents, err := processAgentsData(rawExtension)
+	if err != nil {
+		return Agent{}, fmt.Errorf("failed to process cdrs: %w", err)
+	}
+
+	if len(agents) == 0 {
+		return Agent{}, fmt.Errorf("no agents found")
+	}
+
+	return agents[0], nil
+}

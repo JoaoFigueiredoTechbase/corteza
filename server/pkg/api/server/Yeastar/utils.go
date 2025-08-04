@@ -339,6 +339,11 @@ func processQueueMembersData(rawBody []byte) ([]QueueMember, error) {
 		allMembers = append(allMembers, members...)
 	}
 
+	// err := writeQueueMembersToFile("queue_members.json", allMembers)
+	// if err != nil {
+	// 	log.Fatalf("Error writing to file: %v", err)
+	// }
+
 	return allMembers, nil
 }
 
@@ -592,3 +597,19 @@ func dumpCDRsToFile(cdrs []CDR) error {
 // 	// }
 // 	// log.Printf("=== END DIAGNOSIS ===\n")
 // }
+
+func writeQueueMembersToFile(filename string, members []QueueMember) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ") // for pretty printing
+	if err := encoder.Encode(members); err != nil {
+		return fmt.Errorf("failed to encode members to JSON: %w", err)
+	}
+
+	return nil
+}

@@ -106,12 +106,13 @@ func mapToUaCSTACall(events map[string]interface{}, msg map[string]interface{}) 
 	}
 }
 
-func mapToExtensionConfiguration(events map[string]interface{}, msg map[string]interface{}) *ExtensionConfigurationEvent {
+func mapToExtensionConfiguration(events map[string]interface{}, msg map[string]interface{}, agent *Agent) *ExtensionConfigurationEvent {
 	return &ExtensionConfigurationEvent{
 		TypeName:  "ExtensionConfiguration",
 		EventType: getStringPointer(events, "type"),
 		Extension: getStringPointer(msg, "ext_number"),
 		Option:    getStringPointer(msg, "option"),
+		Agent:     agent,
 	}
 }
 
