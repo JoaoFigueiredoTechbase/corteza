@@ -246,22 +246,22 @@ func handleEventSatisfaction(event map[string]interface{}) (*SatisfactionEvent, 
 }
 
 // 30020
-func handleEventUaCSTACall(event map[string]interface{}) (*UaCSTACallEvent, error) {
-	msg, err := verifyMessage(event)
-	if err != nil {
-		return nil, err
-	}
+// func handleEventUaCSTACall(event map[string]interface{}) (*UaCSTACallEvent, error) {
+// 	msg, err := verifyMessage(event)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	eventData := mapToUaCSTACall(event, msg)
-	log.Printf("Successfully mapped UaCSTACall: %+v", eventData)
+// 	eventData := mapToUaCSTACall(event, msg)
+// 	log.Printf("Successfully mapped UaCSTACall: %+v", eventData)
 
-	if err := sendEventToEndpoint(eventData, buildURL(EventUaCSTACallPath)); err != nil {
-		log.Printf("Failed to send event to endpoint: %v", err)
-		return nil, err
-	}
+// 	if err := sendEventToEndpoint(eventData, buildURL(EventUaCSTACallPath)); err != nil {
+// 		log.Printf("Failed to send event to endpoint: %v", err)
+// 		return nil, err
+// 	}
 
-	return eventData, nil
-}
+// 	return eventData, nil
+// }
 
 // 30022
 func handleEventExtensionConfiguration(event map[string]interface{}) (*ExtensionConfigurationEvent, error) {
@@ -270,8 +270,21 @@ func handleEventExtensionConfiguration(event map[string]interface{}) (*Extension
 		return nil, err
 	}
 
-	eventData := mapToExtensionConfiguration(event, msg)
-	log.Printf("Successfully mapped NewCDR: %+v", eventData)
+	var agent *Agent
+	ext := getStringPointer(msg, "ext_number")
+	if ext != nil {
+		foundAgent, err := SearchExtensionContext(getSyncURL(), *ext)
+		if err != nil {
+			log.Printf("Search failed for extension %s: %v", *ext, err)
+		} else {
+			agent = &foundAgent
+		}
+	} else {
+		log.Println("Extension number is missing in event message")
+	}
+
+	eventData := mapToExtensionConfiguration(event, msg, agent)
+	log.Printf("Successfully mapped ExtensionConfigurationEvent: %+v", eventData)
 
 	if err := sendEventToEndpoint(eventData, buildURL(EventExtensionConfigurationPath)); err != nil {
 		log.Printf("Failed to send event to endpoint: %v", err)
