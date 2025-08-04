@@ -47,17 +47,7 @@ func (tm *TokenManager) SetToken(token *TokenResponse) {
 	})
 
 	expiresIn := int64(token.AccessTokenExpireTime) - time.Now().Unix()
-	fmt.Printf("✅ Token set. Access token expires in: %ds\n", expiresIn)
-}
-
-func (tm *TokenManager) ResetTokenState() {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	tm.token = nil
-	tm.isReady = false
-	tm.readyChan = make(chan struct{})
-	tm.onceReady = sync.Once{}
+	fmt.Printf("Token set. Access token expires in: %ds\n", expiresIn)
 }
 
 // GetToken returns the current token
@@ -65,16 +55,6 @@ func (tm *TokenManager) GetToken() *TokenResponse {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
 	return tm.token
-}
-
-// WaitForToken waits for token to be available
-func (tm *TokenManager) WaitForToken(ctx context.Context) (*TokenResponse, error) {
-	select {
-	case <-tm.readyChan:
-		return tm.GetToken(), nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
 }
 
 // IsReady returns true if token is ready
@@ -125,7 +105,7 @@ func (tm *TokenManager) GetNewToken(ctx context.Context, cfg *Config) (*TokenRes
 		fmt.Printf("Attempt %d: Starting request for new token\n", attempt+1)
 
 		url := fmt.Sprintf("%s/openapi/v1.0/get_token", cfg.ApiBaseUrl)
-		fmt.Printf("🌍 Token request URL: %s\n", url)
+		fmt.Printf("Token request URL: %s\n", url)
 
 		payload := map[string]string{
 			"username": cfg.ApiUserName,
@@ -135,7 +115,7 @@ func (tm *TokenManager) GetNewToken(ctx context.Context, cfg *Config) (*TokenRes
 
 		jsonPayload, err := json.Marshal(payload)
 		if err != nil {
-			fmt.Printf("❌ Failed to marshal token request: %v\n", err)
+			fmt.Printf("Failed to marshal token request: %v\n", err)
 			return nil, fmt.Errorf("failed to marshal token request: %w", err)
 		}
 		fmt.Printf("JSON Payload: %s\n", string(jsonPayload))
@@ -148,7 +128,7 @@ func (tm *TokenManager) GetNewToken(ctx context.Context, cfg *Config) (*TokenRes
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("User-Agent", "OpenApi")
-		fmt.Printf("🧾 Headers: %+v\n", req.Header)
+		fmt.Printf("Headers: %+v\n", req.Header)
 
 		fmt.Println("Sending token request to Yeastar...")
 		resp, err := tm.client.Do(req)
