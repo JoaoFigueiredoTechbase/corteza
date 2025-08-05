@@ -1,0 +1,26 @@
+# your_handler.yaml
+functions:
+  - ref: yourCustomFunction
+    kind: function
+    labels:
+      category: your-category
+    meta:
+      short: Your function description
+      description: |
+        Detailed description of what your function does.
+        You can use multiple lines here.
+    
+    parameters:
+      - name: input
+        types: [ "String" ]
+        required: true
+        meta:
+          label: "Input Parameter"
+          description: "Description of the input parameter"
+    
+    results:
+      - name: result
+        types: [ "String" ]
+        meta:
+          label: "Result"
+          description: "The result of your function"
