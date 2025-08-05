@@ -94,17 +94,17 @@ func mapToSatisfaction(events map[string]interface{}, msg map[string]interface{}
 	}
 }
 
-func mapToUaCSTACall(events map[string]interface{}, msg map[string]interface{}) *UaCSTACallEvent {
-	return &UaCSTACallEvent{
-		TypeName:  "UaCSTACall",
-		EventType: getStringPointer(events, "type"),
-		SN:        getStringPointer(events, "sn"),
-		Operation: getStringPointer(msg, "operation"),
-		Extension: getStringPointer(msg, "extension"),
-		CallID:    getStringPointer(msg, "call_id"),
-		IPAddress: getStringPointer(msg, "ip_address"),
-	}
-}
+// func mapToUaCSTACall(events map[string]interface{}, msg map[string]interface{}) *UaCSTACallEvent {
+// 	return &UaCSTACallEvent{
+// 		TypeName:  "UaCSTACall",
+// 		EventType: getStringPointer(events, "type"),
+// 		SN:        getStringPointer(events, "sn"),
+// 		Operation: getStringPointer(msg, "operation"),
+// 		Extension: getStringPointer(msg, "extension"),
+// 		CallID:    getStringPointer(msg, "call_id"),
+// 		IPAddress: getStringPointer(msg, "ip_address"),
+// 	}
+// }
 
 func mapToExtensionConfiguration(events map[string]interface{}, msg map[string]interface{}, agent *Agent) *ExtensionConfigurationEvent {
 	return &ExtensionConfigurationEvent{

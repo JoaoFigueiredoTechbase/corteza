@@ -458,7 +458,7 @@ func SearchNewCDR(baseUrl, uid string) error {
 	// log.Printf("Raw CDRs data length: %d", len(rawCDRsData))
 	// log.Printf("Raw CDRs data: %+v", rawCDRsData)
 
-	cdrs, err := processCDRsData(rawCDRsData)
+	cdrs, err := processCDRsData(service, rawCDRsData)
 	if err != nil {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}

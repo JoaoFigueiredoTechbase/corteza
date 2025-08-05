@@ -1,6 +1,7 @@
 package Yeastar
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -190,7 +191,6 @@ func mapCDR(raw CDR) CDR {
 		EnbCallNote:         safeIntConvert(raw.EnbCallNote),
 		DID:                 safeStringConvert(raw.DID),
 		DIDName:             safeStringConvert(raw.DIDName),
-		RecordFile:          safeStringConvert(raw.RecordFile),
 	}
 
 	// Set default values for empty fields
@@ -262,7 +262,7 @@ func processQueuesData(rawBody []byte) ([]Queue, error) {
 	return queues, nil
 }
 
-func processCDRsData(rawBody []byte) ([]CDR, error) {
+func processCDRsData(service *YeastarService, rawBody []byte) ([]CDR, error) {
 	var response CDRResponse
 	if err := json.Unmarshal(rawBody, &response); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal CDRs response: %w", err)
@@ -273,50 +273,22 @@ func processCDRsData(rawBody []byte) ([]CDR, error) {
 	}
 
 	// Get recordings list
-	// recordings, err := service.GetRecordingsList(context.Background())
-	// if err != nil {
-	// 	//log.Printf("Warning: failed to get recordings list: %v", err)
-	// 	// Continue without recordings if fetch fails
-	// 	recordings = []Recording{}
-	// }
-
-	// log.Printf("[DEBUG] Total recordings fetched: %d", len(recordings))
-	// log.Printf("[DEBUG] Total CDRs to process: %d", len(response.Data))
-
-	// Create multiple mapping strategies for better matching
-	// recordingMaps := createRecordingMaps(recordings)
+	recordings, err := service.GetRecordingsList(context.Background())
+	if err != nil {
+		//log.Printf("Warning: failed to get recordings list: %v", err)
+		// Continue without recordings if fetch fails
+		recordings = []Recording{}
+	}
 
 	cdrs := make([]CDR, 0, len(response.Data))
-	// matchedCount := 0
-
 	for _, rawCDR := range response.Data {
 		cleanCDR := mapCDR(rawCDR)
-
-		//log.Printf("[DEBUG] Processing CDR %d: ID=%d, UID=%s, RecordFile=%s", i+1, cleanCDR.ID, cleanCDR.UID, cleanCDR.RecordFile)
-
-		// Try multiple matching strategies
-		//recording, matchType := findMatchingRecording(cleanCDR, recordingMaps)
-		// recording, _ := findMatchingRecording(cleanCDR, recordingMaps)
-
-		// if recording != nil {
-		// 	downloadURL, err := service.GetRecordingDownloadURL(context.Background(), recording.ID)
-		// 	if err != nil {
-		// 		//log.Printf("[WARN] Failed to get download URL for recording %d: %v", recording.ID, err)
-		// 	} else {
-		// 		cleanCDR.RecordingURL = downloadURL
-		// 		cleanCDR.RecordFile = recording.File
-		// 		matchedCount++
-		// 		//log.Printf("[INFO] ✓ Matched CDR %d with recording %d via %s. URL: %s",cleanCDR.ID, recording.ID, matchType, downloadURL)
-		// 	}
-		// } else {
-		// 	//log.Printf("[WARN] ✗ No matching recording found for CDR %d (UID: %s, RecordFile: %s)", cleanCDR.ID, cleanCDR.UID, cleanCDR.RecordFile)
-		// }
-
 		cdrs = append(cdrs, cleanCDR)
 	}
 
-	// log.Printf("[INFO] Successfully matched %d out of %d CDRs with recordings", matchedCount, len(cdrs))
-	return cdrs, nil
+	updatedCDRs := MergeRecordingsWithCDRs(recordings, cdrs)
+
+	return updatedCDRs, nil
 }
 
 func processQueueMembersData(rawBody []byte) ([]QueueMember, error) {
@@ -390,226 +362,18 @@ func dumpCDRsToFile(cdrs []CDR) error {
 	return nil
 }
 
-// func createRecordingMaps(recordings []Recording) RecordingMaps {
-// 	maps := RecordingMaps{
-// 		ByID:       make(map[int]Recording),
-// 		ByUID:      make(map[string]Recording),
-// 		ByFilename: make(map[string]Recording),
-// 		ByFilepath: make(map[string]Recording),
-// 		ByTime:     make(map[string]Recording),
-// 	}
-
-// 	for _, rec := range recordings {
-// 		if rec.ID != 0 {
-// 			maps.ByID[rec.ID] = rec
-// 		}
-
-// 		if rec.UID != "" {
-// 			maps.ByUID[rec.UID] = rec
-// 		}
-
-// 		if rec.File != "" {
-// 			basename := path.Base(rec.File)
-// 			if basename != "" {
-// 				maps.ByFilename[basename] = rec
-
-// 				// Also map by filename without extension
-// 				if ext := path.Ext(basename); ext != "" {
-// 					nameWithoutExt := strings.TrimSuffix(basename, ext)
-// 					maps.ByFilename[nameWithoutExt] = rec
-// 				}
-// 			}
-// 			maps.ByFilepath[rec.File] = rec
-// 		}
-
-// 		if rec.Time != "" {
-// 			maps.ByTime[rec.Time] = rec
-// 		}
-// 	}
-
-// 	return maps
-// }
-
-// func findMatchingRecording(cdr CDR, maps RecordingMaps) (*Recording, string) {
-// 	if cdr.ID != 0 {
-// 		if rec, exists := maps.ByID[cdr.ID]; exists {
-// 			return &rec, "ID"
-// 		}
-// 	}
-
-// 	if cdr.UID != "" {
-// 		if rec, exists := maps.ByUID[cdr.UID]; exists {
-// 			return &rec, "UID"
-// 		}
-// 	}
-
-// 	if cdr.RecordFile != "" {
-// 		basename := path.Base(cdr.RecordFile)
-// 		if basename != "" && basename != "." {
-// 			if rec, exists := maps.ByFilename[basename]; exists {
-// 				return &rec, "filename"
-// 			}
-
-// 			if ext := path.Ext(basename); ext != "" {
-// 				nameWithoutExt := strings.TrimSuffix(basename, ext)
-// 				if rec, exists := maps.ByFilename[nameWithoutExt]; exists {
-// 					return &rec, "filename_no_ext"
-// 				}
-// 			}
-// 		}
-
-// 		if rec, exists := maps.ByFilepath[cdr.RecordFile]; exists {
-// 			return &rec, "filepath"
-// 		}
-// 	}
-
-// 	if cdr.Time != "" {
-// 		if rec, exists := maps.ByTime[cdr.Time]; exists {
-// 			return &rec, "time"
-// 		}
-// 	}
-
-// 	for _, rec := range maps.ByUID {
-// 		if fuzzyMatchCDRToRecording(cdr, rec) {
-// 			return &rec, "fuzzy"
-// 		}
-// 	}
-
-// 	return nil, ""
-// }
-
-// // Fuzzy matching based on call details
-// func fuzzyMatchCDRToRecording(cdr CDR, rec Recording) bool {
-// 	// Match by call participants and approximate time
-// 	// You might need to adjust this logic based on your data format
-
-// 	// Check if call participants match
-// 	callFromMatch := (cdr.CallFromNumber == rec.CallFromNumber) ||
-// 		(cdr.CallFrom == rec.CallFrom)
-// 	callToMatch := (cdr.CallToNumber == rec.CallToNumber) ||
-// 		(cdr.CallTo == rec.CallTo)
-
-// 	if !callFromMatch || !callToMatch {
-// 		return false
-// 	}
-
-// 	// Check if durations are similar (within 5 seconds)
-// 	durationDiff := abs(cdr.Duration - rec.Duration)
-// 	if durationDiff > 5 {
-// 		return false
-// 	}
-
-// 	// If we get here, it's likely a match
-// 	//log.Printf("[DEBUG] Fuzzy match found: CDR %d matches Recording %d", cdr.ID, rec.ID)
-// 	return true
-// }
-
-// func abs(x int) int {
-// 	if x < 0 {
-// 		return -x
-// 	}
-// 	return x
-// }
-
-// // Enhanced debugging version of GetRecordingsList
-// func (ys *YeastarService) GetRecordingsListWithDebug(ctx context.Context) ([]Recording, error) {
-// 	const endpoint = "recording"
-// 	log.Printf("[INFO] Fetching recordings list from endpoint: %s", endpoint)
-
-// 	rawData, err := ys.ListMethod(ctx, endpoint)
-// 	if err != nil {
-// 		log.Printf("[ERROR] Failed to fetch recordings: %v", err)
-// 		return nil, fmt.Errorf("failed to fetch recordings: %w", err)
-// 	}
-
-// 	log.Printf("[DEBUG] Raw response data length: %d bytes", len(rawData))
-
-// 	var response struct {
-// 		ErrCode     int         `json:"errcode"`
-// 		ErrMsg      string      `json:"errmsg"`
-// 		TotalNumber int         `json:"total_number"`
-// 		Data        []Recording `json:"data"`
-// 	}
-
-// 	if err := json.Unmarshal(rawData, &response); err != nil {
-// 		//log.Printf("[ERROR] Failed to unmarshal recordings: %v", err)
-// 		//log.Printf("[DEBUG] Raw data that failed to unmarshal: %s", string(rawData))
-// 		return nil, fmt.Errorf("failed to unmarshal recordings: %w", err)
-// 	}
-
-// 	if response.ErrCode != 0 {
-// 		//log.Printf("[ERROR] Recordings fetch failed: %s", response.ErrMsg)
-// 		return nil, fmt.Errorf("recordings fetch failed: %s", response.ErrMsg)
-// 	}
-
-// 	//log.Printf("[INFO] Successfully fetched %d recordings (total reported: %d)",len(response.Data), response.TotalNumber)
-
-// 	// Log first few recordings for debugging
-// 	// for i, rec := range response.Data {
-// 	// 	if i < 5 { // Log first 5 recordings
-// 	// 		log.Printf("[DEBUG] Recording %d: ID=%d, UID=%s, File=%s, CallFrom=%s, CallTo=%s, Duration=%d",i+1, rec.ID, rec.UID, rec.File, rec.CallFrom, rec.CallTo, rec.Duration)
-// 	// 	}
-// 	// }
-
-// 	return response.Data, nil
-// }
-
-// // Diagnostic function to help debug the matching issue
-// func DiagnoseRecordingMatching(cdrs []CDR, recordings []Recording) {
-// 	log.Printf("\n=== RECORDING MATCHING DIAGNOSIS ===")
-// 	log.Printf("Total CDRs: %d", len(cdrs))
-// 	log.Printf("Total Recordings: %d", len(recordings))
-
-// 	// Analyze CDR patterns
-// 	cdrWithRecordFile := 0
-// 	cdrWithUID := 0
-// 	for _, cdr := range cdrs {
-// 		if cdr.RecordFile != "" {
-// 			cdrWithRecordFile++
-// 		}
-// 		if cdr.UID != "" {
-// 			cdrWithUID++
-// 		}
-// 	}
-
-// 	//log.Printf("CDRs with RecordFile: %d", cdrWithRecordFile)
-// 	//log.Printf("CDRs with UID: %d", cdrWithUID)
-
-// 	// Analyze Recording patterns
-// 	recWithFile := 0
-// 	recWithUID := 0
-// 	for _, rec := range recordings {
-// 		if rec.File != "" {
-// 			recWithFile++
-// 		}
-// 		if rec.UID != "" {
-// 			recWithUID++
-// 		}
-// 	}
-
-// 	//log.Printf("Recordings with File: %d", recWithFile)
-// 	//log.Printf("Recordings with UID: %d", recWithUID)
-
-// 	// Sample data comparison
-// 	// if len(cdrs) > 0 && len(recordings) > 0 {
-// 	// 	log.Printf("\nSample CDR: ID=%d, UID='%s', RecordFile='%s'",cdrs[0].ID, cdrs[0].UID, cdrs[0].RecordFile)
-// 	// 	log.Printf("Sample Recording: ID=%d, UID='%s', File='%s'",recordings[0].ID, recordings[0].UID, recordings[0].File)
-// 	// }
-// 	// log.Printf("=== END DIAGNOSIS ===\n")
-// }
-
-func writeQueueMembersToFile(filename string, members []QueueMember) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ") // for pretty printing
-	if err := encoder.Encode(members); err != nil {
-		return fmt.Errorf("failed to encode members to JSON: %w", err)
+func MergeRecordingsWithCDRs(recordings []Recording, cdrs []CDR) []CDR {
+	// Use a map for faster lookup by ID
+	recMap := make(map[int]string)
+	for _, rec := range recordings {
+		recMap[rec.ID] = rec.File
 	}
 
-	return nil
+	for i, cdr := range cdrs {
+		if file, ok := recMap[cdr.ID]; ok {
+			cdrs[i].RecordFile = file
+		}
+	}
+
+	return cdrs
 }

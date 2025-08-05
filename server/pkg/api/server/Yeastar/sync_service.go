@@ -167,7 +167,7 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 		return fmt.Errorf("failed to fetch cdrs: %w", err)
 	}
 
-	cdrs, err := processCDRsData(rawCDRsData)
+	cdrs, err := processCDRsData(service, rawCDRsData)
 	if err != nil {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}
