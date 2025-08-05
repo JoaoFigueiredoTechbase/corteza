@@ -2,6 +2,7 @@ package Yeastar
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -13,6 +14,15 @@ type EventMonitor struct {
 	webSocketService *WebSocketService
 	isRunning        bool
 }
+
+var (
+	// Add this error definition
+	ErrInvalidCredentials = errors.New("invalid credentials")
+
+	// Consider adding other common errors
+	ErrNotConnected       = errors.New("websocket not connected")
+	ErrSubscriptionFailed = errors.New("subscription failed")
+)
 
 // NewEventMonitor creates a new event monitor
 func NewEventMonitor(configManager *ConfigManager, tokenManager *TokenManager, cortezaClient *CortezaClient) *EventMonitor {
@@ -72,59 +82,142 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 		EventAgentStatusChanged,
 	}
 
+	const (
+		initialBackoff = 5 * time.Second
+		maxBackoff     = 5 * time.Minute
+		maxAuthRetries = 3
+	)
+
+	var (
+		backoff          = initialBackoff
+		authFailures     = 0
+		consecutiveFails = 0
+	)
+
 	for {
-		// Cancel loop if context is done
+		// Immediate context check
 		if ctx.Err() != nil {
 			log.Println("[EventMonitor] Context canceled, exiting monitor loop")
 			return
 		}
 
-		// Step 1: Setup and token
-		log.Println("[EventMonitor] Setting up Yeastar service and ensuring token...")
+		// Step 1: Setup and token with circuit breaker
+		log.Println("[EventMonitor] Initializing auth...")
 		if err := setupAuth(ctx, em.yeastarService); err != nil {
-			log.Printf("[EventMonitor] setupAuth failed: %v", err)
-			time.Sleep(30 * time.Second)
+			authFailures++
+			if authFailures >= maxAuthRetries {
+				log.Printf("[EventMonitor] CRITICAL: Auth setup failed %d times: %v", authFailures, err)
+				if !em.waitWithContext(ctx, 1*time.Hour) { // Long cooldown
+					return
+				}
+				authFailures = 0 // Reset after cooldown
+				continue
+			}
+
+			log.Printf("[EventMonitor] Auth setup failed (attempt %d/%d): %v",
+				authFailures, maxAuthRetries, err)
+			if !em.waitWithContext(ctx, backoff) {
+				return
+			}
+			backoff = min(backoff*2, maxBackoff)
 			continue
 		}
 
+		// Step 2: Token acquisition
+		log.Println("[EventMonitor] Ensuring valid token...")
 		if err := em.yeastarService.EnsureValidToken(ctx); err != nil {
-			log.Printf("[EventMonitor] Failed to get valid token: %v", err)
-			time.Sleep(30 * time.Second)
+			log.Printf("[EventMonitor] Token error: %v", err)
+			if errors.Is(err, ErrInvalidCredentials) {
+				log.Fatal("[EventMonitor] FATAL: Invalid credentials")
+			}
+
+			if !em.waitWithContext(ctx, backoff) {
+				return
+			}
+			backoff = min(backoff*2, maxBackoff)
 			continue
 		}
 
-		// Step 2: WebSocket Connect
-		log.Println("[EventMonitor] Connecting to WebSocket...")
+		// Reset failure counters on successful auth
+		authFailures = 0
+		backoff = initialBackoff
+
+		// Step 3: WebSocket connection
+		log.Println("[EventMonitor] Connecting WebSocket...")
 		if err := em.webSocketService.Connect(ctx); err != nil {
-			log.Printf("[EventMonitor] WebSocket connection failed: %v", err)
-			time.Sleep(30 * time.Second)
+			log.Printf("[EventMonitor] WebSocket error: %v", err)
+			if !em.waitWithContext(ctx, backoff) {
+				return
+			}
+			backoff = min(backoff*2, maxBackoff)
 			continue
 		}
 
-		// Step 3: Subscribe
+		// Step 4: Subscription
 		log.Println("[EventMonitor] Subscribing to events...")
 		if err := em.webSocketService.Subscribe(eventIDs); err != nil {
-			log.Printf("[EventMonitor] Subscription failed: %v", err)
+			log.Printf("[EventMonitor] Subscribe error: %v", err)
 			em.webSocketService.Close()
-			time.Sleep(30 * time.Second)
+			if !em.waitWithContext(ctx, backoff) {
+				return
+			}
+			backoff = min(backoff*2, maxBackoff)
 			continue
 		}
 
-		// Step 4: Start heartbeat
+		// Step 5: Heartbeat
 		em.webSocketService.StartHeartbeat()
+		defer func() {
+			em.webSocketService.StopHeartbeat()
+			log.Println("[EventMonitor] Heartbeat stopped")
+		}()
 
-		// Step 5: Listen (blocking)
-		log.Println("[EventMonitor] Listening for WebSocket events...")
+		// Step 6: Event processing
+		log.Println("[EventMonitor] Listening for events...")
 		err := em.webSocketService.Listen(ctx)
 		if err != nil {
-			log.Printf("[EventMonitor] Listen error: %v", err)
+			consecutiveFails++
+			log.Printf("[EventMonitor] Listen error (%d consecutive): %v", consecutiveFails, err)
+
+			// Critical failure threshold
+			if consecutiveFails > 10 {
+				log.Println("[EventMonitor] Too many consecutive failures, entering cooldown")
+				if !em.waitWithContext(ctx, 5*time.Minute) {
+					return
+				}
+				consecutiveFails = 0
+			}
+		} else {
+			consecutiveFails = 0
 		}
 
-		// Step 6: Clean up and retry
+		// Cleanup before retry
 		em.webSocketService.Close()
-		log.Println("[EventMonitor] Disconnected. Retrying in 30 seconds...")
-		time.Sleep(30 * time.Second)
+		log.Printf("[EventMonitor] Disconnected. Next attempt in %v", backoff)
+		if !em.waitWithContext(ctx, backoff) {
+			return
+		}
+		backoff = min(backoff*2, maxBackoff)
 	}
+}
+
+// Helper method for context-aware waiting
+func (em *EventMonitor) waitWithContext(ctx context.Context, duration time.Duration) bool {
+	select {
+	case <-time.After(duration):
+		return true
+	case <-ctx.Done():
+		log.Println("[EventMonitor] Wait interrupted by context cancellation")
+		return false
+	}
+}
+
+// Helper to get minimum duration
+func min(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // Stop stops the event monitoring
