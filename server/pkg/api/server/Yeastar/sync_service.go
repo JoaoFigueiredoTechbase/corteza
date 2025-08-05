@@ -60,51 +60,46 @@ func setupSyncService(baseUrl string) (*YeastarService, context.Context, context
 }
 
 func setupAuth(ctx context.Context, service *YeastarService) error {
-	// Get config first
-	fmt.Println("Triggering config push from Corteza...")
-	if err := service.cortezaClient.TriggerConfigPush(); err != nil {
-		return fmt.Errorf("failed to trigger config push: %w", err)
-	}
-
-	fmt.Println("Waiting for config from Corteza...")
-	config, err := service.configManager.WaitForConfig(ctx)
+	fmt.Println("[setupAuth] Getting config from Corteza...")
+	config, err := service.cortezaClient.GetConfig()
 	if err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
 	}
 
-	// Try to get token from Corteza first
-	fmt.Println("Triggering token push from Corteza...")
-	if err := service.cortezaClient.TriggerTokenPush(); err != nil {
-		fmt.Printf("Warning: failed to trigger token push: %v\n", err)
+	service.configManager.SetConfig(config)
+
+	fmt.Println("[setupAuth] Getting token from Corteza...")
+	token, err := service.cortezaClient.GetToken()
+	if err != nil {
+		fmt.Printf("[setupAuth] Failed to get token from Corteza: %v\n", err)
+		token = nil
 	}
 
-	// Wait for token with short timeout
-	tokenCtx, tokenCancel := context.WithTimeout(ctx, 10*time.Second)
-	defer tokenCancel()
-
-	fmt.Println("Waiting for token from Corteza...")
-	token, err := service.tokenManager.WaitForToken(tokenCtx)
-	if err != nil || token == nil || token.AccessToken == "" {
-		fmt.Println("No valid token from Corteza, getting fresh one from Yeastar...")
-		token, err = GlobalTokenManager.GetNewToken(ctx, config)
+	if token != nil && time.Now().Unix() < int64(token.AccessTokenExpireTime) {
+		fmt.Printf("Token set. Access token expires in: %ds\n", int64(token.AccessTokenExpireTime)-time.Now().Unix())
+		service.tokenManager.SetToken(token)
+	} else {
+		fmt.Println("[setupAuth] Token is missing or expired, getting fresh token from Yeastar...")
+		token, err = service.tokenManager.GetNewToken(ctx, config)
 		if err != nil {
-			return fmt.Errorf("failed to get token from Yeastar: %w", err)
+			return fmt.Errorf("failed to get new token from Yeastar: %w", err)
 		}
 
-		fmt.Println("Saving fresh token to Corteza...")
+		service.tokenManager.SetToken(token)
+
+		fmt.Println("[setupAuth] Saving new token to Corteza...")
 		if err := service.cortezaClient.SaveToken(ctx, token); err != nil {
-			return fmt.Errorf("failed to save token to Corteza: %w", err)
+			fmt.Printf("[setupAuth] Warning: failed to save token to Corteza: %v\n", err)
 		}
 
-		// Set the token directly since we just got it
-		GlobalTokenManager.SetToken(token)
+		fmt.Printf("New token set. Access token expires in: %ds\n", int64(token.AccessTokenExpireTime)-time.Now().Unix())
 	}
 
-	// Verify we have a valid token
-	if !GlobalTokenManager.IsTokenValid() {
+	if !service.tokenManager.IsTokenValid() {
 		return fmt.Errorf("no valid token available after all attempts")
 	}
 
+	fmt.Println("[setupAuth] Auth setup completed successfully.")
 	return nil
 }
 
@@ -289,51 +284,4 @@ func findCDRsByUID(cdrs []CDR, uid string) ([]CDR, error) {
 		return nil, fmt.Errorf("no CDRs found with UID %s", uid)
 	}
 	return results, nil
-}
-
-func SearchNewCDR(baseUrl, uid string) error {
-	service, ctx, cancel, err := setupSyncService(baseUrl)
-	if err != nil {
-		return err
-	}
-	defer cancel()
-
-	if err := setupAuth(ctx, service); err != nil {
-		return err
-	}
-
-	rawCDRsData, err := service.SearchMethod(ctx, "cdr")
-	if err != nil {
-		return fmt.Errorf("failed to search cdrs: %w", err)
-	}
-
-	// log.Printf("Raw CDRs data length: %d", len(rawCDRsData))
-	// log.Printf("Raw CDRs data: %+v", rawCDRsData)
-
-	cdrs, err := processCDRsData(service, rawCDRsData)
-	if err != nil {
-		return fmt.Errorf("failed to process cdrs: %w", err)
-	}
-
-	// log.Printf("Processed CDRs count: %d", len(cdrs))
-	for i, cdr := range cdrs {
-		log.Printf("CDR[%d]: UID=%s", i, cdr.UID)
-	}
-	// log.Printf("Looking for UID: %s", uid)
-
-	results, err := findCDRsByUID(cdrs, uid)
-	if err != nil {
-		log.Printf("Error: %v\n", err)
-	} else {
-		for _, cdr := range results {
-			fmt.Printf("Found CDR: %+v\n", cdr)
-		}
-	}
-
-	if err := service.SendDataToCorteza(ctx, "cdr", results); err != nil {
-		return fmt.Errorf("failed to send cdrs to Corteza: %w", err)
-	}
-
-	fmt.Println("cdrs processed and sent to Corteza successfully!")
-	return nil
 }

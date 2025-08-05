@@ -62,12 +62,6 @@ func (yi *YeastarIntegration) Start(ctx context.Context, host string) error {
 func (yi *YeastarIntegration) Middleware() func(chi.Router) {
 	return func(r chi.Router) {
 		r.Route("/yeastar", func(r chi.Router) {
-			// Configuration callback
-			r.Post("/config", ConfigCallbackHandler)
-
-			// Token callback
-			r.Post("/token", TokenCallbackHandler)
-
 			// Sync all data
 			r.Get("/sync", HandleSyncAllHTTP)
 

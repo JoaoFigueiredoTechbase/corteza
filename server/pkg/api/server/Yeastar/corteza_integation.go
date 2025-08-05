@@ -20,56 +20,58 @@ type CortezaClient struct {
 func NewCortezaClient(baseURL string) *CortezaClient {
 	return &CortezaClient{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 5 * time.Minute,
 		},
 		baseURL: baseURL,
 	}
 }
 
-// TriggerConfigPush triggers configuration push from Corteza
-func (cc *CortezaClient) TriggerConfigPush() error {
+func (cc *CortezaClient) GetConfig() (*Config, error) {
 	url := fmt.Sprintf("%s/api/gateway/get/config", cc.baseURL)
-	fmt.Printf("[CortezaClient] Triggering config push: %s\n", url)
+	fmt.Printf("[CortezaClient] Requesting config: %s\n", url)
 
 	resp, err := cc.client.Get(url)
 	if err != nil {
-		fmt.Printf("[CortezaClient]   Config trigger request failed: %v\n", err)
-		return fmt.Errorf("failed to trigger config push: %w", err)
+		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("[CortezaClient] Config trigger response: %d - %s\n", resp.StatusCode, string(body))
-
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Corteza config trigger failed: %d, body: %s", resp.StatusCode, string(body))
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
 	}
 
-	fmt.Println("[CortezaClient]   Config push triggered successfully")
-	return nil
+	var cfg Config
+	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("invalid config JSON: %w", err)
+	}
+
+	fmt.Printf("[CortezaClient] Config received: %+v\n", cfg)
+	return &cfg, nil
 }
 
-// TriggerTokenPush triggers token push from Corteza
-func (cc *CortezaClient) TriggerTokenPush() error {
+func (cc *CortezaClient) GetToken() (*TokenResponse, error) {
 	url := fmt.Sprintf("%s/api/gateway/get/token", cc.baseURL)
-	fmt.Printf("[CortezaClient] Triggering token push: %s\n", url)
+	fmt.Printf("[CortezaClient] Requesting token: %s\n", url)
 
 	resp, err := cc.client.Get(url)
 	if err != nil {
-		fmt.Printf("[CortezaClient]   Token trigger request failed: %v\n", err)
-		return fmt.Errorf("failed to trigger token push: %w", err)
+		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("[CortezaClient] Token trigger response: %d - %s\n", resp.StatusCode, string(body))
-
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Corteza token trigger failed: %d, body: %s", resp.StatusCode, string(body))
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
 	}
 
-	fmt.Println("[CortezaClient]   Token push triggered successfully")
-	return nil
+	var token TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
+		return nil, fmt.Errorf("invalid token JSON: %w", err)
+	}
+
+	fmt.Printf("[CortezaClient] Token received: %+v\n", token)
+	return &token, nil
 }
 
 // SaveToken saves token to Corteza storage
