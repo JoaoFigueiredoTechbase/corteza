@@ -1,5 +1,7 @@
 package Yeastar
 
+import "time"
+
 // Config represents the API configuration
 type Config struct {
 	ApiBaseUrl  string `json:"ApiBaseUrl"`
@@ -73,6 +75,7 @@ type CDR struct {
 	DIDName             string      `json:"did_name"`
 	RecordFile          string      `json:"recording_file"`
 	RecordingURL        string      `json:"recording_url"`
+	TimeCorteza         time.Time   `json:"time_corteza"`
 }
 
 type DispositionCode struct {

@@ -24,6 +24,7 @@ type WebSocketService struct {
 	isConnected     bool
 	stopChan        chan struct{}
 	heartbeatTicker *time.Ticker
+	heartbeatDone   chan struct{}
 }
 
 type EventSubscription struct {
@@ -170,43 +171,79 @@ func (ws *WebSocketService) Subscribe(eventIDs []int) error {
 	return nil
 }
 
+// func (ws *WebSocketService) StartHeartbeat() {
+// 	log.Println("[WebSocketService] Starting heartbeat mechanism...")
+// 	ws.heartbeatTicker = time.NewTicker(50 * time.Second)
+
+// 	go func() {
+// 		for {
+// 			select {
+// 			case <-ws.heartbeatTicker.C:
+// 				if err := ws.sendHeartbeat(); err != nil {
+// 					log.Printf("[WebSocketService] Heartbeat failed: %v\n", err)
+// 					return
+// 				}
+// 			case <-ws.stopChan:
+// 				log.Println("[WebSocketService] Heartbeat stopped")
+// 				return
+// 			}
+// 		}
+// 	}()
+// }
+
 func (ws *WebSocketService) StartHeartbeat() {
-	log.Println("[WebSocketService] Starting heartbeat mechanism...")
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+
+	// Prevent multiple heartbeat routines
+	if ws.heartbeatTicker != nil {
+		return
+	}
+
 	ws.heartbeatTicker = time.NewTicker(50 * time.Second)
+	ws.heartbeatDone = make(chan struct{})
 
 	go func() {
 		for {
 			select {
 			case <-ws.heartbeatTicker.C:
 				if err := ws.sendHeartbeat(); err != nil {
-					log.Printf("[WebSocketService] Heartbeat failed: %v\n", err)
-					return
+					log.Printf("[WebSocketService] Heartbeat failed: %v", err)
+					// Auto-reconnect will be handled by main loop
 				}
-			case <-ws.stopChan:
-				log.Println("[WebSocketService] Heartbeat stopped")
+			case <-ws.heartbeatDone:
 				return
 			}
 		}
 	}()
 }
 
+// StopHeartbeat terminates heartbeat pulses
+func (ws *WebSocketService) StopHeartbeat() {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+
+	if ws.heartbeatTicker != nil {
+		ws.heartbeatTicker.Stop()
+		close(ws.heartbeatDone)
+		ws.heartbeatTicker = nil
+	}
+}
+
+// sendHeartbeat sends a single heartbeat (thread-safe)
 func (ws *WebSocketService) sendHeartbeat() error {
 	ws.mu.RLock()
-	conn := ws.conn
-	isConnected := ws.isConnected
-	ws.mu.RUnlock()
+	defer ws.mu.RUnlock()
 
-	if !isConnected || conn == nil {
-		return fmt.Errorf("WebSocket not connected")
+	if !ws.isConnected || ws.conn == nil {
+		return fmt.Errorf("cannot send heartbeat: websocket not connected")
 	}
 
 	log.Println("[WebSocketService] 💓 Sending heartbeat")
-	if err := conn.WriteMessage(websocket.TextMessage, []byte("heartbeat")); err != nil {
-		return fmt.Errorf("failed to send heartbeat: %w", err)
+	err := ws.conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"heartbeat"}`))
+	if err != nil {
+		return fmt.Errorf("heartbeat write failed: %w", err)
 	}
-
-	// Don't try to read the response here - it will be handled in the Listen loop
-	log.Println("[WebSocketService] Heartbeat sent, response will be handled in listener")
 	return nil
 }
 

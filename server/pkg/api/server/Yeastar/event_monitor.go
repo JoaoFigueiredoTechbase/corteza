@@ -2,6 +2,7 @@ package Yeastar
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -13,6 +14,15 @@ type EventMonitor struct {
 	webSocketService *WebSocketService
 	isRunning        bool
 }
+
+var (
+	// Add this error definition
+	ErrInvalidCredentials = errors.New("invalid credentials")
+
+	// Consider adding other common errors
+	ErrNotConnected       = errors.New("websocket not connected")
+	ErrSubscriptionFailed = errors.New("subscription failed")
+)
 
 // NewEventMonitor creates a new event monitor
 func NewEventMonitor(configManager *ConfigManager, tokenManager *TokenManager, cortezaClient *CortezaClient) *EventMonitor {
@@ -32,109 +42,26 @@ func (yi *YeastarIntegration) GetEventMonitor() *EventMonitor {
 	return yi.eventMonitor
 }
 
-// Enhanced EventMonitor with proper initialization flow
 func (em *EventMonitor) Start(ctx context.Context) error {
 	if em.isRunning {
 		log.Println("[EventMonitor] Start requested but monitor is already running")
 		return fmt.Errorf("event monitor is already running")
 	}
 
-	log.Println("[EventMonitor] Starting event monitor...")
-
-	// This will now trigger config and token pushes from Corteza
-	log.Println("[EventMonitor] Initializing Yeastar service (will trigger Corteza pushes)...")
-	if err := setupAuth(ctx, em.yeastarService); err != nil {
-		return fmt.Errorf("failed to initialize Yeastar service: %w", err)
-	}
-
-	log.Println("[EventMonitor] Ensuring valid token...")
-	if err := em.yeastarService.EnsureValidToken(ctx); err != nil {
-		return fmt.Errorf("failed to ensure valid token: %w", err)
-	}
-
-	log.Println("[EventMonitor] Connecting to Yeastar WebSocket...")
-	if err := em.webSocketService.Connect(ctx); err != nil {
-		return fmt.Errorf("failed to connect to WebSocket: %w", err)
-	}
-
-	eventIDs := []int{
-		EventExtensionRegistration,
-		EventExtensionCallStatus,
-		EventExtensionPresenceStatus,
-		EventCallStatusChanged,
-		EventNewCDR,
-		EventCallTransfer,
-		EventCallFoward,
-		EventCallFailed,
-		EventSatisfaction,
-		EventUaCSTACall,
-		EventExtensionConfiguration,
-		EventAgentPause,
-		EventAgentRingTimeout,
-		EventReportDownload,
-		EventCallNoteStatusChanged,
-		EventAgentStatusChanged,
-	}
-
-	log.Printf("[EventMonitor] Subscribing to event topics: %v", eventIDs)
-	if err := em.webSocketService.Subscribe(eventIDs); err != nil {
-		return fmt.Errorf("failed to subscribe to events: %w", err)
-	}
-
-	log.Println("[EventMonitor] Starting heartbeat...")
-	em.webSocketService.StartHeartbeat()
-
+	log.Println("[EventMonitor] ✅ Starting Yeastar event monitor (with automatic retries)...")
 	em.isRunning = true
 
-	// Start listening for events in a separate goroutine
-	go func() {
-		defer func() {
-			log.Println("[EventMonitor] Event listener stopped, cleaning up")
-			em.isRunning = false
-			em.webSocketService.Close()
-		}()
+	go em.runMonitorLoop(ctx)
 
-		for {
-			log.Println("[EventMonitor] Listening for WebSocket events...")
-			if err := em.webSocketService.Listen(ctx); err != nil {
-				log.Printf("[EventMonitor] WebSocket listener error: %v", err)
-				log.Println("[EventMonitor] Attempting to reconnect in 30 seconds...")
-				time.Sleep(30 * time.Second)
-
-				select {
-				case <-ctx.Done():
-					log.Println("[EventMonitor] Context canceled, stopping reconnection attempts")
-					return
-				default:
-				}
-
-				if err := em.reconnect(ctx); err != nil {
-					log.Printf("[EventMonitor] Reconnection failed: %v", err)
-					continue
-				}
-			}
-		}
-	}()
-
-	log.Println("[EventMonitor] ✅ Yeastar event monitor started successfully")
 	return nil
 }
 
-// Enhanced reconnect with proper token refresh
-func (em *EventMonitor) reconnect(ctx context.Context) error {
-	log.Println("[EventMonitor] Reconnecting to Yeastar WebSocket...")
-
-	em.webSocketService.Close()
-
-	log.Println("[EventMonitor] Ensuring valid token for reconnection...")
-	if err := em.yeastarService.EnsureValidToken(ctx); err != nil {
-		return fmt.Errorf("failed to ensure valid token for reconnection: %w", err)
-	}
-
-	log.Println("[EventMonitor] Reconnecting WebSocket...")
-	if err := em.webSocketService.Connect(ctx); err != nil {
-		return fmt.Errorf("failed to reconnect to WebSocket: %w", err)
-	}
+func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
+	defer func() {
+		em.isRunning = false
+		em.webSocketService.Close()
+		log.Println("[EventMonitor] Monitor loop stopped, WebSocket closed")
+	}()
 
 	eventIDs := []int{
 		EventExtensionRegistration,
@@ -155,16 +82,142 @@ func (em *EventMonitor) reconnect(ctx context.Context) error {
 		EventAgentStatusChanged,
 	}
 
-	log.Printf("[EventMonitor] Resubscribing to event topics: %v", eventIDs)
-	if err := em.webSocketService.Subscribe(eventIDs); err != nil {
-		return fmt.Errorf("failed to resubscribe to events: %w", err)
+	const (
+		initialBackoff = 5 * time.Second
+		maxBackoff     = 5 * time.Minute
+		maxAuthRetries = 3
+	)
+
+	var (
+		backoff          = initialBackoff
+		authFailures     = 0
+		consecutiveFails = 0
+	)
+
+	for {
+		// Immediate context check
+		if ctx.Err() != nil {
+			log.Println("[EventMonitor] Context canceled, exiting monitor loop")
+			return
+		}
+
+		// Step 1: Setup and token with circuit breaker
+		log.Println("[EventMonitor] Initializing auth...")
+		if err := setupAuth(ctx, em.yeastarService); err != nil {
+			authFailures++
+			if authFailures >= maxAuthRetries {
+				log.Printf("[EventMonitor] CRITICAL: Auth setup failed %d times: %v", authFailures, err)
+				if !em.waitWithContext(ctx, 1*time.Hour) { // Long cooldown
+					return
+				}
+				authFailures = 0 // Reset after cooldown
+				continue
+			}
+
+			log.Printf("[EventMonitor] Auth setup failed (attempt %d/%d): %v",
+				authFailures, maxAuthRetries, err)
+			if !em.waitWithContext(ctx, backoff) {
+				return
+			}
+			backoff = min(backoff*2, maxBackoff)
+			continue
+		}
+
+		// Step 2: Token acquisition
+		log.Println("[EventMonitor] Ensuring valid token...")
+		if err := em.yeastarService.EnsureValidToken(ctx); err != nil {
+			log.Printf("[EventMonitor] Token error: %v", err)
+			if errors.Is(err, ErrInvalidCredentials) {
+				log.Fatal("[EventMonitor] FATAL: Invalid credentials")
+			}
+
+			if !em.waitWithContext(ctx, backoff) {
+				return
+			}
+			backoff = min(backoff*2, maxBackoff)
+			continue
+		}
+
+		// Reset failure counters on successful auth
+		authFailures = 0
+		backoff = initialBackoff
+
+		// Step 3: WebSocket connection
+		log.Println("[EventMonitor] Connecting WebSocket...")
+		if err := em.webSocketService.Connect(ctx); err != nil {
+			log.Printf("[EventMonitor] WebSocket error: %v", err)
+			if !em.waitWithContext(ctx, backoff) {
+				return
+			}
+			backoff = min(backoff*2, maxBackoff)
+			continue
+		}
+
+		// Step 4: Subscription
+		log.Println("[EventMonitor] Subscribing to events...")
+		if err := em.webSocketService.Subscribe(eventIDs); err != nil {
+			log.Printf("[EventMonitor] Subscribe error: %v", err)
+			em.webSocketService.Close()
+			if !em.waitWithContext(ctx, backoff) {
+				return
+			}
+			backoff = min(backoff*2, maxBackoff)
+			continue
+		}
+
+		// Step 5: Heartbeat
+		em.webSocketService.StartHeartbeat()
+		defer func() {
+			em.webSocketService.StopHeartbeat()
+			log.Println("[EventMonitor] Heartbeat stopped")
+		}()
+
+		// Step 6: Event processing
+		log.Println("[EventMonitor] Listening for events...")
+		err := em.webSocketService.Listen(ctx)
+		if err != nil {
+			consecutiveFails++
+			log.Printf("[EventMonitor] Listen error (%d consecutive): %v", consecutiveFails, err)
+
+			// Critical failure threshold
+			if consecutiveFails > 10 {
+				log.Println("[EventMonitor] Too many consecutive failures, entering cooldown")
+				if !em.waitWithContext(ctx, 5*time.Minute) {
+					return
+				}
+				consecutiveFails = 0
+			}
+		} else {
+			consecutiveFails = 0
+		}
+
+		// Cleanup before retry
+		em.webSocketService.Close()
+		log.Printf("[EventMonitor] Disconnected. Next attempt in %v", backoff)
+		if !em.waitWithContext(ctx, backoff) {
+			return
+		}
+		backoff = min(backoff*2, maxBackoff)
 	}
+}
 
-	log.Println("[EventMonitor] Restarting heartbeat...")
-	em.webSocketService.StartHeartbeat()
+// Helper method for context-aware waiting
+func (em *EventMonitor) waitWithContext(ctx context.Context, duration time.Duration) bool {
+	select {
+	case <-time.After(duration):
+		return true
+	case <-ctx.Done():
+		log.Println("[EventMonitor] Wait interrupted by context cancellation")
+		return false
+	}
+}
 
-	log.Println("[EventMonitor] ✅ Successfully reconnected to Yeastar WebSocket")
-	return nil
+// Helper to get minimum duration
+func min(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // Stop stops the event monitoring
