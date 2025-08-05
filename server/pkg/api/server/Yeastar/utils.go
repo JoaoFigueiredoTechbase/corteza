@@ -165,6 +165,9 @@ func mapQueue(raw QueueRaw) Queue {
 func mapCDR(raw CDR) CDR {
 	noteText, noteType, noteDescription := extractCallNoteInfo(raw.CallNote)
 
+	unixTimeStamp := safeInt64Convert(raw.Timestamp)
+	timeStampIso := time.Unix(unixTimeStamp, 0).UTC()
+
 	cdr := CDR{
 		ID:                  raw.ID,
 		Time:                safeStringConvert(raw.Time),
@@ -191,6 +194,7 @@ func mapCDR(raw CDR) CDR {
 		EnbCallNote:         safeIntConvert(raw.EnbCallNote),
 		DID:                 safeStringConvert(raw.DID),
 		DIDName:             safeStringConvert(raw.DIDName),
+		TimeCorteza:         timeStampIso,
 	}
 
 	// Set default values for empty fields
