@@ -1,108 +1,199 @@
-// your_handler.go
+// ui_block_refresh_handler.go
 package automation
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/cortezaproject/corteza/server/automation/types"
+	composeTypes "github.com/cortezaproject/corteza/server/compose/types"
 	"github.com/cortezaproject/corteza/server/pkg/expr"
 )
 
 type (
-	yourHandler struct{}
+	uiBlockRefreshHandler struct {
+		nsSvc   namespaceService
+		pageSvc pageService
+		ws      websocketSender
+	}
 
-	// Registry interface - matches what's expected
+	namespaceService interface {
+		FindByHandle(ctx context.Context, handle string) (*composeTypes.Namespace, error)
+	}
+
+	pageService interface {
+		Find(ctx context.Context, filter composeTypes.PageFilter) (composeTypes.PageSet, composeTypes.PageFilter, error)
+	}
+
+	websocketSender interface {
+		Send(kind string, payload interface{}, userIDs ...uint64) error
+	}
+
 	handlerRegistry interface {
 		AddFunctions(...*types.Function)
 	}
 )
 
-// YourHandler registers your custom handler functions
-func YourHandler(reg handlerRegistry) {
-	h := &yourHandler{}
-
-	// Register your functions
+// Register handler
+func UIBlockRefreshHandler(reg handlerRegistry, nsSvc namespaceService, pageSvc pageService, ws websocketSender) {
+	h := &uiBlockRefreshHandler{
+		nsSvc:   nsSvc,
+		pageSvc: pageSvc,
+		ws:      ws,
+	}
 	reg.AddFunctions(h.Functions()...)
 }
 
-// Functions returns all functions this handler provides
-func (h yourHandler) Functions() []*types.Function {
+// Expose functions
+func (h *uiBlockRefreshHandler) Functions() []*types.Function {
 	return []*types.Function{
 		{
-			Ref:  "yourCustomFunction",
+			Ref:  "refreshUIBlock",
 			Kind: "function",
 			Labels: map[string]string{
-				"category": "your-category",
+				"category": "ui-interaction",
 			},
 			Meta: &types.FunctionMeta{
-				Short:       "Your function description",
-				Description: "Detailed description of what your function does",
+				Short:       "Refresh UI block",
+				Description: "Refreshes a specific UI block on a page by sending websocket message",
 			},
 			Parameters: []*types.Param{
-				{
-					Name:     "input",
-					Types:    []string{"String"},
-					Required: true,
-					Meta: &types.ParamMeta{
-						Label:       "Input Parameter",
-						Description: "Description of the input parameter",
-					},
-				},
+				{Name: "customID", Types: []string{"String"}, Required: true},
+				{Name: "pagina", Types: []string{"String"}, Required: true},
+				{Name: "Namespace", Types: []string{"String"}, Required: true},
 			},
 			Results: []*types.Param{
-				{
-					Name:  "result",
-					Types: []string{"String"},
-					Meta: &types.ParamMeta{
-						Label:       "Result",
-						Description: "The result of your function",
-					},
-				},
+				{Name: "success", Types: []string{"Boolean"}},
+				{Name: "message", Types: []string{"String"}},
+				{Name: "blockID", Types: []string{"String"}},
 			},
-			Handler: h.yourCustomFunction,
+			Handler: h.refreshUIBlock,
 		},
 	}
 }
 
-func (h yourHandler) yourCustomFunction(ctx context.Context, args *expr.Vars) (*expr.Vars, error) {
-	log.Println("yourCustomFunction called")
+// Main handler logic
+func (h *uiBlockRefreshHandler) refreshUIBlock(ctx context.Context, args *expr.Vars) (*expr.Vars, error) {
+	log.Println("refreshUIBlock called")
 
-	// Get the map of variables
 	varMap, ok := args.Get().(map[string]expr.TypedValue)
 	if !ok {
-		log.Println("Error: could not extract variables map from args")
-		return nil, fmt.Errorf("internal error: invalid arguments")
+		return h.errorResult("invalid arguments", "")
 	}
 
-	// Get the "input" parameter as expr.TypedValue
-	tv, ok := varMap["input"]
+	customID, err := h.extractStringParam(varMap, "customID")
+	if err != nil {
+		return h.errorResult("customID parameter is required", "")
+	}
+	pageHandle, err := h.extractStringParam(varMap, "pagina")
+	if err != nil {
+		return h.errorResult("pagina parameter is required", "")
+	}
+	namespaceHandle, err := h.extractStringParam(varMap, "Namespace")
+	if err != nil {
+		return h.errorResult("Namespace parameter is required", "")
+	}
+
+	ns, err := h.nsSvc.FindByHandle(ctx, namespaceHandle)
+	if err != nil {
+		return h.errorResult(fmt.Sprintf("namespace not found: %v", err), "")
+	}
+
+	pages, _, err := h.pageSvc.Find(ctx, composeTypes.PageFilter{
+		NamespaceID: ns.ID,
+		Handle:      pageHandle,
+	})
+	if err != nil || len(pages) == 0 {
+		return h.errorResult("page not found", "")
+	}
+	page := pages[0]
+
+	var foundBlock *composeTypes.PageBlock
+	var foundBlockIndex int
+	for i, block := range page.Blocks {
+		if h.blockMatchesCustomID(block, customID) {
+			foundBlock = &block
+			foundBlockIndex = i
+			break
+		}
+	}
+
+	if foundBlock == nil {
+		return h.errorResult(fmt.Sprintf("block '%s' not found", customID), "")
+	}
+
+	payload := map[string]interface{}{
+		"type":        "block-refresh",
+		"customID":    customID,
+		"blockID":     strconv.FormatUint(foundBlock.BlockID, 10),
+		"blockIndex":  foundBlockIndex,
+		"blockKind":   foundBlock.Kind,
+		"pageID":      strconv.FormatUint(page.ID, 10),
+		"pageHandle":  page.Handle,
+		"namespaceID": strconv.FormatUint(ns.ID, 10),
+		"namespace":   namespaceHandle,
+	}
+
+	if err := h.ws.Send("ui-block-refresh", payload); err != nil {
+		return h.errorResult(fmt.Sprintf("websocket send failed: %v", err), strconv.FormatUint(foundBlock.BlockID, 10))
+	}
+
+	msg := fmt.Sprintf("Refreshed block %d (%s) on page %s", foundBlock.BlockID, foundBlock.Kind, page.Handle)
+	log.Println(msg)
+	return h.successResult(msg, strconv.FormatUint(foundBlock.BlockID, 10))
+}
+
+// Match logic (simplified version of original)
+func (h *uiBlockRefreshHandler) blockMatchesCustomID(block composeTypes.PageBlock, customID string) bool {
+	if id, err := strconv.ParseUint(customID, 10, 64); err == nil && block.BlockID == id {
+		return true
+	}
+	if block.Options != nil {
+		for _, key := range []string{"customID", "id", "blockId", "identifier", "name"} {
+			if val, ok := block.Options[key]; ok && fmt.Sprintf("%v", val) == customID {
+				return true
+			}
+		}
+	}
+	if block.Meta != nil {
+		if val, ok := block.Meta["customID"]; ok && fmt.Sprintf("%v", val) == customID {
+			return true
+		}
+	}
+	if block.Title == customID {
+		return true
+	}
+	return false
+}
+
+// Helpers
+func (h *uiBlockRefreshHandler) extractStringParam(varMap map[string]expr.TypedValue, paramName string) (string, error) {
+	tv, ok := varMap[paramName]
 	if !ok || tv == nil {
-		log.Println("Error: 'input' parameter is required")
-		return nil, fmt.Errorf("input parameter is required")
+		return "", fmt.Errorf("parameter %s is required", paramName)
 	}
-
-	// Try to extract the string value
-	var input string
 	switch v := tv.(type) {
 	case *expr.String:
-		input = v.GetValue()
+		return v.GetValue(), nil
 	default:
-		// fallback: try to use fmt.Sprintf
-		input = fmt.Sprintf("%v", tv)
+		return fmt.Sprintf("%v", tv), nil
 	}
+}
 
-	log.Printf("Received input: %s\n", input)
-
-	// Do something with the input
-	result := "Processed: " + input
-	log.Printf("Generated result: %s\n", result)
-
-	// Return results
+func (h *uiBlockRefreshHandler) successResult(msg, blockID string) (*expr.Vars, error) {
 	out := &expr.Vars{}
-	out.Set("result", result)
-	log.Println("Returning result from yourCustomFunction")
+	out.Set("success", true)
+	out.Set("message", msg)
+	out.Set("blockID", blockID)
+	return out, nil
+}
 
+func (h *uiBlockRefreshHandler) errorResult(msg, blockID string) (*expr.Vars, error) {
+	out := &expr.Vars{}
+	out.Set("success", false)
+	out.Set("message", msg)
+	out.Set("blockID", blockID)
 	return out, nil
 }

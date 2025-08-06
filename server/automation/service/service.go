@@ -129,7 +129,8 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, ws websock
 	automation.EmailHandler(Registry())
 	automation.JwtHandler(Registry())
 	automation.ApigwBodyHandler(Registry())
-	automation.YourHandler(Registry())
+	automation.UIBlockRefreshHandler(Registry(), namespaceSvc, pageSvc, ws)
+
 	return
 }
 
