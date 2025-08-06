@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"time"
 )
 
@@ -56,6 +57,11 @@ func (em *EventMonitor) Start(ctx context.Context) error {
 	return nil
 }
 
+func (em *EventMonitor) checkConnectivity() bool {
+	_, err := net.DialTimeout("tcp", "8.8.8.8:53", 3*time.Second)
+	return err == nil
+}
+
 func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 	defer func() {
 		em.isRunning = false
@@ -99,6 +105,12 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 		if ctx.Err() != nil {
 			log.Println("[EventMonitor] Context canceled, exiting monitor loop")
 			return
+		}
+
+		if !em.checkConnectivity() {
+			log.Print("[EventMonitor] No internet connectivity")
+			time.Sleep(30 * time.Second)
+			continue
 		}
 
 		// Step 1: Setup and token with circuit breaker
@@ -145,10 +157,12 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 		// Step 3: WebSocket connection
 		log.Println("[EventMonitor] Connecting WebSocket...")
 		if err := em.webSocketService.Connect(ctx); err != nil {
-			log.Printf("[EventMonitor] WebSocket error: %v", err)
+			log.Printf("[EventMonitor] Connect failed: %v (retry in %v)", err, backoff)
+			//log.Printf("[EventMonitor] WebSocket error: %v", err)
 			if !em.waitWithContext(ctx, backoff) {
 				return
 			}
+
 			backoff = min(backoff*2, maxBackoff)
 			continue
 		}
@@ -175,6 +189,7 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 		// Step 6: Event processing
 		log.Println("[EventMonitor] Listening for events...")
 		err := em.webSocketService.Listen(ctx)
+
 		if err != nil {
 			consecutiveFails++
 			log.Printf("[EventMonitor] Listen error (%d consecutive): %v", consecutiveFails, err)

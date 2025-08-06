@@ -124,6 +124,11 @@ func (ws *WebSocketService) Connect(ctx context.Context) error {
 	ws.stopChan = make(chan struct{})
 	ws.mu.Unlock()
 
+	conn.SetPingHandler(func(string) error {
+		conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(5*time.Second))
+		return nil
+	})
+
 	log.Println("[WebSocketService] WebSocket connection established successfully")
 	return nil
 }
@@ -253,11 +258,12 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 			messageType, message, err := conn.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("[WebSocketService] Unexpected WebSocket closure: %v\n", err)
-					return err
+					log.Printf("[WebSocketService] Unexpected close: %v", err)
+				} else {
+					log.Printf("[WebSocketService] Read error: %v", err)
 				}
-				log.Printf("[WebSocketService] Error reading message: %v\n", err)
-				continue
+
+				return err
 			}
 
 			// Handle different message types
