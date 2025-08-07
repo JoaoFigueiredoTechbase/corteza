@@ -1,0 +1,834 @@
+{
+  "workflows": [
+    {
+      "handle": "Pulse_Save_Event_30025",
+      "enabled": true,
+      "meta": {
+        "name": "Pulse - Save Event 30025",
+        "description": "",
+        "visual": null
+      },
+      "keepSessions": 0,
+      "steps": [
+        {
+          "stepID": "3",
+          "kind": "function",
+          "ref": "apigwBodyRead",
+          "arguments": [
+            {
+              "target": "request",
+              "expr": "request",
+              "type": "HttpRequest"
+            }
+          ],
+          "results": [
+            {
+              "target": "response",
+              "expr": "body",
+              "type": "String"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "3",
+              "parent": "1",
+              "value": "Read request body from integration gateway",
+              "xywh": [
+                72,
+                208,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "6",
+          "kind": "function",
+          "ref": "jsenvExecute",
+          "arguments": [
+            {
+              "target": "scope",
+              "expr": "jsonText",
+              "type": "Any"
+            },
+            {
+              "target": "source",
+              "value": "return JSON.parse(input);",
+              "type": "String"
+            }
+          ],
+          "results": [
+            {
+              "target": "result",
+              "expr": "resultAny",
+              "type": "Any"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": false,
+              "id": "6",
+              "parent": "1",
+              "value": "convert string to json",
+              "xywh": [
+                712,
+                208,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "7",
+          "kind": "function",
+          "ref": "composeRecordsCreate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "ComposeObject",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "CreatedRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "7",
+              "parent": "1",
+              "value": "Compose record create",
+              "xywh": [
+                2576,
+                152,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "8",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "event_id",
+              "expr": "CreatedRecord.recordID",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "8",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                2944,
+                160,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "9",
+          "kind": "iterator",
+          "ref": "loopEach",
+          "arguments": [
+            {
+              "target": "items",
+              "value": "result.calls",
+              "type": "Array"
+            }
+          ],
+          "results": [
+            {
+              "target": "currentCall",
+              "expr": "item",
+              "type": "Any"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "9",
+              "parent": "1",
+              "value": "Items",
+              "xywh": [
+                3264,
+                160,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "11",
+          "kind": "termination",
+          "ref": "",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "11",
+              "parent": "1",
+              "value": "termination.tooltip",
+              "xywh": [
+                3264,
+                320,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "12",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "ComposeObject.values.event_id",
+              "expr": "event_id",
+              "type": "String"
+            },
+            {
+              "target": "ComposeObject.values.call_number",
+              "expr": "currentCall.call_info.call_number",
+              "type": "Any"
+            },
+            {
+              "target": "ComposeObject.values.call_id",
+              "expr": "currentCall.call_info.call_id",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "12",
+              "parent": "1",
+              "value": "Set Event Attributes",
+              "xywh": [
+                3912,
+                160,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "13",
+          "kind": "function",
+          "ref": "composeRecordsNew",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "eventMissedCalls",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            }
+          ],
+          "results": [
+            {
+              "target": "ComposeObject",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "13",
+              "parent": "1",
+              "value": "Compose record maker",
+              "xywh": [
+                3592,
+                160,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "14",
+          "kind": "function",
+          "ref": "composeRecordsCreate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "ComposeObject",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "CreatedRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "14",
+              "parent": "1",
+              "value": "Compose record create",
+              "xywh": [
+                4232,
+                160,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "22",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "jsonText",
+              "expr": "response",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "22",
+              "parent": "1",
+              "value": "Convert request to string",
+              "xywh": [
+                392,
+                208,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "43",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "ComposeObject.values.agent_number",
+              "expr": "Extension.recordID",
+              "type": "String"
+            },
+            {
+              "target": "ComposeObject.values.queue_number",
+              "expr": "Queue.recordID",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "43",
+              "parent": "1",
+              "value": "Set Event Attributes",
+              "xywh": [
+                2240,
+                136,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "44",
+          "kind": "termination",
+          "ref": "",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "44",
+              "parent": "1",
+              "value": "termination.tooltip",
+              "xywh": [
+                1200,
+                392,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "46",
+          "kind": "iterator",
+          "ref": "composeRecordsEach",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "extension-yeastar",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            },
+            {
+              "target": "query",
+              "expr": "\"'\" + result.agent_number + \"' = number\"",
+              "type": "String"
+            }
+          ],
+          "results": [
+            {
+              "target": "Extension",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "46",
+              "parent": "1",
+              "value": "Compose records",
+              "xywh": [
+                1208,
+                152,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "51",
+          "kind": "function",
+          "ref": "composeRecordsNew",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "eventAgentPause",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            }
+          ],
+          "results": [
+            {
+              "target": "ComposeObject",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "51",
+              "parent": "1",
+              "value": "Compose record maker",
+              "xywh": [
+                1928,
+                152,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "55",
+          "kind": "termination",
+          "ref": "",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "55",
+              "parent": "1",
+              "value": "termination.tooltip",
+              "xywh": [
+                1520,
+                376,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "56",
+          "kind": "iterator",
+          "ref": "composeRecordsEach",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "queue-yeastar",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            },
+            {
+              "target": "query",
+              "expr": "\"'\" + result.queue_number + \"' = number\"",
+              "type": "String"
+            }
+          ],
+          "results": [
+            {
+              "target": "Queue",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "56",
+              "parent": "1",
+              "value": "Compose records",
+              "xywh": [
+                1528,
+                136,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ],
+      "paths": [
+        {
+          "parentID": "3",
+          "childID": "22",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "23",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "22",
+          "childID": "6",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "24",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "6",
+          "childID": "46",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "27",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "7",
+          "childID": "8",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "28",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "8",
+          "childID": "9",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "29",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "12",
+          "childID": "14",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "32",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "13",
+          "childID": "12",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "33",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "46",
+          "childID": "56",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "52",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "Body"
+            }
+          }
+        },
+        {
+          "parentID": "51",
+          "childID": "43",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "53",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "46",
+          "childID": "44",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "54",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "End"
+            }
+          }
+        },
+        {
+          "parentID": "56",
+          "childID": "51",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "58",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "Body"
+            }
+          }
+        },
+        {
+          "parentID": "56",
+          "childID": "55",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "59",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "End"
+            }
+          }
+        },
+        {
+          "parentID": "43",
+          "childID": "7",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "60",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "9",
+          "childID": "13",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "61",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "Body"
+            }
+          }
+        },
+        {
+          "parentID": "9",
+          "childID": "11",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "62",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "End"
+            }
+          }
+        }
+      ],
+      "triggers": [
+        {
+          "resourceType": "system",
+          "eventType": "onManual",
+          "constraints": [],
+          "enabled": true,
+          "stepID": "3",
+          "meta": {
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "edges": [
+                {
+                  "childID": "3",
+                  "meta": {
+                    "description": "",
+                    "label": "",
+                    "visual": {
+                      "id": "41",
+                      "parent": "1",
+                      "points": [],
+                      "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+                      "value": null
+                    }
+                  },
+                  "parentID": "21"
+                }
+              ],
+              "id": "21",
+              "parent": "1",
+              "value": "System - Manual",
+              "xywh": [
+                72,
+                48,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

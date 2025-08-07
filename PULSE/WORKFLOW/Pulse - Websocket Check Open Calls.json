@@ -1,0 +1,439 @@
+{
+  "workflows": [
+    {
+      "handle": "Pulse_Websocket_Check_Open_Calls",
+      "enabled": true,
+      "meta": {
+        "name": "Pulse - Websocket Check Open Calls",
+        "description": "",
+        "visual": null
+      },
+      "keepSessions": 0,
+      "steps": [
+        {
+          "stepID": "5",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "recordList",
+              "expr": "[]",
+              "type": "Array"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "5",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                1896,
+                360,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "6",
+          "kind": "iterator",
+          "ref": "composeRecordsEach",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "callController",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            },
+            {
+              "target": "query",
+              "expr": "\"'start' = call_status\"",
+              "type": "String"
+            }
+          ],
+          "results": [
+            {
+              "target": "CallsToSave",
+              "expr": "record",
+              "type": "ComposeRecord"
+            },
+            {
+              "target": "total",
+              "expr": "total",
+              "type": "UnsignedInteger"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "6",
+              "parent": "1",
+              "value": "Compose records",
+              "xywh": [
+                2560,
+                520,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "10",
+          "kind": "function",
+          "ref": "httpRequestSend",
+          "arguments": [
+            {
+              "target": "url",
+              "value": "https://mammoth-man-50.webhook.cool",
+              "type": "String"
+            },
+            {
+              "target": "method",
+              "value": "POST",
+              "type": "String"
+            },
+            {
+              "target": "body",
+              "expr": "response",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "10",
+              "parent": "1",
+              "value": "HTTP request",
+              "xywh": [
+                2728,
+                904,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "12",
+          "kind": "gateway",
+          "ref": "excl",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "12",
+              "parent": "1",
+              "value": "Exclusive",
+              "xywh": [
+                2456,
+                896,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "16",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "Exists",
+              "expr": "false",
+              "type": "Boolean"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "16",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                1904,
+                696,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "18",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "Exists",
+              "expr": "true",
+              "type": "Boolean"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "18",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                2752,
+                352,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "21",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "response",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "21",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                2160,
+                504,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "23",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "response",
+              "expr": "response + \"\\n{\\n\" + \"\\t\\\"call_id\\\": \" + \"\\\"\" + CallsToSave.values.call_id + \"\\\",\\n\" + \"\\t\\\"createdAt\\\": \" + \"\\\"\" + CallsToSave.createdAt + \"\\\"\\n\" + \"}\"",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "23",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                2952,
+                536,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "24",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "recordList",
+              "expr": "response",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "24",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                2464,
+                696,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ],
+      "paths": [
+        {
+          "parentID": "5",
+          "childID": "16",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "7",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "6",
+          "childID": "18",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "8",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;",
+              "value": "Body"
+            }
+          }
+        },
+        {
+          "parentID": "6",
+          "childID": "24",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "9",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "End"
+            }
+          }
+        },
+        {
+          "expr": "Exists == false",
+          "parentID": "12",
+          "childID": "10",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "13",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "#1 - If"
+            }
+          }
+        },
+        {
+          "parentID": "12",
+          "childID": "10",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "15",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;",
+              "value": "#2 - Else (if)"
+            }
+          }
+        },
+        {
+          "parentID": "16",
+          "childID": "21",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "17",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "18",
+          "childID": "23",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "19",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "21",
+          "childID": "6",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "22",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "24",
+          "childID": "12",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "25",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,398 @@
+{
+  "workflows": [
+    {
+      "handle": "Pulse_WebSocket_Connect",
+      "enabled": true,
+      "meta": {
+        "name": "Pulse - WebSocket Connect",
+        "description": "",
+        "visual": null
+      },
+      "keepSessions": 0,
+      "steps": [
+        {
+          "stepID": "3",
+          "kind": "function",
+          "ref": "composeRecordsCreate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "ComposeObject",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "CreatedRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "3",
+              "parent": "1",
+              "value": "Compose record create",
+              "xywh": [
+                1424,
+                272,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "4",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "ComposeObject.values.status",
+              "expr": "\"connected\"",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "4",
+              "parent": "1",
+              "value": "Set Event Attributes",
+              "xywh": [
+                1184,
+                272,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "5",
+          "kind": "function",
+          "ref": "composeRecordsNew",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "socket_logger",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            }
+          ],
+          "results": [
+            {
+              "target": "ComposeObject",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "5",
+              "parent": "1",
+              "value": "Compose record maker",
+              "xywh": [
+                944,
+                272,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "10",
+          "kind": "function",
+          "ref": "composeRecordsSearch",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "socket_logger",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            },
+            {
+              "target": "query",
+              "expr": "\"'disconnected' = status\"",
+              "type": "String"
+            },
+            {
+              "target": "sort",
+              "expr": "\"createdAt DESC\"",
+              "type": "String"
+            },
+            {
+              "target": "limit",
+              "value": "1",
+              "type": "UnsignedInteger"
+            }
+          ],
+          "results": [
+            {
+              "target": "data",
+              "expr": "records",
+              "type": "ComposeRecord"
+            },
+            {
+              "target": "total",
+              "expr": "total",
+              "type": "UnsignedInteger"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "10",
+              "parent": "1",
+              "value": "Compose records search",
+              "xywh": [
+                1936,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "12",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "RecordResponse",
+              "expr": "\"{\\n\" + \r\n\"\\t\\\"createdAt\\\": \\\"\" + tempo.createdAt  + \"\\\"\\n\" +\r\n\"}\"",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "12",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                1512,
+                624,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "18",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "tempo",
+              "expr": "data[0]",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "18",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                1536,
+                440,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "20",
+          "kind": "gateway",
+          "ref": "excl",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "20",
+              "parent": "1",
+              "value": "Exclusive",
+              "xywh": [
+                1896,
+                448,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "22",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "RecordResponse",
+              "expr": "\"{\\n\" + \r\n\"\\t\\\"createdAt\\\": \\\"2025-08-07 09:03:49 +0000 UTC\\\"\\n\" +\r\n\"}\"\r\n",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "22",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                1920,
+                696,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ],
+      "paths": [
+        {
+          "parentID": "4",
+          "childID": "3",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "6",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "5",
+          "childID": "4",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "7",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "3",
+          "childID": "10",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "11",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "10",
+          "childID": "20",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "13",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "18",
+          "childID": "12",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "19",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "expr": "total == 1",
+          "parentID": "20",
+          "childID": "18",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "21",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;",
+              "value": "#1 - If"
+            }
+          }
+        },
+        {
+          "parentID": "20",
+          "childID": "22",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "23",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "#2 - Else (if)"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
