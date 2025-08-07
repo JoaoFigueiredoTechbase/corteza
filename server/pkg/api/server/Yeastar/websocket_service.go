@@ -14,6 +14,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type OnConnectCallback func()
+type OnDisconnectCallback func(reason string)
+
 // WebSocketService handles real-time event monitoring
 type WebSocketService struct {
 	configManager   *ConfigManager
@@ -25,6 +28,9 @@ type WebSocketService struct {
 	stopChan        chan struct{}
 	heartbeatTicker *time.Ticker
 	heartbeatMu     sync.Mutex
+
+	onConnect    OnConnectCallback
+	onDisconnect OnDisconnectCallback
 }
 
 type EventSubscription struct {
@@ -62,6 +68,16 @@ const (
 	EventCallNoteStatusChanged   = 30028
 	EventAgentStatusChanged      = 30029
 )
+
+// SetOnConnect sets the callback function to be called when WebSocket connects
+func (ws *WebSocketService) SetOnConnect(callback OnConnectCallback) {
+	ws.onConnect = callback
+}
+
+// SetOnDisconnect sets the callback function to be called when WebSocket disconnects
+func (ws *WebSocketService) SetOnDisconnect(callback OnDisconnectCallback) {
+	ws.onDisconnect = callback
+}
 
 func NewWebSocketService(configManager *ConfigManager, tokenManager *TokenManager, cortezaClient *CortezaClient) *WebSocketService {
 	log.Println("[WebSocketService] Initializing new instance")
@@ -130,6 +146,11 @@ func (ws *WebSocketService) Connect(ctx context.Context) error {
 	})
 
 	log.Println("[WebSocketService] WebSocket connection established successfully")
+
+	if ws.onConnect != nil {
+		ws.onConnect()
+	}
+
 	return nil
 }
 
@@ -242,6 +263,18 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 		log.Println("[WebSocketService] Listen aborted: WebSocket not connected")
 		return fmt.Errorf("WebSocket not connected")
 	}
+
+	// Defer calling disconnect callback when we exit due to an error
+	defer func() {
+		ws.mu.Lock()
+		wasConnected := ws.isConnected
+		ws.isConnected = false
+		ws.mu.Unlock()
+
+		if wasConnected && ws.onDisconnect != nil {
+			ws.onDisconnect("listen loop ended")
+		}
+	}()
 
 	for {
 		select {
@@ -434,6 +467,8 @@ func (ws *WebSocketService) Close() error {
 	// Stop heartbeat first
 	ws.StopHeartbeat()
 
+	wasConnected := ws.isConnected
+
 	// Close stop channel if it exists and isn't already closed
 	if ws.stopChan != nil {
 		select {
@@ -444,12 +479,18 @@ func (ws *WebSocketService) Close() error {
 		}
 	}
 
+	var closeErr error
 	if ws.conn != nil {
-		err := ws.conn.Close()
+		closeErr = ws.conn.Close()
 		ws.conn = nil
 		ws.isConnected = false
 		log.Println("[WebSocketService] WebSocket connection closed")
-		return err
+
+		if wasConnected && ws.onDisconnect != nil {
+			ws.onDisconnect("connection closed")
+		}
+
+		return closeErr
 	}
 
 	log.Println("[WebSocketService] No active WebSocket connection to close")

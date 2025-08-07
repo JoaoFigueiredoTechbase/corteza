@@ -140,7 +140,7 @@ func (ys *YeastarService) ListMethod(ctx context.Context, endpoint string) ([]by
 			continue
 		}
 
-		log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
+		//log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
 
 		if resp.StatusCode == http.StatusOK {
 			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
@@ -306,8 +306,8 @@ func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]
 		}
 
 		now := time.Now()
-		startTime := now.Add(-15*time.Minute - 1*time.Hour).Format("02/01/2006 15:04:05")
-		endTime := now.Add(15*time.Minute - 1*time.Hour).Format("02/01/2006 15:04:05")
+		startTime := now.Add(-10*time.Minute - 1*time.Hour).Format("02/01/2006 15:04:05")
+		endTime := now.Add(2*time.Minute - 1*time.Hour).Format("02/01/2006 15:04:05")
 
 		url := fmt.Sprintf("%s/openapi/v1.0/%s/search?access_token=%s&start_time=%s&end_time=%s",
 			config.ApiBaseUrl,
@@ -340,7 +340,7 @@ func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]
 			continue
 		}
 
-		log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
+		//log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
 
 		if resp.StatusCode == http.StatusOK {
 			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
@@ -420,7 +420,7 @@ func (ys *YeastarService) SearchExtension(ctx context.Context, searchValue strin
 			continue
 		}
 
-		log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
+		//log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
 
 		if resp.StatusCode == http.StatusOK {
 			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
@@ -512,4 +512,90 @@ func SearchExtensionContext(baseUrl, searchValue string) (Agent, error) {
 	}
 
 	return agents[0], nil
+}
+
+func (ys *YeastarService) SearchMethodWithParameters(ctx context.Context, endpoint string, startTime, endTime time.Time) ([]byte, error) {
+	var lastErr error
+
+	for attempt := 0; attempt <= ys.maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := ys.baseRetryDelay * time.Duration(attempt)
+			log.Printf("[Attempt %d] Waiting %s before retrying...", attempt, delay)
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				log.Printf("[Attempt %d] Context done while waiting to retry: %v", attempt, ctx.Err())
+				return nil, ctx.Err()
+			}
+		}
+
+		log.Printf("[Attempt %d] Ensuring valid token for endpoint: %s", attempt, endpoint)
+		if err := ys.EnsureValidToken(ctx); err != nil {
+			lastErr = fmt.Errorf("failed to ensure valid token: %w", err)
+			log.Printf("[Attempt %d] Error ensuring valid token: %v", attempt, err)
+			continue
+		}
+
+		config := ys.configManager.GetConfig()
+		token := ys.tokenManager.GetToken()
+
+		if config == nil || token == nil {
+			lastErr = fmt.Errorf("config or token not available")
+			log.Printf("[Attempt %d] Config or token not available", attempt)
+			continue
+		}
+
+		start := url.QueryEscape(startTime.Format("02/01/2006 15:04:05"))
+		end := url.QueryEscape(endTime.Format("02/01/2006 15:04:05"))
+
+		url := fmt.Sprintf("%s/openapi/v1.0/%s/search?access_token=%s&start_time=%s&end_time=%s",
+			config.ApiBaseUrl,
+			endpoint,
+			token.AccessToken,
+			start,
+			end,
+		)
+
+		log.Printf("[Attempt %d] Making GET request to URL: %s", attempt, url)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to create request: %w", err)
+			log.Printf("[Attempt %d] Error creating request: %v", attempt, err)
+			continue
+		}
+
+		resp, err := ys.httpClient.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("API request failed: %w", err)
+			log.Printf("[Attempt %d] API request failed: %v", attempt, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to read response: %w", err)
+			log.Printf("[Attempt %d] Failed to read response body: %v", attempt, err)
+			continue
+		}
+
+		//log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
+
+		if resp.StatusCode == http.StatusOK {
+			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
+			return body, nil
+		}
+
+		lastErr = fmt.Errorf("unexpected status code %d from endpoint %s: %s",
+			resp.StatusCode, endpoint, string(body))
+		log.Printf("[Attempt %d] Unexpected status code: %d, response body: %s", attempt, resp.StatusCode, string(body))
+
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusUnauthorized {
+			log.Printf("[Attempt %d] Non-recoverable client error, not retrying", attempt)
+			break
+		}
+	}
+
+	log.Printf("Failed to get data from endpoint %s after %d attempts: %v", endpoint, ys.maxRetries+1, lastErr)
+	return nil, fmt.Errorf("failed after %d attempts: %w", ys.maxRetries+1, lastErr)
 }

@@ -32,6 +32,18 @@ func NewEventMonitor(configManager *ConfigManager, tokenManager *TokenManager, c
 	yeastarService := NewYeastarService(configManager, tokenManager, cortezaClient)
 	webSocketService := NewWebSocketService(configManager, tokenManager, cortezaClient)
 
+	webSocketService.SetOnConnect(func() {
+		if err := cortezaClient.OnSocketConnect(); err != nil {
+			log.Printf("[EventMonitor] OnSocketConnect error: %v", err)
+		}
+	})
+
+	webSocketService.SetOnDisconnect(func(reason string) {
+		if err := cortezaClient.OnSocketDisconnect(); err != nil {
+			log.Printf("[EventMonitor] OnSocketDisconnect error: %v", err)
+		}
+	})
+
 	return &EventMonitor{
 		yeastarService:   yeastarService,
 		webSocketService: webSocketService,
