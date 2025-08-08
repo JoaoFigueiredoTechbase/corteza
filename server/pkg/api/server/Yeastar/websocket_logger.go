@@ -57,19 +57,28 @@ func (cc *CortezaClient) OnSocketConnect() error {
 	fmt.Printf("[WebSocket_Logger] Response body: %s\n", string(body))
 
 	//open calls - get the end ones
-	cc.OpenCalls()
+	if err := cc.OpenCalls(); err != nil {
+		log.Printf("[WebSocket_Logger] OpenCalls failed: %v", err)
+	}
 
 	// lost period
 	var startResp StartTime
 	err = json.Unmarshal([]byte(body), &startResp)
 	if err != nil {
 		log.Printf("failed to unmarshal response: %v", err)
+		return nil
+	}
+
+	if strings.TrimSpace(startResp.CreatedAt) == "" {
+		log.Println("[WebSocket_Logger] Missing or empty CreatedAt in response")
+		return fmt.Errorf("invalid CreatedAt in socket connect response")
 	}
 
 	layout := "2006-01-02 15:04:05 -0700 MST"
 	remoteStartTime, err := time.Parse(layout, startResp.CreatedAt)
 	if err != nil {
 		log.Printf("Failed to parse createdAt: %v", err)
+		return fmt.Errorf("invalid CreatedAt time format: %w", err)
 	}
 
 	localStartTime, err := loadLastTimestamp()
@@ -83,7 +92,7 @@ func (cc *CortezaClient) OnSocketConnect() error {
 		startTime = localStartTime
 	}
 
-	fmt.Printf("[WebSocket_Logger] Final selected startTime: %s\n", startTime.Format("2006-01-02 15:04:05 -0700 MST"))
+	fmt.Printf("[WebSocket_Logger][OnSocketConnect] Final selected startTime: %s\n", startTime.Format("2006-01-02 15:04:05 -0700 MST"))
 
 	endTime := time.Now()
 
@@ -173,13 +182,18 @@ func (cc *CortezaClient) OpenCalls() error {
 
 	fmt.Println("Collected call IDs:", callIDs)
 
-	if oldestCall != nil {
-		fmt.Printf("Oldest call is ID %s at %s\n", oldestCall.CallID, oldestCall.CreatedAt)
-	} else {
-		fmt.Println("No valid calls with parsable createdAt timestamps were found.")
+	if oldestCall == nil {
+		fmt.Println("[WebSocket_Logger] No valid open calls found. Skipping further processing.")
+		return nil
 	}
 
-	fmt.Printf("[WebSocket_Logger] Final selected startTime: %s\n", oldestTime.Format("2006-01-02 15:04:05 -0700 MST"))
+	// if oldestCall != nil {
+	// 	fmt.Printf("Oldest call is ID %s at %s\n", oldestCall.CallID, oldestCall.CreatedAt)
+	// } else {
+	// 	fmt.Println("No valid calls with parsable createdAt timestamps were found.")
+	// }
+
+	fmt.Printf("[WebSocket_Logger][OpenCalls] Final selected startTime: %s\n", oldestTime.Format("2006-01-02 15:04:05 -0700 MST"))
 
 	endTime := time.Now()
 
