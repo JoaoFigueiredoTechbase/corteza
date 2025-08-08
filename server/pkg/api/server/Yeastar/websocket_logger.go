@@ -63,13 +63,13 @@ func (cc *CortezaClient) OnSocketConnect() error {
 	var startResp StartTime
 	err = json.Unmarshal([]byte(body), &startResp)
 	if err != nil {
-		log.Fatalf("failed to unmarshal response: %v", err)
+		log.Printf("failed to unmarshal response: %v", err)
 	}
 
 	layout := "2006-01-02 15:04:05 -0700 MST"
 	remoteStartTime, err := time.Parse(layout, startResp.CreatedAt)
 	if err != nil {
-		log.Fatalf("Failed to parse createdAt: %v", err)
+		log.Printf("Failed to parse createdAt: %v", err)
 	}
 
 	localStartTime, err := loadLastTimestamp()
