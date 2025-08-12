@@ -14,6 +14,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type OnConnectCallback func()
+type OnDisconnectCallback func(reason string)
+
 // WebSocketService handles real-time event monitoring
 type WebSocketService struct {
 	configManager   *ConfigManager
@@ -24,35 +27,29 @@ type WebSocketService struct {
 	isConnected     bool
 	stopChan        chan struct{}
 	heartbeatTicker *time.Ticker
-	heartbeatDone   chan struct{}
+	heartbeatMu     sync.Mutex
+
+	onConnect    OnConnectCallback
+	onDisconnect OnDisconnectCallback
 }
 
 type EventSubscription struct {
 	TopicList []int `json:"topic_list"`
 }
 
-// EventResponse represents the response from subscription
-
 type EventResponse struct {
-	ErrCode int `json:"errcode"`
-
-	ErrMsg string `json:"errmsg"`
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 }
 
-// YeastarEvent represents an incoming event from Yeastar
-
 type YeastarEvent struct {
-	EventID int `json:"event_id"`
-
-	EventType string `json:"event_type"`
-
-	Timestamp int64 `json:"timestamp"`
-
-	Data map[string]interface{} `json:"data"`
+	EventID   int                    `json:"event_id"`
+	EventType string                 `json:"event_type"`
+	Timestamp int64                  `json:"timestamp"`
+	Data      map[string]interface{} `json:"data"`
 }
 
 // Common event IDs from Yeastar API
-
 const (
 	EventExtensionRegistration   = 30007
 	EventExtensionCallStatus     = 30008
@@ -72,13 +69,22 @@ const (
 	EventAgentStatusChanged      = 30029
 )
 
+// SetOnConnect sets the callback function to be called when WebSocket connects
+func (ws *WebSocketService) SetOnConnect(callback OnConnectCallback) {
+	ws.onConnect = callback
+}
+
+// SetOnDisconnect sets the callback function to be called when WebSocket disconnects
+func (ws *WebSocketService) SetOnDisconnect(callback OnDisconnectCallback) {
+	ws.onDisconnect = callback
+}
+
 func NewWebSocketService(configManager *ConfigManager, tokenManager *TokenManager, cortezaClient *CortezaClient) *WebSocketService {
 	log.Println("[WebSocketService] Initializing new instance")
 	return &WebSocketService{
 		configManager: configManager,
 		tokenManager:  tokenManager,
 		cortezaClient: cortezaClient,
-		stopChan:      make(chan struct{}),
 	}
 }
 
@@ -131,9 +137,20 @@ func (ws *WebSocketService) Connect(ctx context.Context) error {
 	ws.mu.Lock()
 	ws.conn = conn
 	ws.isConnected = true
+	ws.stopChan = make(chan struct{})
 	ws.mu.Unlock()
 
+	conn.SetPingHandler(func(string) error {
+		conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(5*time.Second))
+		return nil
+	})
+
 	log.Println("[WebSocketService] WebSocket connection established successfully")
+
+	if ws.onConnect != nil {
+		ws.onConnect()
+	}
+
 	return nil
 }
 
@@ -171,79 +188,66 @@ func (ws *WebSocketService) Subscribe(eventIDs []int) error {
 	return nil
 }
 
-// func (ws *WebSocketService) StartHeartbeat() {
-// 	log.Println("[WebSocketService] Starting heartbeat mechanism...")
-// 	ws.heartbeatTicker = time.NewTicker(50 * time.Second)
-
-// 	go func() {
-// 		for {
-// 			select {
-// 			case <-ws.heartbeatTicker.C:
-// 				if err := ws.sendHeartbeat(); err != nil {
-// 					log.Printf("[WebSocketService] Heartbeat failed: %v\n", err)
-// 					return
-// 				}
-// 			case <-ws.stopChan:
-// 				log.Println("[WebSocketService] Heartbeat stopped")
-// 				return
-// 			}
-// 		}
-// 	}()
-// }
-
+// Revert to the simpler, working heartbeat mechanism from the old code
 func (ws *WebSocketService) StartHeartbeat() {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
+	ws.heartbeatMu.Lock()
+	defer ws.heartbeatMu.Unlock()
 
-	// Prevent multiple heartbeat routines
+	// Stop existing heartbeat if running
 	if ws.heartbeatTicker != nil {
-		return
+		ws.heartbeatTicker.Stop()
 	}
 
+	log.Println("[WebSocketService] Starting heartbeat mechanism...")
 	ws.heartbeatTicker = time.NewTicker(50 * time.Second)
-	ws.heartbeatDone = make(chan struct{})
 
 	go func() {
+		defer func() {
+			log.Println("[WebSocketService] Heartbeat goroutine exiting")
+		}()
+
 		for {
 			select {
 			case <-ws.heartbeatTicker.C:
 				if err := ws.sendHeartbeat(); err != nil {
 					log.Printf("[WebSocketService] Heartbeat failed: %v", err)
-					// Auto-reconnect will be handled by main loop
+					return
 				}
-			case <-ws.heartbeatDone:
+			case <-ws.stopChan:
+				log.Println("[WebSocketService] Heartbeat stopped")
 				return
 			}
 		}
 	}()
 }
 
-// StopHeartbeat terminates heartbeat pulses
 func (ws *WebSocketService) StopHeartbeat() {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
+	ws.heartbeatMu.Lock()
+	defer ws.heartbeatMu.Unlock()
 
 	if ws.heartbeatTicker != nil {
 		ws.heartbeatTicker.Stop()
-		close(ws.heartbeatDone)
 		ws.heartbeatTicker = nil
 	}
 }
 
-// sendHeartbeat sends a single heartbeat (thread-safe)
+// Use the working heartbeat format from old code
 func (ws *WebSocketService) sendHeartbeat() error {
 	ws.mu.RLock()
 	defer ws.mu.RUnlock()
 
 	if !ws.isConnected || ws.conn == nil {
-		return fmt.Errorf("cannot send heartbeat: websocket not connected")
+		return fmt.Errorf("WebSocket not connected")
 	}
 
 	log.Println("[WebSocketService] 💓 Sending heartbeat")
-	err := ws.conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"heartbeat"}`))
-	if err != nil {
-		return fmt.Errorf("heartbeat write failed: %w", err)
+	// Use plain text heartbeat like the old working code
+	if err := ws.conn.WriteMessage(websocket.TextMessage, []byte("heartbeat")); err != nil {
+		return fmt.Errorf("failed to send heartbeat: %w", err)
 	}
+
+	// Don't try to read the response here - it will be handled in the Listen loop
+	log.Println("[WebSocketService] Heartbeat sent, response will be handled in listener")
 	return nil
 }
 
@@ -260,6 +264,18 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 		return fmt.Errorf("WebSocket not connected")
 	}
 
+	// Defer calling disconnect callback when we exit due to an error
+	defer func() {
+		ws.mu.Lock()
+		wasConnected := ws.isConnected
+		ws.isConnected = false
+		ws.mu.Unlock()
+
+		if wasConnected && ws.onDisconnect != nil {
+			ws.onDisconnect("listen loop ended")
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -275,11 +291,12 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 			messageType, message, err := conn.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("[WebSocketService] Unexpected WebSocket closure: %v\n", err)
-					return err
+					log.Printf("[WebSocketService] Unexpected close: %v", err)
+				} else {
+					log.Printf("[WebSocketService] Read error: %v", err)
 				}
-				log.Printf("[WebSocketService] Error reading message: %v\n", err)
-				continue
+
+				return err
 			}
 
 			// Handle different message types
@@ -329,14 +346,11 @@ func (ws *WebSocketService) processEvent(event map[string]interface{}) error {
 
 	log.Printf("[WebSocketService] Processing event - SN: %s, ID: %.0f\n", sn, eventID)
 
-	// if err := ws.cortezaClient.SendData(ctx, "events", event); err != nil {
-	// 	log.Printf("[WebSocketService] Failed to send event to Corteza: %v\n", err)
-	// }
-
-	// webhookURL := "https://webhook.site/f138fe58-2d58-4255-a3c3-9f92649e1339"
-	// if err := sendEventToWebhook(ctx, webhookURL, event); err != nil {
-	// 	log.Printf("[WebSocketService] ❌ Failed to send event to webhook: %v\n", err)
-	// }
+	// Skip if eventID is 0 - this indicates heartbeat or invalid event
+	if eventID == 0 {
+		log.Printf("[WebSocketService] Received event with ID 0, skipping (likely heartbeat acknowledgment)")
+		return nil
+	}
 
 	switch int(eventID) {
 	case EventExtensionRegistration:
@@ -389,10 +403,10 @@ func (ws *WebSocketService) processEvent(event map[string]interface{}) error {
 			return err
 		}
 	case EventCallFailed:
-		log.Println("[WebSocketService] EventCallStatus")
+		log.Println("[WebSocketService] EventCallFailed")
 		_, err := handleEventCallFailedStatus(event)
 		if err != nil {
-			log.Printf("Failed to handle call status: %v", err)
+			log.Printf("Failed to handle call failed: %v", err)
 			return err
 		}
 	case EventSatisfaction:
@@ -402,13 +416,6 @@ func (ws *WebSocketService) processEvent(event map[string]interface{}) error {
 			log.Printf("Failed to handle satisfaction status: %v", err)
 			return err
 		}
-	// case EventUaCSTACall:
-	// 	log.Println("[WebSocketService] EventUaCSTACall")
-	// 	_, err := handleEventUaCSTACall(event)
-	// 	if err != nil {
-	// 		log.Printf("Failed to handle uacsta call: %v", err)
-	// 		return err
-	// 	}
 	case EventExtensionConfiguration:
 		log.Println("[WebSocketService] EventExtensionConfiguration")
 		_, err := handleEventExtensionConfiguration(event)
@@ -457,18 +464,33 @@ func (ws *WebSocketService) Close() error {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
-	if ws.heartbeatTicker != nil {
-		ws.heartbeatTicker.Stop()
+	// Stop heartbeat first
+	ws.StopHeartbeat()
+
+	wasConnected := ws.isConnected
+
+	// Close stop channel if it exists and isn't already closed
+	if ws.stopChan != nil {
+		select {
+		case <-ws.stopChan:
+			// Channel already closed
+		default:
+			close(ws.stopChan)
+		}
 	}
 
-	close(ws.stopChan)
-
+	var closeErr error
 	if ws.conn != nil {
-		err := ws.conn.Close()
+		closeErr = ws.conn.Close()
 		ws.conn = nil
 		ws.isConnected = false
 		log.Println("[WebSocketService] WebSocket connection closed")
-		return err
+
+		if wasConnected && ws.onDisconnect != nil {
+			ws.onDisconnect("connection closed")
+		}
+
+		return closeErr
 	}
 
 	log.Println("[WebSocketService] No active WebSocket connection to close")

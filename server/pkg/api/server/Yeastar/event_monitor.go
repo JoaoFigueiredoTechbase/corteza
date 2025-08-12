@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"time"
 )
 
@@ -31,6 +32,18 @@ func NewEventMonitor(configManager *ConfigManager, tokenManager *TokenManager, c
 	yeastarService := NewYeastarService(configManager, tokenManager, cortezaClient)
 	webSocketService := NewWebSocketService(configManager, tokenManager, cortezaClient)
 
+	webSocketService.SetOnConnect(func() {
+		if err := cortezaClient.OnSocketConnect(); err != nil {
+			log.Printf("[EventMonitor] OnSocketConnect error: %v", err)
+		}
+	})
+
+	webSocketService.SetOnDisconnect(func(reason string) {
+		if err := cortezaClient.OnSocketDisconnect(); err != nil {
+			log.Printf("[EventMonitor] OnSocketDisconnect error: %v", err)
+		}
+	})
+
 	return &EventMonitor{
 		yeastarService:   yeastarService,
 		webSocketService: webSocketService,
@@ -54,6 +67,11 @@ func (em *EventMonitor) Start(ctx context.Context) error {
 	go em.runMonitorLoop(ctx)
 
 	return nil
+}
+
+func (em *EventMonitor) checkConnectivity() bool {
+	_, err := net.DialTimeout("tcp", "8.8.8.8:53", 3*time.Second)
+	return err == nil
 }
 
 func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
@@ -101,6 +119,12 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 			return
 		}
 
+		if !em.checkConnectivity() {
+			log.Print("[EventMonitor] No internet connectivity")
+			time.Sleep(30 * time.Second)
+			continue
+		}
+
 		// Step 1: Setup and token with circuit breaker
 		log.Println("[EventMonitor] Initializing auth...")
 		if err := setupAuth(ctx, em.yeastarService); err != nil {
@@ -145,10 +169,12 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 		// Step 3: WebSocket connection
 		log.Println("[EventMonitor] Connecting WebSocket...")
 		if err := em.webSocketService.Connect(ctx); err != nil {
-			log.Printf("[EventMonitor] WebSocket error: %v", err)
+			log.Printf("[EventMonitor] Connect failed: %v (retry in %v)", err, backoff)
+			//log.Printf("[EventMonitor] WebSocket error: %v", err)
 			if !em.waitWithContext(ctx, backoff) {
 				return
 			}
+
 			backoff = min(backoff*2, maxBackoff)
 			continue
 		}
@@ -175,6 +201,7 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 		// Step 6: Event processing
 		log.Println("[EventMonitor] Listening for events...")
 		err := em.webSocketService.Listen(ctx)
+
 		if err != nil {
 			consecutiveFails++
 			log.Printf("[EventMonitor] Listen error (%d consecutive): %v", consecutiveFails, err)

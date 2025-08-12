@@ -1,0 +1,415 @@
+{
+  "workflows": [
+    {
+      "handle": "Pulse_Store_Token",
+      "enabled": true,
+      "meta": {
+        "name": "Pulse - Store Token",
+        "description": "",
+        "visual": null
+      },
+      "keepSessions": 0,
+      "steps": [
+        {
+          "stepID": "3",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "jsonText",
+              "expr": "response",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "3",
+              "parent": "1",
+              "value": "Convert request to string",
+              "xywh": [
+                2160,
+                2280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "4",
+          "kind": "function",
+          "ref": "jsenvExecute",
+          "arguments": [
+            {
+              "target": "scope",
+              "expr": "jsonText",
+              "type": "Any"
+            },
+            {
+              "target": "source",
+              "value": "return JSON.parse(input);",
+              "type": "String"
+            }
+          ],
+          "results": [
+            {
+              "target": "result",
+              "expr": "resultAny",
+              "type": "Any"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": false,
+              "id": "4",
+              "parent": "1",
+              "value": "convert string to json",
+              "xywh": [
+                2440,
+                2280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "9",
+          "kind": "function",
+          "ref": "composeRecordsNew",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "token-yeastar",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            }
+          ],
+          "results": [
+            {
+              "target": "ComposeObject",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "9",
+              "parent": "1",
+              "value": "Compose record maker",
+              "xywh": [
+                2720,
+                2280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "11",
+          "kind": "function",
+          "ref": "composeRecordsCreate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "ComposeObject",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "CreatedRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "11",
+              "parent": "1",
+              "value": "Compose record create",
+              "xywh": [
+                3280,
+                2280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "13",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "ComposeObject.values.access_token",
+              "expr": "result.AccessToken",
+              "type": "Any"
+            },
+            {
+              "target": "ComposeObject.values.refresh_token",
+              "expr": "result.RefreshToken",
+              "type": "Any"
+            },
+            {
+              "target": "ComposeObject.values.access_token_expire_time",
+              "expr": "result.AccessTokenExpireTime",
+              "type": "Any"
+            },
+            {
+              "target": "ComposeObject.values.refresh_token_expire_time",
+              "expr": "result.RefreshTokenExpireTime",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "13",
+              "parent": "1",
+              "value": "Set Event Attributes",
+              "xywh": [
+                3000,
+                2280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "14",
+          "kind": "function",
+          "ref": "apigwBodyRead",
+          "arguments": [
+            {
+              "target": "request",
+              "expr": "request",
+              "type": "HttpRequest"
+            }
+          ],
+          "results": [
+            {
+              "target": "response",
+              "expr": "body",
+              "type": "String"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "14",
+              "parent": "1",
+              "value": "Read request body from integration gateway",
+              "xywh": [
+                1880,
+                2280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "26",
+          "kind": "function",
+          "ref": "composeRecordsDelete",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "token",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "26",
+              "parent": "1",
+              "value": "Compose record delete",
+              "xywh": [
+                2200,
+                2120,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "27",
+          "kind": "iterator",
+          "ref": "composeRecordsEach",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "token-yeastar",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            }
+          ],
+          "results": [
+            {
+              "target": "token",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "27",
+              "parent": "1",
+              "value": "Compose records",
+              "xywh": [
+                1880,
+                2120,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ],
+      "paths": [
+        {
+          "parentID": "14",
+          "childID": "3",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "15",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "3",
+          "childID": "4",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "16",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "13",
+          "childID": "11",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "23",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "9",
+          "childID": "13",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "25",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "27",
+          "childID": "26",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "28",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "Body"
+            }
+          }
+        },
+        {
+          "parentID": "27",
+          "childID": "14",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "33",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "End"
+            }
+          }
+        },
+        {
+          "parentID": "4",
+          "childID": "9",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "36",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -20,7 +20,7 @@ type CortezaClient struct {
 func NewCortezaClient(baseURL string) *CortezaClient {
 	return &CortezaClient{
 		client: &http.Client{
-			Timeout: 5 * time.Minute,
+			Timeout: 20 * time.Minute,
 		},
 		baseURL: baseURL,
 	}
@@ -137,6 +137,16 @@ func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data i
 		return fmt.Errorf("failed to marshal data for module %s: %w", moduleName, err)
 	}
 	// fmt.Printf("JSON Payload:\n%s\n", string(jsonPayload))
+
+	// Create filename with timestamp
+	// timeStamp := time.Now().Format("20060102_150405") // YYYYMMDD_HHMMSS
+	// fileName := fmt.Sprintf("payload_%s_%s.txt", moduleName, timeStamp)
+
+	// err = os.WriteFile(fileName, jsonPayload, 0644)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to write payload to file for module %s: %w", moduleName, err)
+	// }
+	// fmt.Printf("Payload written to file: %s\n", fileName)
 
 	// Create HTTP request
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonPayload))

@@ -1,0 +1,542 @@
+{
+  "workflows": [
+    {
+      "handle": "Pulse_Save_Event_30009",
+      "enabled": true,
+      "meta": {
+        "name": "Pulse - Save Event 30009",
+        "description": "",
+        "visual": null
+      },
+      "keepSessions": 0,
+      "steps": [
+        {
+          "stepID": "47",
+          "kind": "function",
+          "ref": "composeRecordsCreate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "ComposeObject",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "CreatedRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "47",
+              "parent": "1",
+              "value": "Compose record create",
+              "xywh": [
+                3040,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "48",
+          "kind": "termination",
+          "ref": "",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "48",
+              "parent": "1",
+              "value": "termination.tooltip",
+              "xywh": [
+                2080,
+                1520,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "49",
+          "kind": "function",
+          "ref": "jsenvExecute",
+          "arguments": [
+            {
+              "target": "scope",
+              "expr": "jsonText",
+              "type": "Any"
+            },
+            {
+              "target": "source",
+              "value": "return JSON.parse(input);",
+              "type": "String"
+            }
+          ],
+          "results": [
+            {
+              "target": "result",
+              "expr": "resultAny",
+              "type": "Any"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": false,
+              "id": "49",
+              "parent": "1",
+              "value": "convert string to json",
+              "xywh": [
+                1760,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "50",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "jsonText",
+              "expr": "response",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "50",
+              "parent": "1",
+              "value": "Convert request to string",
+              "xywh": [
+                1440,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "51",
+          "kind": "function",
+          "ref": "composeRecordsNew",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "eventExtensionPresence",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            }
+          ],
+          "results": [
+            {
+              "target": "ComposeObject",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "51",
+              "parent": "1",
+              "value": "Compose record maker",
+              "xywh": [
+                2400,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "52",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "ComposeObject.values.extension",
+              "expr": "Extension.recordID",
+              "type": "String"
+            },
+            {
+              "target": "ComposeObject.values.status",
+              "expr": "result.status",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "52",
+              "parent": "1",
+              "value": "Set Event Attributes",
+              "xywh": [
+                2720,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "53",
+          "kind": "function",
+          "ref": "composeRecordsUpdate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "Extension",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "UpdatedRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "53",
+              "parent": "1",
+              "value": "Compose record update",
+              "xywh": [
+                3680,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "54",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "Extension.values.custom_status",
+              "expr": "result.status",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "54",
+              "parent": "1",
+              "value": "Set Event Attributes",
+              "xywh": [
+                3360,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "56",
+          "kind": "function",
+          "ref": "apigwBodyRead",
+          "arguments": [
+            {
+              "target": "request",
+              "expr": "request",
+              "type": "HttpRequest"
+            }
+          ],
+          "results": [
+            {
+              "target": "response",
+              "expr": "body",
+              "type": "String"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "56",
+              "parent": "1",
+              "value": "Read request body from integration gateway",
+              "xywh": [
+                1120,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "57",
+          "kind": "iterator",
+          "ref": "composeRecordsEach",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "extension-yeastar",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            },
+            {
+              "target": "query",
+              "expr": "\"'\" + result.extension + \"' = number\"",
+              "type": "String"
+            }
+          ],
+          "results": [
+            {
+              "target": "Extension",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "57",
+              "parent": "1",
+              "value": "Compose records",
+              "xywh": [
+                2088,
+                1280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "58",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "ext_id",
+              "expr": "Extension.recordID",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "58",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                2416,
+                1104,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ],
+      "paths": [
+        {
+          "parentID": "56",
+          "childID": "50",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "59",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "50",
+          "childID": "49",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "60",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "52",
+          "childID": "47",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "61",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "51",
+          "childID": "52",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "62",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "49",
+          "childID": "57",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "63",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "57",
+          "childID": "58",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "64",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "Body"
+            }
+          }
+        },
+        {
+          "parentID": "57",
+          "childID": "48",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "65",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "End"
+            }
+          }
+        },
+        {
+          "parentID": "54",
+          "childID": "53",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "66",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "47",
+          "childID": "54",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "67",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "58",
+          "childID": "51",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "68",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
