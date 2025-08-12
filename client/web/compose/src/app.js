@@ -152,7 +152,7 @@ export default (options = {}) => {
         // register event listener for workflow messages
         this.$on('websocket-message', ({ data }) => {
           const msg = JSON.parse(data)
-         console.log('WS message:', msg)
+        //  console.log('WS message:', msg)
 
           switch (msg['@type']) {
             case 'workflowSessionPrompt':
@@ -190,7 +190,7 @@ export default (options = {}) => {
 
             case 'ui-block-refresh':
               // Emit the refresh event to all components that might be listening
-              console.log('i got here lets go')
+              // console.log('i got here lets go')
               this.$root.$emit('ui-block-refresh', msg['@value'])
               break
 

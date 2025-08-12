@@ -96,11 +96,11 @@ export default (options = {}) => {
         // register event listener for messages
         this.$on('websocket-message', ({ data }) => {
           const msg = JSON.parse(data)
-          console.log('WS message:', msg)
+          // console.log('WS message:', msg)
           
-          if (msg['@type'] && msg['@value']) {
-            this.$root.$emit(msg['@type'], msg['@value'])
-          }
+          // if (msg['@type'] && msg['@value']) {
+          //   this.$root.$emit(msg['@type'], msg['@value'])
+          // }
 
           switch (msg['@type']) {
             case 'notification':

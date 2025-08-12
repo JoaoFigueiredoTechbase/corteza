@@ -169,8 +169,6 @@ export default {
           this.refresh()
         }
       })
-
-      this.$on('websocket-message', this.handleWebsocketMessage)
       
       this.$root.$on('drill-down-chart', this.drillDown)
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
@@ -192,29 +190,11 @@ export default {
     },
 
 /////
-    handleWebsocketMessage ({ data }) {
-      try {
-        const msg = JSON.parse(data)
-        
-        if (msg['@type'] === 'ui-block-refresh') {
-          const payload = msg['@value']
-          
-          // Check if this message is for our block
-          if (this.shouldRefreshBlock(payload)) {
-            console.log('Refreshing metric block due to websocket message:', payload)
-            this.refresh()
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing websocket message:', e)
-      }
-    },
-
     shouldRefreshBlock (payload) {
       // Check if the refresh message matches this block
       const { customID, pageID, namespaceID } = payload
-      console.log(customID)
-      console.log(this.customID)
+      // console.log(customID)
+      // console.log(this.customID)
       // Match by custom ID if available
       if (customID && this.customID === customID) {
         return true
