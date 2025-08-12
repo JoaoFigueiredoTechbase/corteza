@@ -2,6 +2,8 @@ package automation
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	"github.com/cortezaproject/corteza/server/automation/types"
 	"github.com/cortezaproject/corteza/server/pkg/expr"
@@ -42,33 +44,59 @@ func RefreshUiBlockHandler(reg uiBlockRefreshHandlerRegistry, ws uiBlockRefreshW
 func (h uiBlockRefreshHandler) NewFunction() []*types.Function {
 	return []*types.Function{
 		{
-			Ref:  "yourCustomFunction",
+			Ref:  "refreshUIBlock", // Updated to something descriptive
 			Kind: "function",
 			Labels: map[string]string{
-				"category": "your-category",
+				"category": "ui",
 			},
 			Meta: &types.FunctionMeta{
-				Short:       "Your function description",
-				Description: "Detailed description of what your function does",
+				Short:       "Trigger UI block refresh",
+				Description: "Sends a websocket message to refresh a specific UI block by customID, pageID, and namespaceID",
 			},
 			Parameters: []*types.Param{
 				{
-					Name:     "input",
+					Name:     "customID",
 					Types:    []string{"String"},
 					Required: true,
 					Meta: &types.ParamMeta{
-						Label:       "Input Parameter",
-						Description: "Description of the input parameter",
+						Label:       "Custom ID",
+						Description: "Custom ID defined on the metric block",
+					},
+				},
+				{
+					Name:     "pageID",
+					Types:    []string{"String"},
+					Required: true,
+					Meta: &types.ParamMeta{
+						Label:       "Page ID",
+						Description: "ID of the page containing the metric block",
+					},
+				},
+				{
+					Name:     "namespaceID",
+					Types:    []string{"String"},
+					Required: true,
+					Meta: &types.ParamMeta{
+						Label:       "Namespace ID",
+						Description: "ID of the namespace containing the page",
 					},
 				},
 			},
 			Results: []*types.Param{
 				{
-					Name:  "result",
+					Name:  "success",
+					Types: []string{"Boolean"},
+					Meta: &types.ParamMeta{
+						Label:       "Success",
+						Description: "Indicates if the refresh was triggered successfully",
+					},
+				},
+				{
+					Name:  "message",
 					Types: []string{"String"},
 					Meta: &types.ParamMeta{
-						Label:       "Result",
-						Description: "The result of your function",
+						Label:       "Message",
+						Description: "Details about the operation result",
 					},
 				},
 			},
@@ -78,98 +106,64 @@ func (h uiBlockRefreshHandler) NewFunction() []*types.Function {
 }
 
 func (h uiBlockRefreshHandler) refreshUIBlock(ctx context.Context, args *expr.Vars) (*expr.Vars, error) {
+	log.Println("refreshUIBlock called")
+
+	// Extract the underlying map[string]expr.TypedValue
+	varMap, ok := args.Get().(map[string]expr.TypedValue)
+	if !ok {
+		return nil, fmt.Errorf("invalid args format")
+	}
+
+	getString := func(key string) (string, error) {
+		tv, exists := varMap[key]
+		if !exists || tv == nil {
+			return "", fmt.Errorf("%s parameter is required", key)
+		}
+
+		switch v := tv.(type) {
+		case *expr.String:
+			return v.GetValue(), nil
+		default:
+			return "", fmt.Errorf("%s parameter is not a string", key)
+		}
+	}
+
+	customID, err := getString("customID")
+	if err != nil {
+		return nil, err
+	}
+
+	pageID, err := getString("pageID")
+	if err != nil {
+		return nil, err
+	}
+
+	namespaceID, err := getString("namespaceID")
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("Received params: customID=%s, pageID=%s, namespaceID=%s\n", customID, pageID, namespaceID)
+
+	// do your refresh logic here...
+
 	out := &expr.Vars{}
 
-	// customID, _ := args.GetString("customID")
-	// pageID, _ := args.GetUint64("pageID")
-	// namespaceID, _ := args.GetUint64("namespaceID")
+	// Prepare data
+	payload := map[string]interface{}{
+		"customID":    customID,
+		"pageID":      pageID,
+		"namespaceID": namespaceID,
+	}
 
-	// rArgs := &refreshUIBlockArgs{
-	// 	CustomID:    customID,
-	// 	pageID:      pageID,
-	// 	namespaceID: namespaceID,
-	// }
+	if err := h.wsSvc.Send("ui-block-refresh", payload); err != nil {
+		out.Set("success", false)
+		out.Set("message", fmt.Sprintf("failed to send refresh message: %v", err))
+		return out, nil
+	}
 
-	// // Resolve namespace
-	// var namespace *composeTypes.Namespace
-	// var err error
-
-	// if args.namespaceID > 0 {
-	// 	namespace, err = h.nsSvc.FindByID(ctx, args.namespaceID)
-	// } else if args.namespaceHandle != "" {
-	// 	namespace, err = h.nsSvc.FindByHandle(ctx, args.namespaceHandle)
-	// } else {
-	// 	out.Set("success", false)
-	// 	out.Set("message", "namespace ID or handle is required")
-	// 	return out, nil
-	// }
-
-	// if err != nil {
-	// 	h.logger.Error("failed to find namespace", zap.Error(err))
-	// 	out.Set("success", false)
-	// 	out.Set("message", fmt.Sprintf("namespace not found: %v", err))
-	// 	return out, nil
-	// }
-
-	// // Resolve page
-	// var page *composeTypes.Page
-
-	// if args.pageID > 0 {
-	// 	page, err = h.pageSvc.FindByID(ctx, namespace.ID, args.pageID)
-	// } else if args.pageHandle != "" {
-	// 	page, err = h.pageSvc.FindByHandle(ctx, namespace.ID, args.pageHandle)
-	// } else {
-	// 	out.Set("success", false)
-	// 	out.Set("message", "page ID or handle is required")
-	// 	return out, nil
-	// }
-
-	// if err != nil {
-	// 	h.logger.Error("failed to find page", zap.Error(err))
-	// 	out.Set("success", false)
-	// 	out.Set("message", fmt.Sprintf("page not found: %v", err))
-	// 	return out, nil
-	// }
-
-	// // Find the block with the custom ID
-	// var foundBlock *composeTypes.PageBlock
-	// for i := range page.Blocks {
-	// 	block := &page.Blocks[i]
-	// 	if block.Options != nil {
-	// 		if customID, ok := block.Options["customID"].(string); ok && customID == args.CustomID {
-	// 			foundBlock = block
-	// 			break
-	// 		}
-	// 	}
-	// }
-
-	// if foundBlock == nil {
-	// 	out.Set("success", false)
-	// 	out.Set("message", fmt.Sprintf("block with customID '%s' not found on page", args.CustomID))
-	// 	return out, nil
-	// }
-
-	// Send websocket message for block refresh
-	// payload := map[string]interface{}{
-	// 	"type":        "ui-block-refresh",
-	// 	"customID":    args.CustomID,
-	// 	"pageID":      args.pageID,
-	// 	"namespaceID": args.namespaceID,
-	// }
-
-	// if err := h.wsSvc.Send("ui-block-refresh", payload); err != nil {
-	// 	out.Set("success", false)
-	// 	out.Set("message", fmt.Sprintf("failed to send refresh message: %v", err))
-	// 	return out, nil
-	// }
-
-	// // h.logger.Info("UI block refresh triggered",
-	// // 	zap.String("customID", args.CustomID),
-	// // 	zap.Uint64("blockID", foundBlock.BlockID),
-	// // 	zap.Uint64("pageID", page.ID),
-	// // 	zap.Uint64("namespaceID", namespace.ID))
-
-	// out.Set("success", true)
-	// out.Set("message", fmt.Sprintf("UI block refresh triggered for customID '%s'", args.CustomID))
+	out.Set("success", true)
+	out.Set("message", fmt.Sprintf("Refresh triggered for customID '%s'", customID))
 	return out, nil
+
 }

@@ -117,11 +117,11 @@ export default {
   },
 
 
-  computed: {
-    customID () {
-      return this.options.customID || this.block.blockID
-    },
-  },
+  // computed: {
+  //   customID () {
+  //      return this.meta?.customID
+  //   },
+  // },
 
   watch: {
     'record.recordID': {
@@ -162,6 +162,8 @@ export default {
       //   }
       // })
 
+      this.$root.$on('ui-block-refresh', this.handleUiBlockRefresh)
+
       this.$root.$on('metric-refresh', (payload) => {
         if (payload.blockID === this.block.blockID) {
           this.refresh()
@@ -174,6 +176,19 @@ export default {
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$on('refetch-records', this.refresh)
+    },
+
+
+    handleUiBlockRefresh(payload) {
+      console.log('did i got here?')
+      if (this.shouldRefreshBlock(payload)) {
+        console.log('Refreshing metric block due to websocket message:', payload)
+        this.refresh()
+      }
+    },
+
+    beforeDestroy() {
+      this.$root.$off('ui-block-refresh', this.handleUiBlockRefresh)
     },
 
 /////
@@ -197,25 +212,12 @@ export default {
 
     shouldRefreshBlock (payload) {
       // Check if the refresh message matches this block
-      const { customID, blockID, pageID, namespaceID } = payload
-      
+      const { customID, pageID, namespaceID } = payload
+      console.log(customID)
+      console.log(this.customID)
       // Match by custom ID if available
       if (customID && this.customID === customID) {
         return true
-      }
-      
-      // Match by block ID
-      if (blockID && this.block.blockID === blockID) {
-        return true
-      }
-      
-      // Additional checks for page and namespace if needed
-      if (pageID && this.page && this.page.pageID === pageID) {
-        if (namespaceID && this.namespace && this.namespace.namespaceID === namespaceID) {
-          // If we have page and namespace match but no specific block match,
-          // refresh all blocks on this page (optional)
-          return true
-        }
       }
       
       return false

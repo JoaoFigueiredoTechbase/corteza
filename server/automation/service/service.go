@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/cortezaproject/corteza/server/automation/automation"
@@ -141,7 +142,20 @@ type mySocket struct {
 }
 
 func (s *mySocket) Send(event string, payload interface{}) error {
-	return s.base.Send(event, payload)
+	log.Printf("mySocket.Send called")
+	// wrapped := map[string]interface{}{
+	// 	"@type":  event,
+	// 	"@value": payload,
+	// }
+
+	err := s.base.Send(event, payload)
+	if err != nil {
+		log.Printf("Failed to send WebSocket message: %v", err)
+	} else {
+		log.Printf("WebSocket message sent successfully")
+	}
+
+	return err
 }
 
 func Activate(ctx context.Context) (err error) {
