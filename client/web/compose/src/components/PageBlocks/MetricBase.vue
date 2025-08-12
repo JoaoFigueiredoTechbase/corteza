@@ -148,7 +148,19 @@ export default {
 
   methods: {
     createEvents () {
-      this.$root.$on('metric.update', this.refresh)
+      //this.$root.$on('metric.update', this.refresh)
+      // this.$root.$on('metric.update', (blockID) => {
+      //   if (!blockID || blockID === this.block.blockID) {
+      //     this.refresh()
+      //   }
+      // })
+
+      this.$root.$on('metric-refresh', (payload) => {
+        if (payload.blockID === this.block.blockID) {
+          this.refresh()
+        }
+      })
+      
       this.$root.$on('drill-down-chart', this.drillDown)
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
