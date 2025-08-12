@@ -152,6 +152,8 @@ export default (options = {}) => {
         // register event listener for workflow messages
         this.$on('websocket-message', ({ data }) => {
           const msg = JSON.parse(data)
+        //  console.log('WS message:', msg)
+
           switch (msg['@type']) {
             case 'workflowSessionPrompt':
               this.$store.dispatch('wfPrompts/new', msg['@value'])
@@ -179,6 +181,17 @@ export default (options = {}) => {
 
             case 'notification.delete':
               this.$store.dispatch('notifications/removeNotification', msg['@value'])
+              break
+
+            case 'metric-refresh':
+              //this.$store.dispatch('metrics/refreshMetric', msg['@value'])
+              this.$root.$emit('metric-refresh', msg['@value'])
+              break
+
+            case 'ui-block-refresh':
+              // Emit the refresh event to all components that might be listening
+              // console.log('i got here lets go')
+              this.$root.$emit('ui-block-refresh', msg['@value'])
               break
 
             case 'error':

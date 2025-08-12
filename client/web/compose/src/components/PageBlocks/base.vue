@@ -103,6 +103,10 @@ export default {
       },
     },
 
+    customID () {
+      return this.block?.meta?.customID
+    },
+
     isProcessing () {
       return this.processing || this.loadingRecord
     },
