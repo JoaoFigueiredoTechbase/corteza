@@ -113,6 +113,16 @@ export default (options = {}) => {
               this.$store.dispatch('notifications/removeNotification', msg['@value'])
               break
 
+            case 'metric-refresh':
+              //this.$store.dispatch('metrics/refreshMetric', msg['@value'])
+              this.$root.$emit('metric-refresh', msg['@value'])
+              break
+
+            case 'ui-block-refresh':
+              // Emit the refresh event to all components that might be listening
+              this.$root.$emit('ui-block-refresh', msg['@value'])
+              break
+
             case 'error':
               this.toastDanger('Websocket message with error', msg['@value'])
           }

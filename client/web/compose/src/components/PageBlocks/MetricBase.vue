@@ -116,6 +116,13 @@ export default {
     }
   },
 
+
+  computed: {
+    customID () {
+      return this.options.customID || this.block.blockID
+    },
+  },
+
   watch: {
     'record.recordID': {
       immediate: true,
@@ -160,12 +167,68 @@ export default {
           this.refresh()
         }
       })
+
+      this.$on('websocket-message', this.handleWebsocketMessage)
       
       this.$root.$on('drill-down-chart', this.drillDown)
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$on('refetch-records', this.refresh)
     },
+
+/////
+    handleWebsocketMessage ({ data }) {
+      try {
+        const msg = JSON.parse(data)
+        
+        if (msg['@type'] === 'ui-block-refresh') {
+          const payload = msg['@value']
+          
+          // Check if this message is for our block
+          if (this.shouldRefreshBlock(payload)) {
+            console.log('Refreshing metric block due to websocket message:', payload)
+            this.refresh()
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing websocket message:', e)
+      }
+    },
+
+    shouldRefreshBlock (payload) {
+      // Check if the refresh message matches this block
+      const { customID, blockID, pageID, namespaceID } = payload
+      
+      // Match by custom ID if available
+      if (customID && this.customID === customID) {
+        return true
+      }
+      
+      // Match by block ID
+      if (blockID && this.block.blockID === blockID) {
+        return true
+      }
+      
+      // Additional checks for page and namespace if needed
+      if (pageID && this.page && this.page.pageID === pageID) {
+        if (namespaceID && this.namespace && this.namespace.namespaceID === namespaceID) {
+          // If we have page and namespace match but no specific block match,
+          // refresh all blocks on this page (optional)
+          return true
+        }
+      }
+      
+      return false
+    },
+
+    refetchOnPrefilterValueChange ({ fieldName }) {
+      const { metrics } = this.options
+
+      if (metrics.some(({ filter }) => isFieldInFilter(fieldName, filter))) {
+        this.refresh()
+      }
+    },
+    ///////
 
     refetchOnPrefilterValueChange ({ fieldName }) {
       const { metrics } = this.options

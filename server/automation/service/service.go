@@ -129,8 +129,19 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, ws websock
 	automation.EmailHandler(Registry())
 	automation.JwtHandler(Registry())
 	automation.ApigwBodyHandler(Registry())
-	automation.YourHandler(Registry())
+
+	sock := &mySocket{base: ws}
+	automation.RefreshUiBlockHandler(Registry(), sock)
+
 	return
+}
+
+type mySocket struct {
+	base websocketSender
+}
+
+func (s *mySocket) Send(event string, payload interface{}) error {
+	return s.base.Send(event, payload)
 }
 
 func Activate(ctx context.Context) (err error) {
