@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/cortezaproject/corteza/server/pkg/api/server/Yeastar"
 	"github.com/cortezaproject/corteza/server/pkg/options"
@@ -142,6 +143,37 @@ func (s server) Serve(ctx context.Context) {
 		}
 		s.err = srv.Serve(listener)
 	}()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				s.log.Info("Stopping periodic sync")
+				return
+			default:
+				start := time.Now()
+
+				s.log.Info("Starting periodic sync")
+				if err := Yeastar.StartPeriodicSync(); err != nil {
+					s.log.Error("Periodic sync failed", zap.Error(err))
+				}
+
+				s.log.Info("Periodic sync completed",
+					zap.Duration("duration", time.Since(start)),
+				)
+
+				// Wait 10 minutes after the work is finished
+				select {
+				case <-time.After(10 * time.Minute):
+					// continue loop
+				case <-ctx.Done():
+					s.log.Info("Stopping periodic sync")
+					return
+				}
+			}
+		}
+	}()
+
 	<-ctx.Done()
 
 	if s.yeastar != nil {

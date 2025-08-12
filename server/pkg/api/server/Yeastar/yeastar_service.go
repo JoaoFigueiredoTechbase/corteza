@@ -482,6 +482,8 @@ func SearchNewCDR(baseUrl, uid string) error {
 		return fmt.Errorf("failed to send cdrs to Corteza: %w", err)
 	}
 
+	service.cortezaClient.CallCDRCalc()
+
 	fmt.Println("cdrs processed and sent to Corteza successfully!")
 	return nil
 }

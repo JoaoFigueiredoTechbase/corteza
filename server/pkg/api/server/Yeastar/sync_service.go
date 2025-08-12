@@ -3,6 +3,7 @@ package Yeastar
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -172,13 +173,10 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}
 
-	// if err := dumpCDRsToFile(cdrs); err != nil {
-	// 	log.Printf("Warning: failed to dump CDRs to file: %v", err)
-	// }
-
-	batchSize := 50
+	batchSize := 20
 	totalCDRs := len(cdrs)
 	processed := 0
+	var failedBatches []int
 
 	for i := 0; i < totalCDRs; i += batchSize {
 		end := i + batchSize
@@ -187,16 +185,27 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 		}
 
 		batch := cdrs[i:end]
-		if err := service.SendDataToCorteza(ctx, "cdr", batch); err != nil {
-			return fmt.Errorf("failed to send cdrs batch [%d-%d] to Corteza: %w", i, end, err)
+
+		batchCtx, cancel := context.WithTimeout(ctx, 60*time.Minute)
+		defer cancel()
+
+		if err := service.SendDataToCorteza(batchCtx, "cdr", batch); err != nil {
+			log.Printf("Error sending CDRs batch [%d-%d] to Corteza: %v", i+1, end, err)
+			failedBatches = append(failedBatches, i/batchSize+1)
+			continue
 		}
 
 		processed += len(batch)
 		fmt.Printf("Processed batch %d-%d of %d (%.1f%%)\n",
 			i+1, end, totalCDRs, float64(processed)/float64(totalCDRs)*100)
+
+		time.Sleep(1 * time.Second)
 	}
 
-	fmt.Println("cdrs processed and sent to Corteza successfully!")
+	fmt.Println("cdrs processed and sent to Corteza (with possible errors).")
+	if len(failedBatches) > 0 {
+		return fmt.Errorf("failed batches: %v", failedBatches)
+	}
 	return nil
 }
 
@@ -227,6 +236,30 @@ func SyncAll(baseUrl string) error {
 		return err
 	}
 
+	if err := service.cortezaClient.CallCDRCalc(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cc *CortezaClient) CallCDRCalc() error {
+	url := fmt.Sprintf("%s/api/gateway/cdr/calc", cc.baseURL)
+	fmt.Printf("Cdr Calc Endpoint: %s\n", url)
+
+	req, err := cc.client.Get(url)
+	if err != nil {
+		fmt.Printf("Failed to create HTTP request: %v\n", err)
+		return fmt.Errorf("Failed to create HTTP request: %v\n", err)
+	}
+	defer req.Body.Close()
+
+	if req.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(req.Body)
+		return fmt.Errorf("unexpected status %d: %s", req.StatusCode, string(body))
+	}
+
+	fmt.Printf("[Sync_Service] CDR Calculated called complete")
 	return nil
 }
 
@@ -284,4 +317,22 @@ func findCDRsByUID(cdrs []CDR, uid string) ([]CDR, error) {
 		return nil, fmt.Errorf("no CDRs found with UID %s", uid)
 	}
 	return results, nil
+}
+
+func StartPeriodicSync() error {
+	ip, err := getLocalIP()
+	if err != nil {
+		return fmt.Errorf("Could not get local IP")
+	}
+
+	baseURL := fmt.Sprintf("http://%s", ip)
+
+	// Call your existing HandleSyncAll logic
+	err = SyncAll(baseURL)
+
+	if err != nil {
+		return fmt.Errorf("Synchronization failed")
+	}
+
+	return nil
 }
