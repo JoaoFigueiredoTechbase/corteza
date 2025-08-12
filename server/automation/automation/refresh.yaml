@@ -1,0 +1,27 @@
+functions:
+  - ref: refreshUIBlock
+    kind: function
+    labels:
+      category: ui
+    meta:
+      short: Trigger UI block refresh
+      description: >
+        Sends a websocket message to refresh a specific UI block by customID.
+    parameters:
+      - name: customID
+        types: [ "String" ]
+        required: true
+        meta:
+          label: Custom ID
+          description: Custom ID defined on the metric block
+    results:
+      - name: success
+        types: [ "Boolean" ]
+        meta:
+          label: Success
+          description: Indicates if the refresh was triggered successfully
+      - name: message
+        types: [ "String" ]
+        meta:
+          label: Message
+          description: Details about the operation result

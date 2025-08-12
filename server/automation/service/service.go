@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/cortezaproject/corteza/server/automation/automation"
@@ -129,7 +130,32 @@ func Initialize(ctx context.Context, log *zap.Logger, s store.Storer, ws websock
 	automation.EmailHandler(Registry())
 	automation.JwtHandler(Registry())
 	automation.ApigwBodyHandler(Registry())
+
+	sock := &mySocket{base: ws}
+	automation.RefreshUiBlockHandler(Registry(), sock)
+
 	return
+}
+
+type mySocket struct {
+	base websocketSender
+}
+
+func (s *mySocket) Send(event string, payload interface{}) error {
+	log.Printf("mySocket.Send called")
+	// wrapped := map[string]interface{}{
+	// 	"@type":  event,
+	// 	"@value": payload,
+	// }
+
+	err := s.base.Send(event, payload)
+	if err != nil {
+		log.Printf("Failed to send WebSocket message: %v", err)
+	} else {
+		log.Printf("WebSocket message sent successfully")
+	}
+
+	return err
 }
 
 func Activate(ctx context.Context) (err error) {

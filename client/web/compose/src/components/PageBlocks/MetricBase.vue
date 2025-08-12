@@ -4,7 +4,7 @@
     v-on="$listeners"
     @refreshBlock="refresh"
   >
-    <div
+    <!-- <div
       v-if="isProcessing"
       class="d-flex align-items-center justify-content-center h-100"
     >
@@ -37,7 +37,42 @@
           />
         </div>
       </div>
+    </template> -->
+
+    <div
+    class="metric-wrapper h-100 position-relative"
+    :class="{ 'is-loading': processing }"
+  >
+    <!-- keep the value visible -->
+    <template v-if="!error">
+      <div
+        v-for="(m, mi) in options.metrics"
+        :key="mi"
+        class="d-flex align-items-center justify-content-center overflow-hidden h-100"
+      >
+        <div
+          v-for="(v, i) in formatResponse(m, mi)"
+          :key="i"
+          class="w-100 h-100 px-2 py-1"
+          :class="m.drillDown.enabled ? 'pointer' : ''"
+          @click="drillDown(m, mi)"
+        >
+          <metric-item
+            :metric="m"
+            :value="v"
+          />
+        </div>
+      </div>
     </template>
+
+    <label
+      v-else
+      class="text-primary p-3"
+    >
+      {{ error }}
+    </label>
+  </div>
+
   </wrap>
 </template>
 
@@ -81,6 +116,13 @@ export default {
     }
   },
 
+
+  // computed: {
+  //   customID () {
+  //      return this.meta?.customID
+  //   },
+  // },
+
   watch: {
     'record.recordID': {
       immediate: true,
@@ -113,12 +155,62 @@ export default {
 
   methods: {
     createEvents () {
-      this.$root.$on('metric.update', this.refresh)
+      //this.$root.$on('metric.update', this.refresh)
+      // this.$root.$on('metric.update', (blockID) => {
+      //   if (!blockID || blockID === this.block.blockID) {
+      //     this.refresh()
+      //   }
+      // })
+
+      this.$root.$on('ui-block-refresh', this.handleUiBlockRefresh)
+
+      this.$root.$on('metric-refresh', (payload) => {
+        if (payload.blockID === this.block.blockID) {
+          this.refresh()
+        }
+      })
+      
       this.$root.$on('drill-down-chart', this.drillDown)
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$on('refetch-records', this.refresh)
     },
+
+
+    handleUiBlockRefresh(payload) {
+      console.log('did i got here?')
+      if (this.shouldRefreshBlock(payload)) {
+        console.log('Refreshing metric block due to websocket message:', payload)
+        this.refresh()
+      }
+    },
+
+    beforeDestroy() {
+      this.$root.$off('ui-block-refresh', this.handleUiBlockRefresh)
+    },
+
+/////
+    shouldRefreshBlock (payload) {
+      // Check if the refresh message matches this block
+      const { customID, pageID, namespaceID } = payload
+      // console.log(customID)
+      // console.log(this.customID)
+      // Match by custom ID if available
+      if (customID && this.customID === customID) {
+        return true
+      }
+      
+      return false
+    },
+
+    refetchOnPrefilterValueChange ({ fieldName }) {
+      const { metrics } = this.options
+
+      if (metrics.some(({ filter }) => isFieldInFilter(fieldName, filter))) {
+        this.refresh()
+      }
+    },
+    ///////
 
     refetchOnPrefilterValueChange ({ fieldName }) {
       const { metrics } = this.options

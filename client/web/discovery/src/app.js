@@ -96,6 +96,12 @@ export default (options = {}) => {
         // register event listener for messages
         this.$on('websocket-message', ({ data }) => {
           const msg = JSON.parse(data)
+          // console.log('WS message:', msg)
+          
+          // if (msg['@type'] && msg['@value']) {
+          //   this.$root.$emit(msg['@type'], msg['@value'])
+          // }
+
           switch (msg['@type']) {
             case 'notification':
               this.$store.dispatch('notifications/addNotification', msg['@value'])
@@ -111,6 +117,16 @@ export default (options = {}) => {
 
             case 'notification.delete':
               this.$store.dispatch('notifications/removeNotification', msg['@value'])
+              break
+
+            case 'metric-refresh':
+              //this.$store.dispatch('metrics/refreshMetric', msg['@value'])
+              this.$root.$emit('metric-refresh', msg['@value'])
+              break
+
+            case 'ui-block-refresh':
+              // Emit the refresh event to all components that might be listening
+              this.$root.$emit('ui-block-refresh', msg['@value'])
               break
 
             case 'error':
