@@ -1,26 +1,27 @@
-# your_handler.yaml
 functions:
-  - ref: yourCustomFunction
+  - ref: refreshUIBlock
     kind: function
     labels:
-      category: your-category
+      category: ui
     meta:
-      short: Your function description
-      description: |
-        Detailed description of what your function does.
-        You can use multiple lines here.
-    
+      short: Trigger UI block refresh
+      description: >
+        Sends a websocket message to refresh a specific UI block by customID.
     parameters:
-      - name: input
+      - name: customID
         types: [ "String" ]
         required: true
         meta:
-          label: "Input Parameter"
-          description: "Description of the input parameter"
-    
+          label: Custom ID
+          description: Custom ID defined on the metric block
     results:
-      - name: result
+      - name: success
+        types: [ "Boolean" ]
+        meta:
+          label: Success
+          description: Indicates if the refresh was triggered successfully
+      - name: message
         types: [ "String" ]
         meta:
-          label: "Result"
-          description: "The result of your function"
+          label: Message
+          description: Details about the operation result

@@ -63,24 +63,24 @@ func (h uiBlockRefreshHandler) NewFunction() []*types.Function {
 						Description: "Custom ID defined on the metric block",
 					},
 				},
-				{
-					Name:     "pageID",
-					Types:    []string{"String"},
-					Required: true,
-					Meta: &types.ParamMeta{
-						Label:       "Page ID",
-						Description: "ID of the page containing the metric block",
-					},
-				},
-				{
-					Name:     "namespaceID",
-					Types:    []string{"String"},
-					Required: true,
-					Meta: &types.ParamMeta{
-						Label:       "Namespace ID",
-						Description: "ID of the namespace containing the page",
-					},
-				},
+				// {
+				// 	Name:     "pageID",
+				// 	Types:    []string{"String"},
+				// 	Required: true,
+				// 	Meta: &types.ParamMeta{
+				// 		Label:       "Page ID",
+				// 		Description: "ID of the page containing the metric block",
+				// 	},
+				// },
+				// {
+				// 	Name:     "namespaceID",
+				// 	Types:    []string{"String"},
+				// 	Required: true,
+				// 	Meta: &types.ParamMeta{
+				// 		Label:       "Namespace ID",
+				// 		Description: "ID of the namespace containing the page",
+				// 	},
+				// },
 			},
 			Results: []*types.Param{
 				{
@@ -133,27 +133,27 @@ func (h uiBlockRefreshHandler) refreshUIBlock(ctx context.Context, args *expr.Va
 		return nil, err
 	}
 
-	pageID, err := getString("pageID")
-	if err != nil {
-		return nil, err
-	}
+	// pageID, err := getString("pageID")
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	namespaceID, err := getString("namespaceID")
-	if err != nil {
-		return nil, err
-	}
+	// namespaceID, err := getString("namespaceID")
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	log.Printf("Received params: customID=%s, pageID=%s, namespaceID=%s\n", customID, pageID, namespaceID)
+	log.Printf("Received params: customID=%s\n", customID)
 
-	// do your refresh logic here...
+	//log.Printf("Received params: customID=%s, pageID=%s, namespaceID=%s\n", customID, pageID, namespaceID)
 
 	out := &expr.Vars{}
 
 	// Prepare data
 	payload := map[string]interface{}{
-		"customID":    customID,
-		"pageID":      pageID,
-		"namespaceID": namespaceID,
+		"customID": customID,
+		// "pageID":      pageID,
+		// "namespaceID": namespaceID,
 	}
 
 	if err := h.wsSvc.Send("ui-block-refresh", payload); err != nil {
