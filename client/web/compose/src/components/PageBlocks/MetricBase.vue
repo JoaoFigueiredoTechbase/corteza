@@ -116,7 +116,6 @@ export default {
     }
   },
 
-
   // computed: {
   //   customID () {
   //      return this.meta?.customID
@@ -155,7 +154,7 @@ export default {
 
   methods: {
     createEvents () {
-      //this.$root.$on('metric.update', this.refresh)
+      // this.$root.$on('metric.update', this.refresh)
       // this.$root.$on('metric.update', (blockID) => {
       //   if (!blockID || blockID === this.block.blockID) {
       //     this.refresh()
@@ -169,15 +168,14 @@ export default {
           this.refresh()
         }
       })
-      
+
       this.$root.$on('drill-down-chart', this.drillDown)
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$on('refetch-records', this.refresh)
     },
 
-
-    handleUiBlockRefresh(payload) {
+    handleUiBlockRefresh (payload) {
       console.log('did i got here?')
       if (this.shouldRefreshBlock(payload)) {
         console.log('Refreshing metric block due to websocket message:', payload)
@@ -185,14 +183,14 @@ export default {
       }
     },
 
-    beforeDestroy() {
+    beforeDestroy () {
       this.$root.$off('ui-block-refresh', this.handleUiBlockRefresh)
     },
 
-/////
     shouldRefreshBlock (payload) {
       // Check if the refresh message matches this block
-      const { customID, pageID, namespaceID } = payload
+      // const { customID, pageID, namespaceID } = payload
+      const { customID } = payload
       // console.log(customID)
       // console.log(this.customID)
       // Match by custom ID if available
@@ -202,15 +200,6 @@ export default {
       
       return false
     },
-
-    refetchOnPrefilterValueChange ({ fieldName }) {
-      const { metrics } = this.options
-
-      if (metrics.some(({ filter }) => isFieldInFilter(fieldName, filter))) {
-        this.refresh()
-      }
-    },
-    ///////
 
     refetchOnPrefilterValueChange ({ fieldName }) {
       const { metrics } = this.options
