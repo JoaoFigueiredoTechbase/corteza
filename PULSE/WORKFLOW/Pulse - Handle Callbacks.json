@@ -1,0 +1,1338 @@
+{
+  "workflows": [
+    {
+      "handle": "Pulse_Handle_Callbacks",
+      "enabled": true,
+      "meta": {
+        "name": "Pulse - Handle Callbacks",
+        "description": "",
+        "visual": null
+      },
+      "keepSessions": 0,
+      "steps": [
+        {
+          "stepID": "5",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "teste",
+              "expr": "record.values.call_id",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "5",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                440,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "8",
+          "kind": "function",
+          "ref": "httpRequestSend",
+          "arguments": [
+            {
+              "target": "url",
+              "value": "https://helpful-energy-11.webhook.cool",
+              "type": "String"
+            },
+            {
+              "target": "method",
+              "value": "POST",
+              "type": "String"
+            },
+            {
+              "target": "body",
+              "expr": "teste",
+              "type": "Reader"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "8",
+              "parent": "1",
+              "value": "HTTP request",
+              "xywh": [
+                440,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "10",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "callRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "10",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                800,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "11",
+          "kind": "gateway",
+          "ref": "excl",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "11",
+              "parent": "1",
+              "value": "Exclusive",
+              "xywh": [
+                1160,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "17",
+          "kind": "function",
+          "ref": "httpRequestSend",
+          "arguments": [
+            {
+              "target": "url",
+              "value": "https://helpful-energy-11.webhook.cool",
+              "type": "String"
+            },
+            {
+              "target": "method",
+              "value": "POST",
+              "type": "String"
+            },
+            {
+              "target": "body",
+              "value": "Null",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "17",
+              "parent": "1",
+              "value": "HTTP request",
+              "xywh": [
+                1520,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "34",
+          "kind": "function",
+          "ref": "httpRequestSend",
+          "arguments": [
+            {
+              "target": "url",
+              "value": "https://helpful-energy-11.webhook.cool",
+              "type": "String"
+            },
+            {
+              "target": "method",
+              "value": "POST",
+              "type": "String"
+            },
+            {
+              "target": "body",
+              "expr": "userIDteste",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "34",
+              "parent": "1",
+              "value": "HTTP request",
+              "xywh": [
+                1880,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "35",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "userName",
+              "expr": "UserFound.name",
+              "type": "Any"
+            },
+            {
+              "target": "userEmail",
+              "expr": "UserFound.email",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "35",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                2960,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "36",
+          "kind": "function",
+          "ref": "httpRequestSend",
+          "arguments": [
+            {
+              "target": "url",
+              "value": "https://helpful-energy-11.webhook.cool",
+              "type": "String"
+            },
+            {
+              "target": "method",
+              "value": "POST",
+              "type": "String"
+            },
+            {
+              "target": "body",
+              "expr": "userName + \"  \" + userEmail",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "36",
+              "parent": "1",
+              "value": "HTTP request",
+              "xywh": [
+                2960,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "37",
+          "kind": "function",
+          "ref": "usersLookup",
+          "arguments": [
+            {
+              "target": "lookup",
+              "expr": "lookupID",
+              "type": "ID"
+            }
+          ],
+          "results": [
+            {
+              "target": "UserFound",
+              "expr": "user",
+              "type": "User"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "37",
+              "parent": "1",
+              "value": "User lookup",
+              "xywh": [
+                2600,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "38",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "lookupID",
+              "expr": "IDString",
+              "type": "Integer"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "38",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                2240,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "39",
+          "kind": "function",
+          "ref": "httpRequestSend",
+          "arguments": [
+            {
+              "target": "url",
+              "value": "https://helpful-energy-11.webhook.cool",
+              "type": "String"
+            },
+            {
+              "target": "method",
+              "value": "POST",
+              "type": "String"
+            },
+            {
+              "target": "body",
+              "expr": "lookupID",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "39",
+              "parent": "1",
+              "value": "HTTP request",
+              "xywh": [
+                2240,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "40",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "userIDteste",
+              "expr": "invoker",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "40",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                1520,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "41",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "IDString",
+              "expr": "userIDteste",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "41",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                1880,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "55",
+          "kind": "iterator",
+          "ref": "composeRecordsEach",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "extension-yeastar",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            },
+            {
+              "target": "query",
+              "expr": "\"'\" + userEmail + \"' = email_addr or '\" + userName + \"' = caller_id_name\"",
+              "type": "String"
+            }
+          ],
+          "results": [
+            {
+              "target": "AgentRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "55",
+              "parent": "1",
+              "value": "Compose records",
+              "xywh": [
+                4040,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "62",
+          "kind": "function",
+          "ref": "composeRecordsUpdate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "callRecord",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "callRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "62",
+              "parent": "1",
+              "value": "Compose record update",
+              "xywh": [
+                5120,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "66",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "callRecord.values.call_back_call_id",
+              "expr": "callRecordID",
+              "type": "Any"
+            },
+            {
+              "target": "callRecord.values.time_dif",
+              "expr": "result",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "66",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                4760,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "68",
+          "kind": "iterator",
+          "ref": "composeRecordsEach",
+          "arguments": [
+            {
+              "target": "module",
+              "value": "cdr-yeastar",
+              "type": "Handle"
+            },
+            {
+              "target": "namespace",
+              "value": "Pulse",
+              "type": "Handle"
+            },
+            {
+              "target": "query",
+              "expr": "\"time_corteza > '\" + strftime(callRecord.values.time_corteza, \"%Y-%m-%d %H:%M:%S%z\") + \"' AND time_corteza < '\" + strftime(now(), \"%Y-%m-%d %H:%M:%S%z\") + \"' AND call_from_name = '\" + userName + \"' AND call_to_name = '\" + callRecord.values.call_from_name + \"'\"",
+              "type": "String"
+            },
+            {
+              "target": "sort",
+              "value": "\"time_corteza DESC\"",
+              "type": "String"
+            },
+            {
+              "target": "limit",
+              "value": "1",
+              "type": "UnsignedInteger"
+            }
+          ],
+          "results": [
+            {
+              "target": "FoundCall",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "68",
+              "parent": "1",
+              "value": "Compose records",
+              "xywh": [
+                4040,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "75",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "agentRecordID",
+              "expr": "AgentRecord.recordID",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "75",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                4400,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "79",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "callRecordID",
+              "expr": "FoundCall.recordID",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "79",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                4400,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "82",
+          "kind": "termination",
+          "ref": "",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "82",
+              "parent": "1",
+              "value": "termination.tooltip",
+              "xywh": [
+                4040,
+                480,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "84",
+          "kind": "function",
+          "ref": "composeRecordsUpdate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "callRecord",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "callRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "84",
+              "parent": "1",
+              "value": "Compose record update",
+              "xywh": [
+                3680,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "85",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "callRecord.values.call_back",
+              "expr": "\"sim\"",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "85",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                3320,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "88",
+          "kind": "function",
+          "ref": "composeRecordsUpdate",
+          "arguments": [
+            {
+              "target": "record",
+              "expr": "callRecord",
+              "type": "ComposeRecord"
+            }
+          ],
+          "results": [
+            {
+              "target": "callRecord",
+              "expr": "record",
+              "type": "ComposeRecord"
+            }
+          ],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "88",
+              "parent": "1",
+              "value": "Compose record update",
+              "xywh": [
+                5120,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "89",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "callRecord.values.call_backer_record",
+              "expr": "agentRecordID",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "89",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                4760,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "92",
+          "kind": "termination",
+          "ref": "",
+          "arguments": null,
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "92",
+              "parent": "1",
+              "value": "termination.tooltip",
+              "xywh": [
+                1160,
+                280,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "93",
+          "kind": "expressions",
+          "ref": "",
+          "arguments": [
+            {
+              "target": "time_now",
+              "expr": "strftime(now(), \"%Y-%m-%d %H:%M:%S%z\")",
+              "type": "Any"
+            },
+            {
+              "target": "time_call",
+              "expr": "strftime(callRecord.values.time_corteza, \"%Y-%m-%d %H:%M:%S%z\")",
+              "type": "Any"
+            },
+            {
+              "target": "result",
+              "expr": "sub(parseDt(formattedCurrentTime), parseDt(formattedStartTime)) / 1000",
+              "type": "Any"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "93",
+              "parent": "1",
+              "value": "Define and mutate scope variables",
+              "xywh": [
+                4488,
+                472,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ],
+      "paths": [
+        {
+          "parentID": "5",
+          "childID": "10",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "7",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "8",
+          "childID": "10",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "9",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "10",
+          "childID": "11",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "12",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "expr": "isEmpty(callRecord.values.call_back)",
+          "parentID": "11",
+          "childID": "40",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "15",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "#1 - If"
+            }
+          }
+        },
+        {
+          "expr": "callRecord.values.call_back == \"sim\"",
+          "parentID": "11",
+          "childID": "92",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "16",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;",
+              "value": "#2 - Else (if)"
+            }
+          }
+        },
+        {
+          "parentID": "11",
+          "childID": "92",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "20",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;",
+              "value": "#3 - Else (if)"
+            }
+          }
+        },
+        {
+          "parentID": "40",
+          "childID": "41",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "42",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "37",
+          "childID": "35",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "43",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "35",
+          "childID": "85",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "44",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "38",
+          "childID": "37",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "45",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "34",
+          "childID": "41",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "46",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "41",
+          "childID": "38",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "47",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "39",
+          "childID": "37",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "48",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "17",
+          "childID": "40",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "49",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "55",
+          "childID": "75",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "59",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "Body"
+            }
+          }
+        },
+        {
+          "parentID": "55",
+          "childID": "68",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "60",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "End"
+            }
+          }
+        },
+        {
+          "parentID": "36",
+          "childID": "85",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "61",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "66",
+          "childID": "62",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "67",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "68",
+          "childID": "79",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "72",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": "Body"
+            }
+          }
+        },
+        {
+          "parentID": "68",
+          "childID": "82",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "74",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+              "value": "End"
+            }
+          }
+        },
+        {
+          "parentID": "75",
+          "childID": "89",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "81",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "79",
+          "childID": "93",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "83",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "85",
+          "childID": "84",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "86",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "84",
+          "childID": "55",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "87",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "89",
+          "childID": "88",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "90",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        },
+        {
+          "parentID": "93",
+          "childID": "66",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "94",
+              "parent": "1",
+              "points": null,
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        }
+      ],
+      "triggers": [
+        {
+          "resourceType": "compose:record",
+          "eventType": "onManual",
+          "constraints": [
+            {
+              "name": "namespace.handle",
+              "op": "=",
+              "values": [
+                "Pulse"
+              ]
+            },
+            {
+              "name": "module.handle",
+              "op": "=",
+              "values": [
+                "cdr-yeastar"
+              ]
+            }
+          ],
+          "enabled": true,
+          "stepID": "5",
+          "meta": {
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "edges": [
+                {
+                  "childID": "5",
+                  "meta": {
+                    "description": "",
+                    "label": "",
+                    "visual": {
+                      "id": "6",
+                      "parent": "1",
+                      "points": [],
+                      "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+                      "value": null
+                    }
+                  },
+                  "parentID": "3"
+                }
+              ],
+              "id": "3",
+              "parent": "1",
+              "value": "Compose - Record - Manual",
+              "xywh": [
+                80,
+                80,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
