@@ -176,7 +176,6 @@ export default {
     },
 
     handleUiBlockRefresh (payload) {
-      console.log('did i got here?')
       if (this.shouldRefreshBlock(payload)) {
         console.log('Refreshing metric block due to websocket message:', payload)
         this.refresh()

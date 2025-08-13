@@ -117,7 +117,7 @@ func (ws *WebSocketService) Connect(ctx context.Context) error {
 	wsURL := fmt.Sprintf("%s://%s/openapi/v1.0/subscribe?access_token=%s",
 		wsScheme, baseURL.Host, token.AccessToken)
 
-	log.Printf("[WebSocketService] Connecting to WebSocket: %s\n", wsURL)
+	//log.Printf("[WebSocketService] Connecting to WebSocket: %s\n", wsURL)
 
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 30 * time.Second,
@@ -165,7 +165,7 @@ func (ws *WebSocketService) Subscribe(eventIDs []int) error {
 		return fmt.Errorf("WebSocket not connected")
 	}
 
-	log.Printf("[WebSocketService] Subscribing to events: %v\n", eventIDs)
+	//log.Printf("[WebSocketService] Subscribing to events: %v\n", eventIDs)
 	subscription := EventSubscription{TopicList: eventIDs}
 
 	if err := conn.WriteJSON(subscription); err != nil {
@@ -203,7 +203,7 @@ func (ws *WebSocketService) StartHeartbeat() {
 
 	go func() {
 		defer func() {
-			log.Println("[WebSocketService] Heartbeat goroutine exiting")
+			//log.Println("[WebSocketService] Heartbeat goroutine exiting")
 		}()
 
 		for {
@@ -240,14 +240,12 @@ func (ws *WebSocketService) sendHeartbeat() error {
 		return fmt.Errorf("WebSocket not connected")
 	}
 
-	log.Println("[WebSocketService] 💓 Sending heartbeat")
-	// Use plain text heartbeat like the old working code
+	//log.Println("[WebSocketService] 💓 Sending heartbeat")
 	if err := ws.conn.WriteMessage(websocket.TextMessage, []byte("heartbeat")); err != nil {
 		return fmt.Errorf("failed to send heartbeat: %w", err)
 	}
 
-	// Don't try to read the response here - it will be handled in the Listen loop
-	log.Println("[WebSocketService] Heartbeat sent, response will be handled in listener")
+	//log.Println("[WebSocketService] Heartbeat sent, response will be handled in listener")
 	return nil
 }
 
@@ -302,17 +300,17 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 			// Handle different message types
 			if messageType == websocket.TextMessage {
 				messageStr := string(message)
-				log.Printf("[WebSocketService] Received text message: %s\n", messageStr)
+				//log.Printf("[WebSocketService] Received text message: %s\n", messageStr)
 
 				// Check if it's a heartbeat response
 				if messageStr == "heartbeat response" {
-					log.Println("[WebSocketService] ✅ Heartbeat response received")
+					//log.Println("[WebSocketService] ✅ Heartbeat response received")
 					continue
 				}
 
 				// Check if it's a heartbeat request (some systems send this)
 				if messageStr == "heartbeat" {
-					log.Println("[WebSocketService] 💓 Heartbeat request received, sending response")
+					//log.Println("[WebSocketService] 💓 Heartbeat request received, sending response")
 					if err := conn.WriteMessage(websocket.TextMessage, []byte("heartbeat response")); err != nil {
 						log.Printf("[WebSocketService] Failed to send heartbeat response: %v\n", err)
 					}
@@ -338,15 +336,13 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 }
 
 func (ws *WebSocketService) processEvent(event map[string]interface{}) error {
-	log.Printf("[WebSocketService] Received event: %+v\n", event)
+	//log.Printf("[WebSocketService] Received event: %+v\n", event)
 
-	// Get the correct field names from the nested event_data
-	eventID, _ := event["type"].(float64) // "type" field contains the event ID
-	sn, _ := event["sn"].(string)         // "sn" field
+	eventID, _ := event["type"].(float64)
+	sn, _ := event["sn"].(string)
 
 	log.Printf("[WebSocketService] Processing event - SN: %s, ID: %.0f\n", sn, eventID)
 
-	// Skip if eventID is 0 - this indicates heartbeat or invalid event
 	if eventID == 0 {
 		log.Printf("[WebSocketService] Received event with ID 0, skipping (likely heartbeat acknowledgment)")
 		return nil
