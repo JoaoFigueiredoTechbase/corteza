@@ -152,7 +152,7 @@ export default (options = {}) => {
         // register event listener for workflow messages
         this.$on('websocket-message', ({ data }) => {
           const msg = JSON.parse(data)
-        //  console.log('WS message:', msg)
+          //  console.log('WS message:', msg)
 
           switch (msg['@type']) {
             case 'workflowSessionPrompt':
@@ -184,7 +184,7 @@ export default (options = {}) => {
               break
 
             case 'metric-refresh':
-              //this.$store.dispatch('metrics/refreshMetric', msg['@value'])
+              // this.$store.dispatch('metrics/refreshMetric', msg['@value'])
               this.$root.$emit('metric-refresh', msg['@value'])
               break
 
