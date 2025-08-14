@@ -407,7 +407,7 @@
           </b-thead>
 
           <draggable
-            v-if="items.length && !isProcessing && !resizing"
+            v-if="items.length && !resizing"
             v-model="items"
             :disabled="!inlineEditing || !options.draggable"
             group="items"
@@ -477,9 +477,9 @@
                 />
 
                 <div
-                  v-else-if="field.moduleField.canReadRecordValue && !field.edit"
-                  class="d-flex mb-0 gap-1"
-                  style="min-width: 10rem;"
+                  v-if="recordListModule"
+                  class="d-flex position-relative h-100"
+                  :class="{ 'overflow-hidden': !items.length }"
                 >
                   <field-viewer
                     :field="field.moduleField"
@@ -679,7 +679,7 @@
             </b-tr>
           </draggable>
 
-          <div
+          <!-- <div
             v-else
             class="position-absolute text-center mt-5 d-print-none"
             style="left: 0; right: 0; bottom: calc(50% - 33px);"
@@ -694,7 +694,7 @@
             >
               {{ $t('recordList.noRecords') }}
             </p>
-          </div>
+          </div> -->
         </b-table-simple>
       </div>
 
@@ -1387,6 +1387,24 @@ export default {
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$on('refetch-records', this.refreshAndResetPagination)
+
+      this.$root.$on('ui-block-refresh', this.handleUiBlockRefresh)
+    },
+
+    handleUiBlockRefresh (payload) {
+      if (this.shouldRefreshBlock(payload)) {
+        console.log('Refreshing record list block due to websocket message:', payload)
+        this.refresh()
+      }
+    },
+
+    shouldRefreshBlock (payload) {
+      const { customID } = payload
+      if (customID && this.customID === customID) {
+        return true
+      }
+
+      return false
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
