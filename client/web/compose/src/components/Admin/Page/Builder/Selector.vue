@@ -211,6 +211,11 @@ export default {
           block: new compose.PageBlockSyncBox(),
           image: images.SyncBox,
         },
+        {
+          label: this.$t('recordListExtra.label'),
+          block: new compose.PageBlockRecordListExtra(),
+          image: images.RecordListExtra,
+        },
       ],
     }
   },
