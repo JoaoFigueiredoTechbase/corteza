@@ -196,7 +196,7 @@ export default {
       if (customID && this.customID === customID) {
         return true
       }
-      
+
       return false
     },
 
@@ -373,6 +373,8 @@ export default {
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$off('refetch-records', this.refresh)
+
+      this.$root.$off('ui-block-refresh', this.handleUiBlockRefresh)
     },
   },
 }

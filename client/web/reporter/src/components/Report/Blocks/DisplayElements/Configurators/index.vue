@@ -161,10 +161,17 @@ export default {
 
       currentConfigurableDatasourceName: undefined,
       currentConfigurableDatasourceIndex: undefined,
+
+      customID: undefined,
     }
   },
 
   computed: {
+    customID() {
+      return this.block?.meta?.customID;
+    },
+    
+
     usesDatasources () {
       return !['Text'].includes(this.displayElement.kind)
     },
@@ -256,6 +263,14 @@ export default {
     },
   },
 
+  mounted() {
+    this.$root.$on('ui-block-refresh', this.handleUiBlockRefresh);
+  },
+
+  beforeDestroy() {
+    this.$root.$off('ui-block-refresh', this.handleUiBlockRefresh);
+  },
+
   methods: {
     describeReport (source) {
       this.columns = []
@@ -299,6 +314,18 @@ export default {
       if (source) {
         this.currentConfigurableDatasourceIndex = this.options.datasources.findIndex(({ name }) => source === name)
       }
+    },
+
+
+    handleUiBlockRefresh(payload) {
+      if (this.shouldRefreshBlock(payload)) {
+        this.describeReport(this.options.source);
+      }
+    },
+    
+    shouldRefreshBlock(payload) {
+      const { customID } = payload;
+      return customID && this.customID === customID;
     },
   },
 }

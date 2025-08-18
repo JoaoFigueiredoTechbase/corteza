@@ -23,6 +23,10 @@ export default {
         return this.displayElementOptions || undefined
       },
 
+      customID () {
+        return this.block?.meta?.customID
+      },
+
       set (options = {}) {
         this.$emit('update:displayElementOptions', options)
       },
