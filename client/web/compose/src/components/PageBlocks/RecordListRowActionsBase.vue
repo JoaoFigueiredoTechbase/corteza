@@ -951,7 +951,7 @@ import FieldEditor from 'corteza-webapp-compose/src/components/ModuleFields/Edit
 import ExporterModal from 'corteza-webapp-compose/src/components/Public/Record/Exporter'
 import ImporterModal from 'corteza-webapp-compose/src/components/Public/Record/Importer'
 import AutomationButtons from 'corteza-webapp-compose/src/components/PageBlocks/Shared/AutomationButtons.vue'
-import { compose, validator, NoID } from '@cortezaproject/corteza-js'
+import { compose, automation, validator, NoID } from '@cortezaproject/corteza-js'
 import users from 'corteza-webapp-compose/src/mixins/users'
 import records from 'corteza-webapp-compose/src/mixins/records'
 import { evaluatePrefilter, queryToFilter, isFieldInFilter, formatActiveFilterOperator, isBetweenOperator } from 'corteza-webapp-compose/src/lib/record-filter'
@@ -2572,53 +2572,84 @@ export default {
       }
     },
 
-		triggerRowAction (button, record, event) {
-			console.log('=== triggerRowAction START ===')
-			console.log('Button:', button)
-			console.log('Record:', record)
-			console.log('Event:', event)
-			
-			// Move stopPropagation after logging to see if we get here
-			if (event) {
-				event.stopPropagation()
-				console.log('Event propagation stopped')
-			}
+triggerRowAction(button, item, event) {
+  console.log('=== triggerRowAction START ===');
+  console.log('Button:', button);
+  console.log('Item:', item);
+  console.log('Event:', event);
 
-			const extraEventArgs = { record } // Single record context
-			
-			console.log('Extra event args:', extraEventArgs)
-			console.log('Module:', this.recordListModule)
-			console.log('Namespace:', this.namespace)
+  // Stop event propagation to prevent row navigation
+  if (event) {
+    event.stopPropagation();
+    console.log('Event propagation stopped');
+  }
 
-			// Check if $root exists and has $emit method
-			console.log('$root exists:', !!this.$root)
-			console.log('$root.$emit exists:', !!(this.$root && this.$root.$emit))
+  // Validate button configuration
+  if (!button.workflowID) {
+    console.error('Missing workflowID in button:', button);
+    return;
+  }
 
-			try {
-				// If using event bus (as in original):
-				this.$root.$emit('automation:trigger', {
-					button,
-					module: this.recordListModule,
-					namespace: this.namespace,
-					extraEventArgs,
-				})
-				
-				console.log('Event emitted successfully')
-			} catch (error) {
-				console.error('Error emitting event:', error)
-			}
+  try {
+    this.processing = true;
 
-			console.log('About to call refresh')
-			
-			try {
-				this.refresh()
-				console.log('Refresh called successfully')
-			} catch (error) {
-				console.error('Error calling refresh:', error)
-			}
-			
-			console.log('=== triggerRowAction END ===')
-		},
+    // Create the event structure similar to AutomationButtons.vue
+    // Base event with extra arguments
+    let ev = { 
+      args: {
+        ...this.extraEventArgs,
+        // Add any additional context from the record list
+        namespace: this.namespace,
+        module: this.recordListModule,
+        record: item.r, // item.r contains the actual record
+        selected: this.selected,
+        filter: this.filter
+      }
+    };
+
+    // Create the proper compose event for record resource type
+    // This follows the same pattern as AutomationButtons.vue
+    if (item.r && this.recordListModule) {
+      ev.args.namespace = this.namespace;
+      ev.args.module = this.recordListModule;
+      ev = compose.RecordEvent(item.r, ev);
+    }
+
+    console.log('Event structure:', ev);
+
+    // Encode the event arguments for the workflow
+    const input = automation.Encode(ev.args);
+    console.log('Encoded input:', input);
+
+    // Execute the workflow
+    this.$AutomationAPI
+      .workflowExec({
+        workflowID: button.workflowID,
+        stepID: button.stepID || undefined, // stepID is optional
+        input,
+      })
+      .then(response => {
+        console.log('Workflow triggered successfully:', response);
+        this.toastSuccess(this.$t('notification:automation.workflowSuccess') || 'Workflow executed successfully');
+        this.refresh(); // Refresh the record list
+      })
+      .catch(error => {
+        console.error('Failed to trigger workflow:', error);
+        this.toastErrorHandler(this.$t('notification:automation.scriptFailed') || 'Workflow execution failed')(error);
+      })
+      .finally(() => {
+        this.processing = false;
+      });
+
+  } catch (error) {
+    console.error('Error in triggerRowAction:', error);
+    this.toastErrorHandler(this.$t('notification:automation.scriptFailed') || 'Workflow execution failed')(error);
+    this.processing = false;
+  }
+
+  console.log('=== triggerRowAction END ===');
+},
+
 
 		 performSomeAction(record) {
 			console.log('Performing custom action for record:', record)
