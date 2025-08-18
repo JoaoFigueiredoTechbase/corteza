@@ -2571,17 +2571,16 @@ export default {
         })
       }
     },
-
 triggerRowAction(button, item, event) {
   console.log('=== triggerRowAction START ===');
   console.log('Button:', button);
-  console.log('Item:', item);
+  console.log('Item structure:', item);
+  console.log('Record data (item.r):', item.r);
   console.log('Event:', event);
 
   // Stop event propagation to prevent row navigation
   if (event) {
     event.stopPropagation();
-    console.log('Event propagation stopped');
   }
 
   // Validate button configuration
@@ -2590,51 +2589,124 @@ triggerRowAction(button, item, event) {
     return;
   }
 
+  // Validate that we have the record data
+  if (!item || !item.r) {
+    console.error('No record data available in item:', item);
+    return;
+  }
+
+  console.log('=== RECORD DATA BEING PASSED ===');
+  console.log('Record ID:', item.r.recordID);
+  console.log('Record values:', item.r.values);
+  console.log('Record meta data:', {
+    moduleID: item.r.moduleID,
+    namespaceID: item.r.namespaceID,
+    createdAt: item.r.createdAt,
+    updatedAt: item.r.updatedAt,
+    deletedAt: item.r.deletedAt,
+    ownedBy: item.r.ownedBy,
+    createdBy: item.r.createdBy,
+    updatedBy: item.r.updatedBy
+  });
+
+  console.log('=== MODULE DATA BEING PASSED ===');
+  console.log('Module:', this.recordListModule);
+  console.log('Module ID:', this.recordListModule?.moduleID);
+  console.log('Module name:', this.recordListModule?.name);
+  console.log('Module fields:', this.recordListModule?.fields?.map(f => ({ name: f.name, kind: f.kind })));
+
+  console.log('=== NAMESPACE DATA BEING PASSED ===');
+  console.log('Namespace:', this.namespace);
+  console.log('Namespace ID:', this.namespace?.namespaceID);
+  console.log('Namespace slug:', this.namespace?.slug);
+
   try {
     this.processing = true;
 
-    // Create the event structure similar to AutomationButtons.vue
-    // Base event with extra arguments
+    // Build the event args following the same pattern as AutomationButtons
     let ev = { 
       args: {
         ...this.extraEventArgs,
-        // Add any additional context from the record list
         namespace: this.namespace,
         module: this.recordListModule,
-        record: item.r, // item.r contains the actual record
-        selected: this.selected,
-        filter: this.filter
       }
     };
 
-    // Create the proper compose event for record resource type
-    // This follows the same pattern as AutomationButtons.vue
+    console.log('=== EVENT ARGS BEFORE RECORD EVENT ===');
+    console.log('Initial event args:', JSON.stringify(ev.args, null, 2));
+
+    // Create the record event - this follows the same pattern as AutomationButtons
     if (item.r && this.recordListModule) {
-      ev.args.namespace = this.namespace;
-      ev.args.module = this.recordListModule;
       ev = compose.RecordEvent(item.r, ev);
+      
+      console.log('=== EVENT AFTER RECORD EVENT CREATION ===');
+      console.log('Complete event object:', ev);
+      console.log('Event args after RecordEvent:', JSON.stringify(ev.args, null, 2));
+      
+      // Log specific record data that will be available in workflow
+      if (ev.args.record) {
+        console.log('=== RECORD DATA IN WORKFLOW ARGS ===');
+        console.log('Record in args:', ev.args.record);
+        console.log('Record values in args:', ev.args.record.values);
+        console.log('Record ID in args:', ev.args.record.recordID);
+      }
+    } else {
+      console.error('Missing record or module for RecordEvent creation');
+      return;
     }
 
-    console.log('Event structure:', ev);
-
-    // Encode the event arguments for the workflow
+    // Encode the arguments for workflow execution
     const input = automation.Encode(ev.args);
+    console.log('=== ENCODED INPUT FOR WORKFLOW ===');
     console.log('Encoded input:', input);
+    
+    // Try to decode it back to see what the workflow will receive
+    try {
+      const decoded = automation.Decode(input);
+      console.log('=== DECODED INPUT (what workflow will receive) ===');
+      console.log('Decoded data:', decoded);
+      
+      if (decoded.record) {
+        console.log('Record data in workflow:', {
+          recordID: decoded.record.recordID,
+          values: decoded.record.values,
+          moduleID: decoded.record.moduleID,
+          namespaceID: decoded.record.namespaceID
+        });
+      }
+    } catch (decodeError) {
+      console.warn('Could not decode input for verification:', decodeError);
+    }
+
+    console.log('=== EXECUTING WORKFLOW ===');
+    console.log('Workflow ID:', button.workflowID);
+    console.log('Step ID:', button.stepID);
 
     // Execute the workflow
     this.$AutomationAPI
       .workflowExec({
         workflowID: button.workflowID,
-        stepID: button.stepID || undefined, // stepID is optional
+        stepID: button.stepID || undefined,
         input,
       })
       .then(response => {
-        console.log('Workflow triggered successfully:', response);
-        this.toastSuccess(this.$t('notification:automation.workflowSuccess') || 'Workflow executed successfully');
-        this.refresh(); // Refresh the record list
+        console.log('=== WORKFLOW EXECUTION SUCCESS ===');
+        console.log('Workflow response:', response);
+        console.log('Workflow ID:', button.workflowID, 'Step ID:', button.stepID, 'Record ID:', item.r.recordID);
+        
+        // Show success message
+        this.toastSuccess(this.$t('notification:automation.scriptSuccess') || 'Workflow executed successfully');
+        
+        // Refresh the table to show any changes
+        this.refresh();
       })
       .catch(error => {
+        console.error('=== WORKFLOW EXECUTION FAILED ===');
         console.error('Failed to trigger workflow:', error);
+        console.error('Error details:', error.response?.data || error.message);
+        console.error('Full error object:', error);
+        
+        // Show error message
         this.toastErrorHandler(this.$t('notification:automation.scriptFailed') || 'Workflow execution failed')(error);
       })
       .finally(() => {
@@ -2642,6 +2714,7 @@ triggerRowAction(button, item, event) {
       });
 
   } catch (error) {
+    console.error('=== ERROR IN TRIGGER ROW ACTION ===');
     console.error('Error in triggerRowAction:', error);
     this.toastErrorHandler(this.$t('notification:automation.scriptFailed') || 'Workflow execution failed')(error);
     this.processing = false;
@@ -2649,7 +2722,6 @@ triggerRowAction(button, item, event) {
 
   console.log('=== triggerRowAction END ===');
 },
-
 
 		 performSomeAction(record) {
 			console.log('Performing custom action for record:', record)

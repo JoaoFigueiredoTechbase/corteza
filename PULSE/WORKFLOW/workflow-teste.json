@@ -1,0 +1,162 @@
+{
+  "workflows": [
+    {
+      "handle": "workflow-teste",
+      "enabled": true,
+      "meta": {
+        "name": "workflow-teste",
+        "description": "",
+        "visual": null
+      },
+      "keepSessions": 0,
+      "steps": [
+        {
+          "stepID": "4",
+          "kind": "prompt",
+          "ref": "alert",
+          "arguments": [
+            {
+              "target": "message",
+              "value": "mensagem de teste",
+              "type": "String"
+            },
+            {
+              "target": "buttonVariant",
+              "value": "primary",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "4",
+              "parent": "1",
+              "value": "Prompt user with an alert",
+              "xywh": [
+                2592,
+                2000,
+                200,
+                80
+              ]
+            }
+          }
+        },
+        {
+          "stepID": "6",
+          "kind": "function",
+          "ref": "httpRequestSend",
+          "arguments": [
+            {
+              "target": "url",
+              "value": "https://helpful-energy-11.webhook.cool",
+              "type": "String"
+            },
+            {
+              "target": "method",
+              "value": "POST",
+              "type": "String"
+            },
+            {
+              "target": "body",
+              "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "type": "String"
+            }
+          ],
+          "results": [],
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "id": "6",
+              "parent": "1",
+              "value": "HTTP request",
+              "xywh": [
+                2936,
+                2000,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ],
+      "paths": [
+        {
+          "parentID": "4",
+          "childID": "6",
+          "meta": {
+            "name": "",
+            "description": "",
+            "visual": {
+              "id": "7",
+              "parent": "1",
+              "points": [],
+              "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+              "value": null
+            }
+          }
+        }
+      ],
+      "triggers": [
+        {
+          "resourceType": "compose:page",
+          "eventType": "onManual",
+          "constraints": [
+            {
+              "name": "namespace.handle",
+              "op": "=",
+              "values": [
+                "Pulse"
+              ]
+            },
+            {
+              "name": "page.handle",
+              "op": "=",
+              "values": [
+                "ateste"
+              ]
+            }
+          ],
+          "enabled": true,
+          "stepID": "4",
+          "meta": {
+            "description": "",
+            "visual": {
+              "defaultName": true,
+              "edges": [
+                {
+                  "childID": "4",
+                  "meta": {
+                    "description": "",
+                    "label": "",
+                    "visual": {
+                      "id": "5",
+                      "parent": "1",
+                      "points": [],
+                      "style": "exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+                      "value": null
+                    }
+                  },
+                  "parentID": "3"
+                }
+              ],
+              "id": "3",
+              "parent": "1",
+              "value": "Compose - Page - Manual",
+              "xywh": [
+                2200,
+                2000,
+                200,
+                80
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
