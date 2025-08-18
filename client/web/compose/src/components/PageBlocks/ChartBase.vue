@@ -223,6 +223,25 @@ export default {
       this.$root.$on('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$on('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$on('refetch-records', this.refresh)
+
+      this.$root.$on('ui-block-refresh', this.handleUiBlockRefresh)
+    },
+
+    handleUiBlockRefresh (payload) {
+      if (this.shouldRefreshBlock(payload)) {
+        console.log('Refreshing metric block due to websocket message:', payload)
+        this.refresh()
+      }
+    },
+
+    shouldRefreshBlock (payload) {
+      const { customID } = payload
+
+      if (customID && this.customID === customID) {
+        return true
+      }
+
+      return false
     },
 
     refetchOnPrefilterValueChange ({ fieldName }) {
@@ -423,6 +442,8 @@ export default {
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$off('refetch-records', this.refresh)
+
+      this.$root.$off('ui-block-refresh', this.handleUiBlockRefresh)
     },
   },
 }

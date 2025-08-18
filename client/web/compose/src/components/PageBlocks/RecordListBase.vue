@@ -2462,6 +2462,7 @@ export default {
       this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
       this.$root.$off('record-field-change', this.refetchOnPrefilterValueChange)
       this.$root.$off('refetch-records', this.refreshAndResetPagination)
+      this.$root.$off('ui-block-refresh', this.handleUiBlockRefresh)
     },
 
     handleAddRecord () {
