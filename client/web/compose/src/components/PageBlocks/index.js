@@ -40,6 +40,8 @@ import TabsBase from './TabsBase'
 import TabsConfigurator from './TabsConfigurator'
 import HelloBoxBase from './HelloBoxBase'
 import SyncBoxBase from './SyncBoxBase'
+import RecordListExtraBase from './RecordListExtraBase'
+import RecordListExtraConfigurator from './RecordListExtraConfigurator'
 
 /**
  * List of all known page block components
@@ -85,6 +87,8 @@ const Registry = {
   NavigationBase,
   HelloBoxBase,
   SyncBoxBase,
+  RecordListExtraBase,
+  RecordListExtraConfigurator,
 }
 
 const defaultMode = 'Base'
