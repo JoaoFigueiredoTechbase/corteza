@@ -327,6 +327,7 @@ export default {
             fields,
             prefilter: filter,
             presort: 'createdAt DESC',
+            hideAddButton: true,
             hideRecordReminderButton: true,
             hideRecordViewButton: false,
             hideConfigureFieldsButton: false,
