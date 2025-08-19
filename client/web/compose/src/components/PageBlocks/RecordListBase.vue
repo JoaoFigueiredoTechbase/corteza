@@ -2231,6 +2231,10 @@ export default {
     },
 
     areActionsVisible (record) {
+      if (this.options.hideActionsDropdown) {
+        return false
+      }
+
       if (this.inlineEditing) {
         return [
           this.isCloneRecordActionVisible,

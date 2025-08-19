@@ -338,6 +338,7 @@ export default {
             perPage: 14,
             showTotalCount: true,
             recordDisplayOption: 'modal',
+            hideActionsDropdown: true,
           },
         })
 

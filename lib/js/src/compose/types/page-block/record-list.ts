@@ -98,6 +98,8 @@ export interface Options {
   textStyles: {
     wrappedFields: Array<string>
   }
+
+  hideActionsDropdown: boolean,
 }
 
 const defaults: Readonly<Options> = Object.freeze({
@@ -162,6 +164,8 @@ const defaults: Readonly<Options> = Object.freeze({
   textStyles: {
     wrappedFields: [],
   },
+
+  hideActionsDropdown: false,
 })
 
 export class PageBlockRecordList extends PageBlock {
@@ -241,6 +245,7 @@ export class PageBlockRecordList extends PageBlock {
       'showRecordPerPageOption',
       'openRecordInEditMode',
       'customSummaries',
+      'hideActionsDropdown',
     )
 
     if (o.selectionButtons) {
