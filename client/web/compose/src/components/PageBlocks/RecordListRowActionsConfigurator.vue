@@ -929,11 +929,11 @@
       </template>
     </b-tab>
 
-    <automation-tab
+    <!-- <automation-tab
       v-bind="$props"
       :module="recordListModule"
       :buttons.sync="options.selectionButtons"
-    />
+    /> -->
 
     <automation-tab
       v-bind="$props"

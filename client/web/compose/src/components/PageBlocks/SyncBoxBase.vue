@@ -9,7 +9,10 @@
         class="sync-button"
         @click="handleClick"
       >
-        <span v-if="loading" class="spinner" />
+        <span
+          v-if="loading"
+          class="spinner"
+        />
         <span v-else>{{ label }}</span>
       </button>
     </div>
