@@ -20,6 +20,7 @@ export { PageBlockGeometry } from './geometry'
 export { PageBlockHelloBox } from './hello-box'
 export { PageBlockSyncBox } from './sync-box'
 export { PageBlockRecordListExtra } from './record-list-extra'
+export { PageBlockRecordListRowActions } from './record-list-row-actions'
 
 export function PageBlockMaker<T extends PageBlock> (i: { kind: string }): T {
   const PageBlockTemp = Registry.get(i.kind)

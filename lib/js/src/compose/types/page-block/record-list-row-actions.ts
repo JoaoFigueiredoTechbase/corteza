@@ -4,7 +4,7 @@ import { Compose as ComposeAPI } from '../../../api-clients'
 import { Module } from '../module'
 import { Button } from './types'
 
-const kind = 'RecordList'
+const kind = 'RecordListRowActions'
 
 interface FilterPreset {
   name: string;
@@ -99,7 +99,7 @@ export interface Options {
     wrappedFields: Array<string>
   }
 
-  hideActionsDropdown: boolean,
+  rowButtons: Array<Button>;
 }
 
 const defaults: Readonly<Options> = Object.freeze({
@@ -165,10 +165,10 @@ const defaults: Readonly<Options> = Object.freeze({
     wrappedFields: [],
   },
 
-  hideActionsDropdown: false,
+  rowButtons: [],
 })
 
-export class PageBlockRecordList extends PageBlock {
+export class PageBlockRecordListRowActions extends PageBlock {
   readonly kind = kind
 
   options: Options = { ...defaults }
@@ -245,7 +245,6 @@ export class PageBlockRecordList extends PageBlock {
       'showRecordPerPageOption',
       'openRecordInEditMode',
       'customSummaries',
-      'hideActionsDropdown',
     )
 
     if (o.selectionButtons) {
@@ -261,6 +260,10 @@ export class PageBlockRecordList extends PageBlock {
         ...this.options.textStyles,
         ...o.textStyles,
       }
+    }
+
+    if (o.rowButtons) {
+      this.options.rowButtons = o.rowButtons.map(b => new Button(b))
     }
   }
 
@@ -281,4 +284,4 @@ export class PageBlockRecordList extends PageBlock {
   }
 }
 
-Registry.set(kind, PageBlockRecordList)
+Registry.set(kind, PageBlockRecordListRowActions)

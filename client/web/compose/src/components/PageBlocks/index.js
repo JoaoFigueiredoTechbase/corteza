@@ -42,6 +42,8 @@ import HelloBoxBase from './HelloBoxBase'
 import SyncBoxBase from './SyncBoxBase'
 import RecordListExtraBase from './RecordListExtraBase'
 import RecordListExtraConfigurator from './RecordListExtraConfigurator'
+import RecordListRowActionsConfigurator from './RecordListRowActionsConfigurator'
+import RecordListRowActionsBase from './RecordListRowActionsBase'
 
 /**
  * List of all known page block components
@@ -89,6 +91,8 @@ const Registry = {
   SyncBoxBase,
   RecordListExtraBase,
   RecordListExtraConfigurator,
+  RecordListRowActionsConfigurator,
+  RecordListRowActionsBase,
 }
 
 const defaultMode = 'Base'
