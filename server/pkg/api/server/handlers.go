@@ -11,6 +11,7 @@ import (
 
 	"github.com/cortezaproject/corteza/server/assets"
 	"github.com/cortezaproject/corteza/server/pkg/api"
+	"github.com/cortezaproject/corteza/server/pkg/api/server/OpenAI"
 	"github.com/cortezaproject/corteza/server/pkg/api/server/Yeastar"
 	"github.com/cortezaproject/corteza/server/pkg/auth"
 	"github.com/cortezaproject/corteza/server/pkg/errors"
@@ -130,6 +131,7 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		// r.Get("/api/sync/queue", Yeastar.HandleSyncQueue)
 
 		r.Get("/api/sync/all", Yeastar.HandleSyncAllHTTP)
+		r.Post("/api/transcription", OpenAI.HandleTranscription)
 	})
 
 	if httpOpt.BaseUrl != "/" {

@@ -24,7 +24,7 @@ func InitializeGlobalManagers() {
 }
 
 func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet { // Typically, sync triggers are GET or POST depending on idempotency
+	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -36,16 +36,15 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 
 	baseURL := fmt.Sprintf("%s://%s", protocol, r.Host)
 
-	// Call your existing HandleSyncAll logic
-	err := SyncAll(baseURL)
+	go func() {
+		if err := SyncAll(baseURL); err != nil {
+			log.Printf("Error during full sync: %v", err)
+			return
+		}
+		log.Println("Full synchronization process completed successfully.")
+	}()
 
-	if err != nil {
-		log.Printf("Error during full sync: %v", err) // Log the detailed error
-		http.Error(w, fmt.Sprintf("Synchronization failed: %v", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte("Synchronization process initiated successfully. Check logs for details."))
 	log.Println("Full synchronization process completed successfully.")
 }
