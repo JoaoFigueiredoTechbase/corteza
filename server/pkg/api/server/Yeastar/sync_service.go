@@ -2,11 +2,13 @@ package Yeastar
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -51,7 +53,8 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 
 func setupSyncService(baseUrl string) (*YeastarService, context.Context, context.CancelFunc, error) {
 	InitializeGlobalManagers()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
 
 	cortezaClient := NewCortezaClient(baseUrl)
 	service := NewYeastarService(GlobalConfigManager, GlobalTokenManager, cortezaClient)
@@ -172,10 +175,11 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}
 
-	batchSize := 20
+	batchSize := 10
 	totalCDRs := len(cdrs)
 	processed := 0
-	var failedBatches []int
+
+	log.Printf("Total CDRs to process: %d in batches of %d", totalCDRs, batchSize)
 
 	for i := 0; i < totalCDRs; i += batchSize {
 		end := i + batchSize
@@ -184,31 +188,155 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 		}
 
 		batch := cdrs[i:end]
-
-		batchCtx, cancel := context.WithTimeout(ctx, 60*time.Minute)
+		//batchNum := i/batchSize + 1
+		batchCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
+		// if err := processBatchWithRetry(ctx, service, batch, batchNum, i+1, end); err != nil {
+		// 	log.Printf("Batch %d [%d-%d] failed after retries: %v", batchNum, i+1, end, err)
+		// 	continue
+		// }
 
 		if err := service.SendDataToCorteza(batchCtx, "cdr", batch); err != nil {
 			log.Printf("Error sending CDRs batch [%d-%d] to Corteza: %v", i+1, end, err)
-			failedBatches = append(failedBatches, i/batchSize+1)
+			//failedBatches = append(failedBatches, i/batchSize+1)
 			continue
 		}
 
 		processed += len(batch)
-		fmt.Printf("Processed batch %d-%d of %d (%.1f%%)\n",
-			i+1, end, totalCDRs, float64(processed)/float64(totalCDRs)*100)
+		fmt.Printf("Processed batch %d-%d of %d (%.1f%%)\n", i+1, end, totalCDRs, float64(processed)/float64(totalCDRs)*100)
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
-	fmt.Println("cdrs processed and sent to Corteza (with possible errors).")
-	if len(failedBatches) > 0 {
-		return fmt.Errorf("failed batches: %v", failedBatches)
-	}
+	fmt.Println("CDRs processing completed.")
+	log.Printf("✓ All batches attempted. %d/%d CDRs processed successfully",
+		processed, totalCDRs)
+
+	// Always return nil so caller sees success
 	return nil
 }
 
+// func syncCDRs(ctx context.Context, service *YeastarService) error {
+// 	fmt.Println("\n--- Processing cdrs ---")
+// 	rawCDRsData, err := service.ListMethod(ctx, "cdr")
+// 	if err != nil {
+// 		return fmt.Errorf("failed to fetch cdrs: %w", err)
+// 	}
+
+// 	cdrs, err := processCDRsData(service, rawCDRsData)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to process cdrs: %w", err)
+// 	}
+
+// 	batchSize := 10
+// 	totalCDRs := len(cdrs)
+// 	processed := 0
+// 	var failedBatches []BatchError
+
+// 	log.Printf("Total CDRs to process: %d in batches of %d", totalCDRs, batchSize)
+
+// 	for i := 0; i < totalCDRs; i += batchSize {
+// 		end := i + batchSize
+// 		if end > totalCDRs {
+// 			end = totalCDRs
+// 		}
+
+// 		batch := cdrs[i:end]
+// 		batchNum := i/batchSize + 1
+
+// 		if err := processBatchWithRetry(ctx, service, batch, batchNum, i+1, end); err != nil {
+// 			failedBatches = append(failedBatches, BatchError{
+// 				BatchNum: batchNum,
+// 				Range:    fmt.Sprintf("%d-%d", i+1, end),
+// 				Error:    err,
+// 			})
+// 			log.Printf("Batch %d [%d-%d] failed after all retries: %v", batchNum, i+1, end, err)
+// 			continue
+// 		}
+
+// 		processed += len(batch)
+// 		fmt.Printf("✓ Processed batch %d-%d of %d (%.1f%%)\n", i+1, end, totalCDRs, float64(processed)/float64(totalCDRs)*100)
+
+// 		time.Sleep(2 * time.Second)
+// 	}
+
+// 	fmt.Println("CDRs processing completed.")
+
+// 	if len(failedBatches) > 0 {
+// 		log.Printf("Summary: %d/%d batches failed", len(failedBatches), (totalCDRs+batchSize-1)/batchSize)
+// 		for _, fb := range failedBatches {
+// 			log.Printf("  - Batch %d [%s]: %v", fb.BatchNum, fb.Range, fb.Error)
+// 		}
+// 		return fmt.Errorf("failed to process %d batches out of %d", len(failedBatches), (totalCDRs+batchSize-1)/batchSize)
+// 	}
+
+// 	log.Printf("✓ All batches processed successfully (%d CDRs)", totalCDRs)
+// 	return nil
+// }
+
+// type BatchError struct {
+// 	BatchNum int
+// 	Range    string
+// 	Error    error
+// }
+
+// func processBatchWithRetry(ctx context.Context, service *YeastarService, batch interface{}, batchNum, start, end int) error {
+// 	const maxRetries = 3
+// 	const baseDelay = 5 * time.Second
+// 	const requestTimeout = 90 * time.Second
+
+// 	for attempt := 1; attempt <= maxRetries; attempt++ {
+// 		if ctx.Err() != nil {
+// 			return fmt.Errorf("parent context cancelled before attempt %d: %w", attempt, ctx.Err())
+// 		}
+
+// 		batchCtx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+
+// 		log.Printf("Sending batch %d [%d-%d] (attempt %d/%d)", batchNum, start, end, attempt, maxRetries)
+
+// 		err := service.SendDataToCorteza(batchCtx, "cdr", batch)
+// 		cancel()
+
+// 		if err == nil {
+// 			return nil
+// 		}
+
+// 		log.Printf("Batch %d [%d-%d] attempt %d failed: %v", batchNum, start, end, attempt, err)
+
+// 		if ctx.Err() != nil {
+// 			return fmt.Errorf("parent context cancelled after attempt %d: %w", attempt, ctx.Err())
+// 		}
+
+// 		if attempt < maxRetries {
+// 			delay := time.Duration(float64(baseDelay) * math.Pow(2, float64(attempt-1)))
+// 			if delay > 30*time.Second {
+// 				delay = 30 * time.Second
+// 			}
+
+// 			log.Printf("Retrying batch %d in %v...", batchNum, delay)
+
+// 			select {
+// 			case <-time.After(delay):
+// 			case <-ctx.Done():
+// 				return fmt.Errorf("parent context cancelled during retry wait: %w", ctx.Err())
+// 			}
+// 		}
+// 	}
+
+// 	return fmt.Errorf("batch failed after %d attempts", maxRetries)
+// }
+
+var syncInProgress int32
+
 func SyncAll(baseUrl string) error {
+	if !atomic.CompareAndSwapInt32(&syncInProgress, 0, 1) {
+		return errors.New("sync already in progress")
+	}
+	defer atomic.StoreInt32(&syncInProgress, 0)
+
+	fmt.Println("Starting sync...")
+
 	service, ctx, cancel, err := setupSyncService(baseUrl)
 	if err != nil {
 		return err

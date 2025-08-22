@@ -20,7 +20,7 @@ type CortezaClient struct {
 func NewCortezaClient(baseURL string) *CortezaClient {
 	return &CortezaClient{
 		client: &http.Client{
-			Timeout: 20 * time.Minute,
+			Timeout: 60 * time.Minute,
 		},
 		baseURL: baseURL,
 	}
@@ -113,17 +113,16 @@ func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) er
 	return nil
 }
 
-// SendData sends processed data to Corteza using specific sync endpoints.
 func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data interface{}) error {
-	fmt.Println("Starting SendData to Corteza")
+	// fmt.Println("Starting SendData to Corteza")
 
-	// Log base URL and module
-	fmt.Printf("Corteza BaseURL: %s\n", cc.baseURL)
-	fmt.Printf("Module Name: %s\n", moduleName)
+	// // Log base URL and module
+	// fmt.Printf("Corteza BaseURL: %s\n", cc.baseURL)
+	// fmt.Printf("Module Name: %s\n", moduleName)
 
 	// Construct full endpoint
 	url := fmt.Sprintf("%s/api/gateway/%s/sync", cc.baseURL, moduleName)
-	fmt.Printf("Full Sync Endpoint: %s\n", url)
+	//fmt.Printf("Full Sync Endpoint: %s\n", url)
 
 	// Construct payload
 	payload := map[string]interface{}{
@@ -176,8 +175,8 @@ func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data i
 	bodyBytes, _ := io.ReadAll(resp.Body)
 
 	// Log response details
-	fmt.Printf("Response Status: %d %s\n", resp.StatusCode, resp.Status)
-	fmt.Printf("Response Headers:\n")
+	// fmt.Printf("Response Status: %d %s\n", resp.StatusCode, resp.Status)
+	// fmt.Printf("Response Headers:\n")
 	for k, v := range resp.Header {
 		fmt.Printf("  %s: %v\n", k, v)
 	}
