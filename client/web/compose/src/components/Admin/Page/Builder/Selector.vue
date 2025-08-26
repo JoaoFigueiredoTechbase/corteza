@@ -201,11 +201,11 @@ export default {
           block: new compose.PageBlockNavigation(),
           image: images.Navigation,
         },
-        {
-          label: this.$t('helloBox.label'),
-          block: new compose.PageBlockHelloBox(),
-          image: images.HelloBox,
-        },
+        // {
+        //   label: this.$t('helloBox.label'),
+        //   block: new compose.PageBlockHelloBox(),
+        //   image: images.HelloBox,
+        // },
         {
           label: this.$t('syncBox.label'),
           block: new compose.PageBlockSyncBox(),
@@ -219,7 +219,7 @@ export default {
         {
           label: this.$t('recordListRowActions.label'),
           block: new compose.PageBlockRecordListRowActions(),
-          image: images.SyncBox,
+          image: images.RecordList,
         },
       ],
     }

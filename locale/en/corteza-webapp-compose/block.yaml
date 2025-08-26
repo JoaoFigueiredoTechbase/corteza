@@ -591,6 +591,7 @@ recordList:
     createInNewTab: Create record in a new tab
     createInModal: Create record in a modal
     enableBulkRecordEdit: Enable bulk record edit
+    hideActionsDropdown: Hide Add Button and Dropdown on DrillDown
     buttons: Record buttons
     tooltip:
       clone: Clone
@@ -775,6 +776,13 @@ comment:
   referenceField:
     label: Reference field
     footnote: Field that links comments with the parent record
+
+syncbox:
+  label: SyncBox
+
+recordListRowActions:
+  label: recordListRowActions
+
 navigation:
   chart: Charts
   colorPicker: Choose a color

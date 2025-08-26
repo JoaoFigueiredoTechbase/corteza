@@ -40,39 +40,38 @@
     </template> -->
 
     <div
-    class="metric-wrapper h-100 position-relative"
-    :class="{ 'is-loading': processing }"
-  >
-    <!-- keep the value visible -->
-    <template v-if="!error">
-      <div
-        v-for="(m, mi) in options.metrics"
-        :key="mi"
-        class="d-flex align-items-center justify-content-center overflow-hidden h-100"
-      >
-        <div
-          v-for="(v, i) in formatResponse(m, mi)"
-          :key="i"
-          class="w-100 h-100 px-2 py-1"
-          :class="m.drillDown.enabled ? 'pointer' : ''"
-          @click="drillDown(m, mi)"
-        >
-          <metric-item
-            :metric="m"
-            :value="v"
-          />
-        </div>
-      </div>
-    </template>
-
-    <label
-      v-else
-      class="text-primary p-3"
+      class="metric-wrapper h-100 position-relative"
+      :class="{ 'is-loading': processing }"
     >
-      {{ error }}
-    </label>
-  </div>
+      <!-- keep the value visible -->
+      <template v-if="!error">
+        <div
+          v-for="(m, mi) in options.metrics"
+          :key="mi"
+          class="d-flex align-items-center justify-content-center overflow-hidden h-100"
+        >
+          <div
+            v-for="(v, i) in formatResponse(m, mi)"
+            :key="i"
+            class="w-100 h-100 px-2 py-1"
+            :class="m.drillDown.enabled ? 'pointer' : ''"
+            @click="drillDown(m, mi)"
+          >
+            <metric-item
+              :metric="m"
+              :value="v"
+            />
+          </div>
+        </div>
+      </template>
 
+      <label
+        v-else
+        class="text-primary p-3"
+      >
+        {{ error }}
+      </label>
+    </div>
   </wrap>
 </template>
 
