@@ -20,6 +20,7 @@ func waitForRunCompletion(threadID, runID, apiKey string) error {
 	for i := 0; i < 30; i++ {
 		req, _ := http.NewRequest("GET", url, nil)
 		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("OpenAI-Beta", "assistants=v2")
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -57,6 +58,7 @@ func getMessagesAndExtractSummary(threadID, apiKey string) (*SummaryResponse, er
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("OpenAI-Beta", "assistants=v2")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -125,6 +127,7 @@ func createThreadAndRun(assistantID, transcription, apiKey string) (string, stri
 	req, _ := http.NewRequest("POST", "https://api.openai.com/v1/threads/runs", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("OpenAI-Beta", "assistants=v2")
 
 	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
