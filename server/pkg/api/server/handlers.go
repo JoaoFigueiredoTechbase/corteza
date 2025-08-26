@@ -132,6 +132,7 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 
 		r.Get("/api/sync/all", Yeastar.HandleSyncAllHTTP)
 		r.Post("/api/transcription", OpenAI.HandleTranscription)
+		r.Post("/api/summary", OpenAI.HandleCallSummary)
 	})
 
 	if httpOpt.BaseUrl != "/" {
