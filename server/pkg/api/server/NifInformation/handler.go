@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -114,34 +115,34 @@ func makeAPIRequest(ctx context.Context, url string) (*ApiResponse, error) {
 	return &apiResp, nil
 }
 
-// func parseCandidates(respBody []byte) ([]NifApiResponse, error) {
-// 	var searchResp SearchResponse
-// 	if err := json.Unmarshal(respBody, &searchResp); err != nil {
-// 		return nil, fmt.Errorf("unmarshaling search response: %w", err)
-// 	}
+func parseCandidates(respBody []byte) ([]NifApiResponse, error) {
+	var searchResp SearchResponse
+	if err := json.Unmarshal(respBody, &searchResp); err != nil {
+		return nil, fmt.Errorf("unmarshaling search response: %w", err)
+	}
 
-// 	var candidates []NifApiResponse
-// 	for _, raw := range searchResp.Records {
-// 		var lw LightweightRecord
-// 		if err := json.Unmarshal(raw, &lw); err != nil {
-// 			log.Printf("WARN: Failed to unmarshal lightweight record: %v", err)
-// 			continue // skip bad entries
-// 		}
-// 		if lw.Nif == 0 {
-// 			continue // skip ones without nif
-// 		}
+	var candidates []NifApiResponse
+	for _, raw := range searchResp.Records {
+		var lw LightweightRecord
+		if err := json.Unmarshal(raw, &lw); err != nil {
+			log.Printf("WARN: Failed to unmarshal lightweight record: %v", err)
+			continue // skip bad entries
+		}
+		if lw.Nif == 0 {
+			continue // skip ones without nif
+		}
 
-// 		candidates = append(candidates, NifApiResponse{
-// 			Nif:        lw.Nif,
-// 			Title:      lw.Title,
-// 			City:       lw.City,
-// 			Pc4:        lw.Pc4,
-// 			Pc3:        lw.Pc3,
-// 			RaciusLink: lw.Racius,
-// 		})
-// 	}
-// 	return candidates, nil
-// }
+		candidates = append(candidates, NifApiResponse{
+			Nif:        lw.Nif,
+			Title:      lw.Title,
+			City:       lw.City,
+			Pc4:        lw.Pc4,
+			Pc3:        lw.Pc3,
+			RaciusLink: lw.Racius,
+		})
+	}
+	return candidates, nil
+}
 
 func pickBestMatch(records []NifApiResponse, query string) (NifApiResponse, bool) {
 	if len(records) == 0 {
@@ -345,11 +346,11 @@ func HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Make initial API request
-	url := fmt.Sprintf("%s/?json=1&q=%s&key=%s", APIBaseURL, query, payload.ApiKey)
-	log.Printf("Making API request to: %s", strings.Replace(url, payload.ApiKey, "[REDACTED]", 1))
+	// Make initial API request with proper URL encoding
+	apiURL := fmt.Sprintf("%s/?json=1&q=%s&key=%s", APIBaseURL, url.QueryEscape(query), payload.ApiKey)
+	log.Printf("Making API request to: %s", strings.Replace(apiURL, payload.ApiKey, "[REDACTED]", 1))
 
-	apiResp, err := makeAPIRequest(ctx, url)
+	apiResp, err := makeAPIRequest(ctx, apiURL)
 	if err != nil {
 		log.Printf("ERROR: API request failed: %v", err)
 		http.Error(w, "Failed to query NIF API", http.StatusInternalServerError)
