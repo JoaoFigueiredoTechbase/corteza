@@ -1,6 +1,9 @@
 package nifinformation
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 type ClientInformation struct {
 	ClientName string `json:"client_name"`
@@ -45,4 +48,19 @@ type NifApiResponse struct {
 	County     string   `json:"county"`
 	Parish     string   `json:"parish"`
 	RaciusLink string   `json:"racius"`
+}
+
+type RateLimits struct {
+	Month  int
+	Day    int
+	Hour   int
+	Minute int
+}
+
+type Usage struct {
+	Month      int
+	Day        int
+	Hour       int
+	Minute     int
+	LastUpdate time.Time
 }

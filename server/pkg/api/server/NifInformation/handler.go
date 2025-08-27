@@ -18,6 +18,29 @@ const (
 )
 
 func HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
+	usage, err := loadUsage()
+	if err != nil {
+		log.Printf("ERROR: failed to load usage: %v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	limits := RateLimits{
+		Month:  1000,
+		Day:    100,
+		Hour:   10,
+		Minute: 1,
+	}
+
+	if !checkAndUpdateQuota(&usage, limits) {
+		http.Error(w, "API request limit exceeded", http.StatusTooManyRequests)
+		return
+	}
+
+	if err := saveUsage(usage); err != nil {
+		log.Printf("WARN: failed to save usage: %v", err)
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 	defer cancel()
 

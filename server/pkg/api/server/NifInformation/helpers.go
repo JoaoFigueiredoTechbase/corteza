@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func validateNif(nif string) bool {
@@ -189,4 +191,58 @@ func fetchFullInfo(ctx context.Context, nif int, apiKey string) (NifApiResponse,
 	}
 
 	return NifApiResponse{}, fmt.Errorf("no record found for NIF %d", nif)
+}
+
+const usageFile = "usage.txt"
+
+func loadUsage() (Usage, error) {
+	var u Usage
+	data, err := os.ReadFile(usageFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Usage{}, nil
+		}
+		return u, err
+	}
+	err = json.Unmarshal(data, &u)
+	return u, err
+}
+
+func saveUsage(u Usage) error {
+	data, err := json.Marshal(u)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(usageFile, data, 0644)
+}
+
+func checkAndUpdateQuota(u *Usage, limits RateLimits) bool {
+	now := time.Now()
+
+	// Reset counters if time passed
+	if now.Month() != u.LastUpdate.Month() {
+		u.Month = 0
+	}
+	if now.YearDay() != u.LastUpdate.YearDay() {
+		u.Day = 0
+	}
+	if now.Hour() != u.LastUpdate.Hour() {
+		u.Hour = 0
+	}
+	if now.Minute() != u.LastUpdate.Minute() {
+		u.Minute = 0
+	}
+
+	// Check limits
+	if u.Month >= limits.Month || u.Day >= limits.Day || u.Hour >= limits.Hour || u.Minute >= limits.Minute {
+		return false
+	}
+
+	// Increment counters
+	u.Month++
+	u.Day++
+	u.Hour++
+	u.Minute++
+	u.LastUpdate = now
+	return true
 }
