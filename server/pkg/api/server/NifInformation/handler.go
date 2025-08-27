@@ -226,6 +226,17 @@ func pickBestMatch(records []NifApiResponse, query string) (NifApiResponse, bool
 	return best, found
 }
 
+// isRecordComplete checks if a record has all the essential information
+func isRecordComplete(record NifApiResponse) bool {
+	// Check if we have the core business information
+	return record.Nif != 0 &&
+		strings.TrimSpace(record.Title) != "" &&
+		strings.TrimSpace(record.Address) != "" &&
+		(strings.TrimSpace(record.Email) != "" ||
+			strings.TrimSpace(record.Phone) != "" ||
+			strings.TrimSpace(record.Website) != "")
+}
+
 // parseRecord helper to map one record with better error handling
 func parseRecord(raw json.RawMessage) (NifApiResponse, error) {
 	var tmp struct {
@@ -377,7 +388,7 @@ func HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle name-based queries with best match selection
-	if isNameQuery {
+	if isNameQuery && len(results) != 1 {
 		best, ok := pickBestMatch(results, payload.ClientName)
 		if !ok {
 			log.Printf("INFO: No suitable match found for name: %s", payload.ClientName)
