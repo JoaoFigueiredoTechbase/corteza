@@ -9,19 +9,10 @@ import (
 	"net/http"
 )
 
-type RequestPayload struct {
-	FileURL   string `json:"file_url"`
-	OpenAIKey string `json:"openai_key"`
-}
-
-type WhisperResponse struct {
-	Text string `json:"text"`
-}
-
 func HandleTranscription(w http.ResponseWriter, r *http.Request) {
 	log.Println("Received transcription request")
 
-	var payload RequestPayload
+	var payload TranscriptionRequestPayload
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
 		log.Printf("ERROR: Failed to decode request body: %v\n", err)
@@ -99,7 +90,6 @@ func HandleTranscription(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Transcription received: %+v\n", whisperResp)
 
-	// Return transcript
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(whisperResp)
 	if err != nil {
@@ -107,4 +97,47 @@ func HandleTranscription(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Println("Transcription response sent successfully")
 	}
+}
+
+func HandleCallSummary(w http.ResponseWriter, r *http.Request) {
+	log.Println("Received call summary request")
+
+	assistantID := "asst_Vmkjrm11ZQ7xirDIiJaHNrsZ"
+
+	var payload SummaryRequestPayload
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		log.Printf("ERROR: Failed to decode request body: %v\n", err)
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	threadID, runID, err := createThreadAndRun(assistantID, payload.Transcription, payload.OpenAIKey)
+	if err != nil {
+		log.Printf("ERROR: Failed to create thread and run: %v\n", err)
+		http.Error(w, "failed to create thread and run", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Created thread: %s, run: %s", threadID, runID)
+
+	err = waitForRunCompletion(threadID, runID, payload.OpenAIKey)
+	if err != nil {
+		log.Printf("ERROR: Run failed: %v\n", err)
+		http.Error(w, "run execution failed", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Run completed successfully")
+
+	summaryResponse, err := getMessagesAndExtractSummary(threadID, payload.OpenAIKey)
+	if err != nil {
+		log.Printf("ERROR: Failed to get summary: %v\n", err)
+		http.Error(w, "failed to get summary", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(summaryResponse)
+	log.Println("Summary response sent successfully")
 }
