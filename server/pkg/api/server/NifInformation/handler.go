@@ -157,8 +157,33 @@ func HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("INFO: Returning %d records for NIF query", len(results))
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(results); err != nil {
+	if err := json.NewEncoder(w).Encode(results[0]); err != nil {
 		log.Printf("ERROR: Failed to encode response: %v", err)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
+}
+func HandleTest(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"nif":     513602011,
+		"title":   "Mendes L. It & Communications, Unipessoal Lda",
+		"address": "Rua Padre Francisco Rodrigues, Nº 2250",
+		"pc4":     "4800",
+		"pc3":     "606",
+		"city":    "Prazins Santa Eufémia",
+		"activity": "Actividades de serviços de consultoria e formação em engenharia de comunicações e informática. " +
+			"Comércio a retalho e por grosso de equipamentos de comunicações e informática. " +
+			"Implementação de redes de dados e informática.",
+		"cae":     []string{"62020", "47420", "47410"},
+		"email":   "geral@techbase.pt",
+		"phone":   "220035908",
+		"website": "www.techbase.pt",
+		"fax":     "220035908",
+		"region":  "Braga",
+		"county":  "Guimarães",
+		"parish":  "Santa Eufémia Prazins",
+		"racius":  "https://www.racius.com/mendes-l-it-communications-unipessoal-lda/",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
 }
