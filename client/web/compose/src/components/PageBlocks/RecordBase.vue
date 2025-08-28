@@ -105,6 +105,7 @@
     />
   </wrap>
 </template>
+
 <script>
 import { compose, NoID } from '@cortezaproject/corteza-js'
 import { mapActions } from 'vuex'
@@ -147,22 +148,20 @@ export default {
       },
 
       abortableRequests: [],
+      uniqueID: undefined,
     }
   },
 
   computed: {
     fields () {
       if (!this.fieldModule) {
-        // No module, no fields
         return []
       }
 
       if (!this.options.fields || this.options.fields.length === 0) {
-        // No fields defined in the options, show all (buy system)
         return this.fieldModule.fields
       }
 
-      // Show filtered & ordered list of fields
       return this.fieldModule.filterFields(this.options.fields).map(f => {
         f.label = f.isSystem ? this.$t(`field:system.${f.name}`) : f.label || f.name
         return f
@@ -255,6 +254,13 @@ export default {
       },
     },
 
+    'record.recordID': {
+      immediate: true,
+      handler () {
+        this.createEvents()
+      },
+    },
+
     isProcessing: {
       handler (newVal) {
         if (this.options.recordFieldLayoutOption !== 'wrap') return
@@ -281,7 +287,14 @@ export default {
 
   beforeDestroy () {
     this.abortRequests()
+    this.destroyEvents()
     this.setDefaultValues()
+  },
+
+  created () {
+    if (!this.inlineEditing) {
+      this.refreshBlock(this.refresh, false, true)
+    }
   },
 
   methods: {
@@ -289,6 +302,106 @@ export default {
       findModuleByID: 'module/findByID',
       updateRecordSet: 'record/updateRecords',
     }),
+
+    createEvents () {
+      const { pageID = NoID } = this.page
+      const { recordID = NoID } = this.record || {}
+
+      if (this.uniqueID) {
+        this.destroyEvents()
+      }
+
+      this.uniqueID = [pageID, recordID, this.block.blockID, this.magnified].map(v => v || NoID).join('-')
+      this.$root.$on('ui-block-refresh', this.handleUiBlockRefresh)
+    },
+
+    handleUiBlockRefresh (payload) {
+      if (this.shouldRefreshBlock(payload)) {
+        console.log('Refreshing record details block due to websocket message:', payload)
+        this.refresh()
+      }
+    },
+
+    shouldRefreshBlock (payload) {
+      const { customID } = payload
+      if (customID && this.customID === customID) {
+        return true
+      }
+
+      return false
+    },
+
+    refetchOnFieldValueChange ({ fieldName, recordID }) {
+      // If this is the current record being viewed, refresh
+      if (recordID === this.record?.recordID) {
+        this.refresh()
+      }
+
+      // If reference field changed, reload reference record
+      if (this.options.referenceField === fieldName) {
+        this.loadRecord(this.referenceModule)
+      }
+    },
+
+    refreshOnRelatedRecordsUpdate ({ moduleID } = {}) {
+      // Refresh if the main module was updated
+      if (this.fieldModule?.moduleID === moduleID) {
+        this.refresh()
+      }
+
+      // Refresh if reference module was updated
+      if (this.referenceModule?.moduleID === moduleID) {
+        this.loadRecord(this.referenceModule)
+      }
+
+      // Check if any record fields reference the updated module
+      const recordFields = this.fields.filter((f) => f.kind === 'Record')
+      const hasMatchingModule = recordFields.some((field) => {
+        return field.options?.moduleID === moduleID
+      })
+
+      if (hasMatchingModule) {
+        this.refresh()
+      }
+    },
+
+    destroyEvents () {
+      if (!this.uniqueID) return
+
+      this.$root.$off('ui-block-refresh', this.handleUiBlockRefresh)
+      this.$root.$off('module-records-updated', this.refreshOnRelatedRecordsUpdate)
+      this.$root.$off('record-field-change', this.refetchOnFieldValueChange)
+      this.$root.$off('refetch-records', this.refresh)
+    },
+
+    // Main refresh method
+    async refresh () {
+      if (!this.record?.recordID || this.record.recordID === NoID) {
+        return
+      }
+
+      try {
+        // Re-evaluate expressions and fetch related data
+        this.evaluating = true
+
+        const resolutions = [
+          this.fetchUsers(this.fields, [this.record]),
+          this.fetchRecords(this.namespace.namespaceID, this.fields, [this.record]),
+          this.evaluateExpressions(),
+        ]
+
+        await Promise.all(resolutions)
+        // Reload reference record if needed
+        if (this.options.referenceField && this.referenceModule) {
+          await this.loadRecord(this.referenceModule)
+        }
+      } catch (error) {
+        console.error('Error refreshing record details:', error)
+        this.toastErrorHandler(this.$t('notification:record.loadFailed'))(error)
+      } finally {
+        this.evaluating = false
+      }
+    },
 
     fetchReferenceModule (moduleID) {
       if (!moduleID) {
@@ -355,6 +468,9 @@ export default {
       this.inlineEdit.recordIDs = []
       this.inlineEdit.record = {}
       this.inlineEdit.query = ''
+
+      // Trigger refresh after inline edit
+      this.refresh()
     },
 
     onInlineEditClose () {
@@ -368,6 +484,7 @@ export default {
       this.referenceModule = undefined
       this.inlineEdit = {}
       this.abortableRequests = []
+      this.uniqueID = undefined // Reset unique ID
     },
 
     abortRequests () {

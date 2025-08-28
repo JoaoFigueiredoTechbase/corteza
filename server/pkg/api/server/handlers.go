@@ -135,6 +135,7 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		r.Post("/api/transcription", OpenAI.HandleTranscription)
 		r.Post("/api/summary", OpenAI.HandleCallSummary)
 		r.Post("/api/client-information", nifinformation.HandleClientInformationSearch)
+		r.Post("/api/client-test", nifinformation.HandleTest)
 	})
 
 	if httpOpt.BaseUrl != "/" {
