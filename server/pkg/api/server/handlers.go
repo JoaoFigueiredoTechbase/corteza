@@ -13,6 +13,7 @@ import (
 	"github.com/cortezaproject/corteza/server/pkg/api"
 	nifinformation "github.com/cortezaproject/corteza/server/pkg/api/server/NifInformation"
 	"github.com/cortezaproject/corteza/server/pkg/api/server/OpenAI"
+	"github.com/cortezaproject/corteza/server/pkg/api/server/PythonScrapper"
 	"github.com/cortezaproject/corteza/server/pkg/api/server/Yeastar"
 	"github.com/cortezaproject/corteza/server/pkg/auth"
 	"github.com/cortezaproject/corteza/server/pkg/errors"
@@ -136,6 +137,7 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		r.Post("/api/summary", OpenAI.HandleCallSummary)
 		r.Post("/api/client-information", nifinformation.HandleClientInformationSearch)
 		r.Post("/api/client-test", nifinformation.HandleTest)
+		r.Post("/api/scraper-products", PythonScrapper.HandleScrapeKeyInvoiceProducts)
 	})
 
 	if httpOpt.BaseUrl != "/" {
