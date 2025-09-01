@@ -60,6 +60,8 @@ class Product:
     HandlingType: str = ""
     Price: str = ""
     TaxIncluded: str = ""
+    ShortDescription: str = ""
+    LongDescription: str = ""
     Family: str = ""
     BrandName: str = ""
     BrandModels: str = ""
@@ -310,6 +312,8 @@ def scrape_products(email, senha):
                             brand_name = clean_text(safe_get_text(page, "#select2-CodigoMarca-container"))
                             brand_models = clean_text(safe_get_text(page, "#select2-CodigoTipoArtigo-container"))
                             direct_discount = safe_parse_number(safe_get_input_value(page, "#DescontoDirecto"))
+                            short_description = clean_text(safe_get_text(page, "#DescricaoCurta"))
+                            long_description = clean_text(safe_get_text(page, "#DescricaoLonga"))
                             
                             # Skip products with no meaningful data
                             if not id_product and not name:
@@ -329,7 +333,9 @@ def scrape_products(email, senha):
                                 Family=family,
                                 BrandName=brand_name,
                                 BrandModels=brand_models,
-                                DirectDiscount=direct_discount
+                                DirectDiscount=direct_discount,
+                                ShortDescription=short_description,
+                                LongDescription=long_description
                             )
                             
                             products.append(product)

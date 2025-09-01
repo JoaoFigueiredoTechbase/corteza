@@ -24,18 +24,20 @@ const (
 )
 
 type Product struct {
-	IdProduct      string  `json:"IdProduct"`
-	Name           string  `json:"Name"`
-	ShortName      string  `json:"ShortName"`
-	TaxValue       float64 `json:"TaxValue"`
-	IsService      bool    `json:"IsService"`
-	HandlingType   string  `json:"HandlingType"`
-	Price          float64 `json:"Price"`
-	TaxIncluded    string  `json:"TaxIncluded"`
-	Family         string  `json:"Family"`
-	BrandName      string  `json:"BrandName"`
-	BrandModels    string  `json:"BrandModels"`
-	DirectDiscount float64 `json:"DirectDiscount"`
+	IdProduct        string  `json:"IdProduct"`
+	Name             string  `json:"Name"`
+	ShortName        string  `json:"ShortName"`
+	TaxValue         float64 `json:"TaxValue"`
+	IsService        bool    `json:"IsService"`
+	HandlingType     string  `json:"HandlingType"`
+	Price            float64 `json:"Price"`
+	TaxIncluded      string  `json:"TaxIncluded"`
+	Family           string  `json:"Family"`
+	BrandName        string  `json:"BrandName"`
+	BrandModels      string  `json:"BrandModels"`
+	DirectDiscount   float64 `json:"DirectDiscount"`
+	ShortDescription string  `json"ShortDescription"`
+	LongDescription  string  `json"LongDescription"`
 }
 
 type Response struct {
@@ -158,18 +160,20 @@ func validatePassword(password string) bool {
 // convertProduct safely converts a map to Product struct
 func convertProduct(productMap map[string]interface{}) Product {
 	return Product{
-		IdProduct:      parseString(productMap["IdProduct"]),
-		Name:           parseString(productMap["Name"]),
-		ShortName:      parseString(productMap["ShortName"]),
-		TaxValue:       parseFloat(productMap["TaxValue"]),
-		IsService:      parseBool(productMap["IsService"]),
-		HandlingType:   parseString(productMap["HandlingType"]),
-		Price:          parseFloat(productMap["Price"]),
-		TaxIncluded:    parseString(productMap["TaxIncluded"]),
-		Family:         parseString(productMap["Family"]),
-		BrandName:      parseString(productMap["BrandName"]),
-		BrandModels:    parseString(productMap["BrandModels"]),
-		DirectDiscount: parseFloat(productMap["DirectDiscount"]),
+		IdProduct:        parseString(productMap["IdProduct"]),
+		Name:             parseString(productMap["Name"]),
+		ShortName:        parseString(productMap["ShortName"]),
+		TaxValue:         parseFloat(productMap["TaxValue"]),
+		IsService:        parseBool(productMap["IsService"]),
+		HandlingType:     parseString(productMap["HandlingType"]),
+		Price:            parseFloat(productMap["Price"]),
+		TaxIncluded:      parseString(productMap["TaxIncluded"]),
+		Family:           parseString(productMap["Family"]),
+		BrandName:        parseString(productMap["BrandName"]),
+		BrandModels:      parseString(productMap["BrandModels"]),
+		DirectDiscount:   parseFloat(productMap["DirectDiscount"]),
+		ShortDescription: parseString(productMap["ShortDescription"]),
+		LongDescription:  parseString(productMap["LongDescription"]),
 	}
 }
 
