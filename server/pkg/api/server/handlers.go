@@ -138,6 +138,7 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		r.Post("/api/client-information", nifinformation.HandleClientInformationSearch)
 		r.Post("/api/client-test", nifinformation.HandleTest)
 		r.Post("/api/scraper-products", PythonScrapper.HandleScrapeKeyInvoiceProducts)
+		r.Post("/api/bill-create", PythonScrapper.HandleBillCreation)
 	})
 
 	if httpOpt.BaseUrl != "/" {
