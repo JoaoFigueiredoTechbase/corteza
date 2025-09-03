@@ -42,6 +42,12 @@ type Order struct {
 	Products []ProductBill `json:"Products"`
 }
 
+type BillRequest struct {
+	Email  string          `json:"email"`
+	Senha  string          `json:"senha"`
+	Avenca json.RawMessage `json:"avenca"` // still raw JSON string
+}
+
 func ParseOrders(data []byte) ([]Order, error) {
 	log.Printf("ParseOrders: Raw input data: %s", string(data))
 
@@ -106,56 +112,48 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		resp := Response{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to read request body: %v", err),
-		}
+		resp := Response{Success: false, Error: fmt.Sprintf("Failed to read request body: %v", err)}
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	orders, err := ParseOrders(body)
+	// Parse wrapper request
+	var req BillRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		resp := Response{Success: false, Error: fmt.Sprintf("Invalid request: %v", err)}
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	// Now parse avenca -> orders
+	orders, err := ParseOrders(req.Avenca)
 	if err != nil {
-		resp := Response{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to parse orders: %v", err),
-		}
+		resp := Response{Success: false, Error: fmt.Sprintf("Failed to parse orders: %v", err)}
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	// Log the orders (keep your existing logic)
-	for _, o := range orders {
-		log.Printf("Client %s (%s): %d products\n", o.IdClient, o.Address, len(o.Products))
-		for _, p := range o.Products {
-			log.Printf("  -> %+v\n", p)
-		}
-	}
+	// Debug
+	log.Printf("Parsed %d orders for email=%s", len(orders), req.Email)
 
-	// Prepare script execution (similar to HandleScrapeKeyInvoiceProducts)
+	// Prepare script execution
 	cwd, _ := os.Getwd()
-	scriptPath := filepath.Join(cwd, "pkg", "api", "server", "PythonScrapper", "python", "bill-creator.py") // Adjust script name as needed
+	scriptPath := filepath.Join(cwd, "pkg", "api", "server", "PythonScrapper", "python", "bill-creator.py")
 
-	// Check if script exists
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		resp := Response{
-			Success: false,
-			Error:   "Python script not found",
-		}
+		resp := Response{Success: false, Error: "Python script not found"}
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	// Convert orders to JSON string to pass as argument to Python script
+	// Convert orders to JSON
 	ordersJSON, err := json.Marshal(orders)
 	if err != nil {
-		resp := Response{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to serialize orders: %v", err),
-		}
+		resp := Response{Success: false, Error: fmt.Sprintf("Failed to serialize orders: %v", err)}
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(resp)
 		return
@@ -165,27 +163,23 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), MaxScriptTimeout)
 	defer cancel()
 
-	// Execute Python script with timeout, passing orders as JSON argument
-	cmd := exec.CommandContext(ctx, "py", scriptPath, string(ordersJSON))
+	// Send email, senha, and orders as arguments
+	cmd := exec.CommandContext(ctx, "py", scriptPath, req.Email, req.Senha, string(ordersJSON))
 
-	// Set environment variables for better Python execution
 	cmd.Env = append(os.Environ(),
 		"PYTHONIOENCODING=utf-8",
 		"PYTHONUNBUFFERED=1",
 	)
 
-	// Capture both stdout and stderr separately for debugging
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	err = cmd.Run()
 
-	// Log stderr for debugging (contains our debug messages)
 	if stderr.Len() > 0 {
 		log.Printf("Python script stderr: %s", stderr.String())
 	}
-
 	output := []byte(stdout.String())
 
 	var resp Response
@@ -267,12 +261,6 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 	// Return the complete Python script response
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(pyData); err != nil {
-		log.Printf("Failed to encode response: %v", err)
-	}
-	return
-
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Printf("Failed to encode response: %v", err)
 	}
 }
