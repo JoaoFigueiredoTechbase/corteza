@@ -98,8 +98,61 @@ func ParseOrders(data []byte) ([]Order, error) {
 		orders = append(orders, order)
 	}
 
+	// Remove duplicate details from products across all orders
+	orders = removeDuplicateProductDetails(orders)
+
 	log.Printf("ParseOrders: Returning %d orders", len(orders))
 	return orders, nil
+}
+
+// removeDuplicateProductDetails removes details from products that appear earlier
+// if the same details appear in a later product
+func removeDuplicateProductDetails(orders []Order) []Order {
+	// First, collect all products with their positions
+	type ProductPosition struct {
+		OrderIndex   int
+		ProductIndex int
+		Product      *ProductBill
+	}
+
+	var allProducts []ProductPosition
+
+	// Collect all products with their positions
+	for orderIdx, order := range orders {
+		for productIdx := range order.Products {
+			allProducts = append(allProducts, ProductPosition{
+				OrderIndex:   orderIdx,
+				ProductIndex: productIdx,
+				Product:      &orders[orderIdx].Products[productIdx],
+			})
+		}
+	}
+
+	// Find which details appear multiple times and mark earlier ones for removal
+	detailsLastSeen := make(map[string]int) // maps detail -> last index where it appears
+
+	// First pass: find the last occurrence of each detail
+	for i, pp := range allProducts {
+		details := pp.Product.Details
+		if details != "" {
+			detailsLastSeen[details] = i
+		}
+	}
+
+	// Second pass: clear details from earlier occurrences
+	for i, pp := range allProducts {
+		details := pp.Product.Details
+		if details != "" {
+			if lastIndex, exists := detailsLastSeen[details]; exists && i < lastIndex {
+				// This is not the last occurrence, clear the details
+				pp.Product.Details = ""
+				log.Printf("Cleared details '%s' from product at order %d, product %d",
+					details, pp.OrderIndex, pp.ProductIndex)
+			}
+		}
+	}
+
+	return orders
 }
 
 func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
