@@ -9,6 +9,8 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from pathlib import Path
 import threading
+import base64
+import tempfile
 
 @dataclass
 class LoginCredentials:
@@ -70,6 +72,8 @@ class BillResult:
     client_id: str = ""
     total_amount: float = 0.0
     error_message: str = ""
+    pdf_filename: str = ""
+    pdf_content: bytes = b""
 
 
 class KeyInvoiceBillBot:
@@ -422,12 +426,13 @@ class KeyInvoiceBillBot:
             
             # Try to extract invoice number and total
             try:
-                invoice_number_element = self.page.locator('span:has-text("Fatura")')
+                invoice_number_element = self.page.locator('div.controls', has_text="Nº Fatura").locator('p.md-subhead')
                 if invoice_number_element.count() > 0:
-                    invoice_details['invoice_number'] = invoice_number_element.text_content()
+                    invoice_details['invoice_number'] = invoice_number_element.text_content().strip()
+                    self.log_step(f"aquiiiiii, fatura id {invoice_details['invoice_number']}")
             except:
                 pass
-            
+
             try:
                 total_element = self.page.locator('input[name*="TOTAL"]')
                 if total_element.count() > 0:
@@ -442,19 +447,53 @@ class KeyInvoiceBillBot:
             self.log_step(f"Error extracting invoice details: {str(e)}")
             return {'invoice_number': '', 'total_amount': 0.0, 'creation_date': datetime.now().isoformat()}
     
-    def print_pdf_file(self, client_id: str) -> bool:
-        self.log_step("Clicking Imprimir button to print invoice")
+    # def print_pdf_file(self, client_id: str) -> bool:
+    #     self.log_step("Clicking Imprimir button to print invoice")
 
-        with self.page.expect_download() as download_info:
-            self.page.click('#BOTAO4')
+    #     with self.page.expect_download() as download_info:
+    #         self.page.click('#BOTAO4')
 
-        download = download_info.value
+    #     download = download_info.value
 
-        # Save file with custom name (e.g., per client)
-        file_path = f"invoice_{client_id}.pdf"
-        download.save_as(file_path)
+    #     # Save file with custom name (e.g., per client)
+    #     file_path = f"invoice_{client_id}.pdf"
+    #     download.save_as(file_path)
 
-        self.log_step(f"Invoice downloaded successfully as {file_path}")
+    #     self.log_step(f"Invoice downloaded successfully as {file_path}")
+
+    def print_pdf_file(self, client_id: str) -> tuple[str, bytes]:
+        """Download PDF file and return filename and content"""
+        self.log_step("Clicking Imprimir button to download invoice PDF")
+
+        try:
+            with self.page.expect_download() as download_info:
+                self.page.click('#BOTAO4')
+
+            download = download_info.value
+
+            # Create temporary file to store the PDF
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+                temp_path = temp_file.name
+
+            # Save the downloaded file to temp location
+            download.save_as(temp_path)
+
+            # Read the PDF content as bytes
+            with open(temp_path, 'rb') as pdf_file:
+                pdf_content = pdf_file.read()
+
+            # Clean up temp file
+            os.unlink(temp_path)
+
+            filename = f"invoice_{client_id}.pdf"
+            self.log_step(f"Invoice downloaded successfully as {filename}")
+            
+            return filename, pdf_content
+
+        except Exception as e:
+            self.log_step(f"Error downloading PDF: {str(e)}")
+            return "", b""
+
 
     def set_product_description_by_line(self, description: str, line_number: int) -> bool:
         """Set the description for a specific product line"""
@@ -493,7 +532,7 @@ class KeyInvoiceBillBot:
 
             # Fill the textarea
             self.log_step(f"[{timestamp}] STEP: Filling description in textarea for line {line_number} with value: {description}")
-            self.page.fill(desc_field, description)
+            self.page.fill(desc_field, description + " - Este po é referente aos itens apresentados a cima.")
             self.log_step(f"[{timestamp}] STEP: Filled description in textarea for line {line_number}")
 
             # Click the save button
@@ -552,31 +591,39 @@ class KeyInvoiceBillBot:
                     total_amount += line_total
             
             # Set observations based on order address or other info
-            observations = f"Order Date: {order.doc_date}"
-            if order.address:
-                observations += f"\nAddress: {order.address}"
+            # observations = f"Order Date: {order.doc_date}"
+            # if order.address:
+            #     observations += f"\nAddress: {order.address}"
             
-            self.set_invoice_observations(observations)
+            # self.set_invoice_observations(observations)
             
             # Finalize the invoice
             if not self.finalize_invoice():
                 return BillResult(success=False, error_message="Failed to finalize invoice")
             
 
-            self.print_pdf_file(order.id_client)
-
             # Get invoice details
             invoice_details = self.get_invoice_details()
+
+            # self.print_pdf_file(order.id_client)
+
+            pdf_filename, pdf_content = self.print_pdf_file(order.id_client)
             
             self.log_step(f"Bill creation completed successfully for client {order.id_client}")
             
-            return BillResult(
+            result = BillResult(
                 success=True,
                 bill_id=invoice_details.get('invoice_number', f"INV-{order.id_client}-{int(time.time())}"),
                 client_id=order.id_client,
                 total_amount=invoice_details.get('total_amount', total_amount),
                 error_message=""
             )
+            
+            # Add PDF data to result
+            result.pdf_filename = pdf_filename
+            result.pdf_content = pdf_content
+
+            return result
             
         except Exception as e:
             error_msg = f"Error creating bill for client {order.id_client}: {str(e)}"
@@ -651,25 +698,43 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
         results = []
         successful_bills = 0
         total_revenue = 0.0
+        pdf_files = []
 
         for i, order in enumerate(orders, 1):
             print(f"Processing order {i}/{len(orders)} for client {order.id_client}...", file=sys.stderr)
 
-            bot = KeyInvoiceBillBot(credentials, headless=False)
-
+            bot = KeyInvoiceBillBot(credentials, headless=True)
             result = bot.create_bill_from_order(order)
 
             if result.success:
                 successful_bills += 1
                 total_revenue += result.total_amount
+                
+                # Convert PDF content to base64 for JSON transport
+                pdf_base64 = ""
+                if result.pdf_content:
+                    pdf_base64 = base64.b64encode(result.pdf_content).decode('utf-8')
+                
                 bill_data = {
                     'bill_id': result.bill_id,
                     'client_id': result.client_id,
                     'total_amount': result.total_amount,
                     'status': 'created',
                     'products_count': len(order.products),
-                    'creation_date': datetime.now().isoformat()
+                    'creation_date': datetime.now().isoformat(),
+                    'pdf_filename': result.pdf_filename,
+                    'pdf_content': pdf_base64  # Base64 encoded PDF
                 }
+                
+                # Also add to separate PDF files array for easier access
+                if result.pdf_content:
+                    pdf_files.append({
+                        'client_id': result.client_id,
+                        'bill_id': result.bill_id,
+                        'filename': result.pdf_filename,
+                        'content': pdf_base64
+                    })
+                    
             else:
                 bill_data = {
                     'bill_id': '',
@@ -678,11 +743,38 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
                     'status': 'failed',
                     'error': result.error_message,
                     'products_count': len(order.products),
-                    'creation_date': datetime.now().isoformat()
+                    'creation_date': datetime.now().isoformat(),
+                    'pdf_filename': '',
+                    'pdf_content': ''
                 }
 
             results.append(bill_data)
             time.sleep(2)
+
+            # if result.success:
+            #     successful_bills += 1
+            #     total_revenue += result.total_amount
+            #     bill_data = {
+            #         'bill_id': result.bill_id,
+            #         'client_id': result.client_id,
+            #         'total_amount': result.total_amount,
+            #         'status': 'created',
+            #         'products_count': len(order.products),
+            #         'creation_date': datetime.now().isoformat()
+            #     }
+            # else:
+            #     bill_data = {
+            #         'bill_id': '',
+            #         'client_id': result.client_id,
+            #         'total_amount': 0.0,
+            #         'status': 'failed',
+            #         'error': result.error_message,
+            #         'products_count': len(order.products),
+            #         'creation_date': datetime.now().isoformat()
+            #     }
+
+            # results.append(bill_data)
+            # time.sleep(2)
 
         return {
             'summary': {
@@ -693,6 +785,15 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
                 'processing_time': f"{len(orders) * 2:.1f} seconds (estimated)"
             },
             'bills': results
+
+            # 'summary': {
+            #     'total_orders_processed': len(orders),
+            #     'successful_bills': successful_bills,
+            #     'failed_bills': len(orders) - successful_bills,
+            #     'total_revenue': round(total_revenue, 2),
+            #     'processing_time': f"{len(orders) * 2:.1f} seconds (estimated)"
+            # },
+            # 'bills': results
         }
 
     except Exception as e:
@@ -704,9 +805,6 @@ def run_process_bills(orders_json, email, senha):
     return process_bills(orders_json, email, senha)
 
 def main():
-    """Main entry point for the script"""
-
-    print("heyyyyyyy")
     try:
         if len(sys.argv) < 4:
             raise ValueError("Usage: script.py <email> <senha> <orders_json>")
@@ -714,11 +812,18 @@ def main():
         senha = sys.argv[2]
         orders_json = sys.argv[3]
 
-        # Run in a separate thread to avoid asyncio conflicts
-        result = None
-        thread = threading.Thread(target=lambda: globals().update(result=run_process_bills(orders_json, email, senha)))
+        result_container = {}
+
+        def worker():
+            result_container['result'] = run_process_bills(orders_json, email, senha)
+
+        thread = threading.Thread(target=worker)
         thread.start()
         thread.join()
+
+        result = result_container.get('result')
+        if result is None:
+            raise RuntimeError("Bill processing failed: no result returned")
 
         response = {
             "success": True,
@@ -741,6 +846,7 @@ def main():
             "error": f"Unexpected error: {str(e)}"
         }
         print(json.dumps(error_response))
+
 
 if __name__ == "__main__":
     main()

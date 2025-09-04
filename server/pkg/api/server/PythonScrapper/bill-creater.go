@@ -2,6 +2,7 @@ package PythonScrapper
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -46,6 +47,73 @@ type BillRequest struct {
 	Email  string          `json:"email"`
 	Senha  string          `json:"senha"`
 	Avenca json.RawMessage `json:"avenca"` // still raw JSON string
+}
+
+type PythonBillData struct {
+	BillID        string  `json:"bill_id"`
+	ClientID      string  `json:"client_id"`
+	TotalAmount   float64 `json:"total_amount"`
+	Status        string  `json:"status"`
+	Error         string  `json:"error,omitempty"`
+	ProductsCount int     `json:"products_count"`
+	CreationDate  string  `json:"creation_date"`
+	PDFFilename   string  `json:"pdf_filename"`
+	PDFContent    string  `json:"pdf_content"` // Base64 encoded
+}
+
+type PythonPDFFile struct {
+	ClientID string `json:"client_id"`
+	BillID   string `json:"bill_id"`
+	Filename string `json:"filename"`
+	Content  string `json:"content"` // Base64 encoded
+}
+
+type PythonSummary struct {
+	TotalOrdersProcessed int     `json:"total_orders_processed"`
+	SuccessfulBills      int     `json:"successful_bills"`
+	FailedBills          int     `json:"failed_bills"`
+	TotalRevenue         float64 `json:"total_revenue"`
+	ProcessingTime       string  `json:"processing_time"`
+}
+
+type PythonScriptResponse struct {
+	Success bool              `json:"success"`
+	Data    *PythonScriptData `json:"data,omitempty"`
+	Error   string            `json:"error,omitempty"`
+	Message string            `json:"message,omitempty"`
+}
+
+type PythonScriptData struct {
+	Summary  PythonSummary    `json:"summary"`
+	Bills    []PythonBillData `json:"bills"`
+	PDFFiles []PythonPDFFile  `json:"pdf_files"`
+}
+
+// Enhanced response structure for our API
+type BillCreationResponse struct {
+	Success bool               `json:"success"`
+	Message string             `json:"message,omitempty"`
+	Error   string             `json:"error,omitempty"`
+	Summary *PythonSummary     `json:"summary,omitempty"`
+	Bills   []EnhancedBillData `json:"bills,omitempty"`
+}
+
+type EnhancedBillData struct {
+	BillID        string       `json:"bill_id"`
+	ClientID      string       `json:"client_id"`
+	TotalAmount   float64      `json:"total_amount"`
+	Status        string       `json:"status"`
+	Error         string       `json:"error,omitempty"`
+	ProductsCount int          `json:"products_count"`
+	CreationDate  string       `json:"creation_date"`
+	PDFFile       *PDFFileInfo `json:"pdf_file,omitempty"`
+}
+
+type PDFFileInfo struct {
+	Filename    string `json:"filename"`
+	Content     string `json:"content"`      // Base64 encoded PDF content
+	Size        int    `json:"size"`         // Size in bytes
+	ContentType string `json:"content_type"` // Always "application/pdf"
 }
 
 func ParseOrders(data []byte) ([]Order, error) {
@@ -155,6 +223,169 @@ func removeDuplicateProductDetails(orders []Order) []Order {
 	return orders
 }
 
+// func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
+// 	log.Println("Received Bill creation request")
+
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.Header().Set("X-Content-Type-Options", "nosniff")
+
+// 	defer r.Body.Close()
+
+// 	body, err := io.ReadAll(r.Body)
+// 	if err != nil {
+// 		resp := Response{Success: false, Error: fmt.Sprintf("Failed to read request body: %v", err)}
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Parse wrapper request
+// 	var req BillRequest
+// 	if err := json.Unmarshal(body, &req); err != nil {
+// 		resp := Response{Success: false, Error: fmt.Sprintf("Invalid request: %v", err)}
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Now parse avenca -> orders
+// 	orders, err := ParseOrders(req.Avenca)
+// 	if err != nil {
+// 		resp := Response{Success: false, Error: fmt.Sprintf("Failed to parse orders: %v", err)}
+// 		w.WriteHeader(http.StatusBadRequest)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Debug
+// 	log.Printf("Parsed %d orders for email=%s", len(orders), req.Email)
+
+// 	// Prepare script execution
+// 	cwd, _ := os.Getwd()
+// 	scriptPath := filepath.Join(cwd, "pkg", "api", "server", "PythonScrapper", "python", "bill-creator.py")
+
+// 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+// 		resp := Response{Success: false, Error: "Python script not found"}
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Convert orders to JSON
+// 	ordersJSON, err := json.Marshal(orders)
+// 	if err != nil {
+// 		resp := Response{Success: false, Error: fmt.Sprintf("Failed to serialize orders: %v", err)}
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Create context with timeout
+// 	ctx, cancel := context.WithTimeout(context.Background(), MaxScriptTimeout)
+// 	defer cancel()
+
+// 	// Send email, senha, and orders as arguments
+// 	cmd := exec.CommandContext(ctx, "py", scriptPath, req.Email, req.Senha, string(ordersJSON))
+
+// 	cmd.Env = append(os.Environ(),
+// 		"PYTHONIOENCODING=utf-8",
+// 		"PYTHONUNBUFFERED=1",
+// 	)
+
+// 	var stdout, stderr strings.Builder
+// 	cmd.Stdout = &stdout
+// 	cmd.Stderr = &stderr
+
+// 	err = cmd.Run()
+
+// 	if stderr.Len() > 0 {
+// 		log.Printf("Python script stderr: %s", stderr.String())
+// 	}
+// 	output := []byte(stdout.String())
+
+// 	var resp Response
+
+// 	// Check for timeout
+// 	if ctx.Err() == context.DeadlineExceeded {
+// 		resp = Response{
+// 			Success: false,
+// 			Error:   "Script execution timed out",
+// 		}
+// 		w.WriteHeader(http.StatusRequestTimeout)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Check for execution errors
+// 	if err != nil {
+// 		// Include stderr in error message for better debugging
+// 		errorMsg := fmt.Sprintf("Failed to execute Python script: %v", err)
+// 		if stderr.Len() > 0 {
+// 			errorMsg += fmt.Sprintf(" | stderr: %s", stderr.String())
+// 		}
+
+// 		resp = Response{
+// 			Success: false,
+// 			Error:   errorMsg,
+// 		}
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Check if we got any output
+// 	if len(output) == 0 {
+// 		resp = Response{
+// 			Success: false,
+// 			Error:   fmt.Sprintf("No output from Python script | stderr: %s", stderr.String()),
+// 		}
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Ensure output is valid UTF-8
+// 	outputStr := string(output)
+// 	if !utf8.ValidString(outputStr) {
+// 		outputStr = strings.ToValidUTF8(outputStr, "")
+// 		output = []byte(outputStr)
+// 	}
+
+// 	// Parse Python script output - use a more flexible structure
+// 	var pyData map[string]interface{}
+// 	if err := json.Unmarshal(output, &pyData); err != nil {
+// 		resp := Response{
+// 			Success: false,
+// 			Error:   fmt.Sprintf("Failed to decode Python output: %v | Raw output: %s | stderr: %s", err, string(output), stderr.String()),
+// 		}
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Handle Python script errors
+// 	success, ok := pyData["success"].(bool)
+// 	if !ok || !success {
+// 		errorMsg := "Python script reported failure"
+// 		if errStr, exists := pyData["error"].(string); exists {
+// 			errorMsg = errStr
+// 		}
+// 		resp := Response{
+// 			Success: false,
+// 			Error:   errorMsg,
+// 		}
+// 		w.WriteHeader(http.StatusOK)
+// 		json.NewEncoder(w).Encode(resp)
+// 		return
+// 	}
+
+// 	// Return the complete Python script response
+// 	w.WriteHeader(http.StatusOK)
+// 	if err := json.NewEncoder(w).Encode(pyData); err != nil {
+// 		log.Printf("Failed to encode response: %v", err)
+// 	}
+// }
+
 func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 	log.Println("Received Bill creation request")
 
@@ -165,27 +396,21 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		resp := Response{Success: false, Error: fmt.Sprintf("Failed to read request body: %v", err)}
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("Failed to read request body: %v", err))
 		return
 	}
 
 	// Parse wrapper request
 	var req BillRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		resp := Response{Success: false, Error: fmt.Sprintf("Invalid request: %v", err)}
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("Invalid request: %v", err))
 		return
 	}
 
 	// Now parse avenca -> orders
 	orders, err := ParseOrders(req.Avenca)
 	if err != nil {
-		resp := Response{Success: false, Error: fmt.Sprintf("Failed to parse orders: %v", err)}
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("Failed to parse orders: %v", err))
 		return
 	}
 
@@ -197,18 +422,14 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 	scriptPath := filepath.Join(cwd, "pkg", "api", "server", "PythonScrapper", "python", "bill-creator.py")
 
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		resp := Response{Success: false, Error: "Python script not found"}
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusInternalServerError, "Python script not found")
 		return
 	}
 
 	// Convert orders to JSON
 	ordersJSON, err := json.Marshal(orders)
 	if err != nil {
-		resp := Response{Success: false, Error: fmt.Sprintf("Failed to serialize orders: %v", err)}
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("Failed to serialize orders: %v", err))
 		return
 	}
 
@@ -235,44 +456,25 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 	}
 	output := []byte(stdout.String())
 
-	var resp Response
-
 	// Check for timeout
 	if ctx.Err() == context.DeadlineExceeded {
-		resp = Response{
-			Success: false,
-			Error:   "Script execution timed out",
-		}
-		w.WriteHeader(http.StatusRequestTimeout)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusRequestTimeout, "Script execution timed out")
 		return
 	}
 
 	// Check for execution errors
 	if err != nil {
-		// Include stderr in error message for better debugging
 		errorMsg := fmt.Sprintf("Failed to execute Python script: %v", err)
 		if stderr.Len() > 0 {
 			errorMsg += fmt.Sprintf(" | stderr: %s", stderr.String())
 		}
-
-		resp = Response{
-			Success: false,
-			Error:   errorMsg,
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusInternalServerError, errorMsg)
 		return
 	}
 
 	// Check if we got any output
 	if len(output) == 0 {
-		resp = Response{
-			Success: false,
-			Error:   fmt.Sprintf("No output from Python script | stderr: %s", stderr.String()),
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("No output from Python script | stderr: %s", stderr.String()))
 		return
 	}
 
@@ -283,37 +485,76 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 		output = []byte(outputStr)
 	}
 
-	// Parse Python script output - use a more flexible structure
-	var pyData map[string]interface{}
-	if err := json.Unmarshal(output, &pyData); err != nil {
-		resp := Response{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to decode Python output: %v | Raw output: %s | stderr: %s", err, string(output), stderr.String()),
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(resp)
+	// Parse Python script output
+	var pyResponse PythonScriptResponse
+	if err := json.Unmarshal(output, &pyResponse); err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("Failed to decode Python output: %v | Raw output: %s", err, string(output)))
 		return
 	}
 
 	// Handle Python script errors
-	success, ok := pyData["success"].(bool)
-	if !ok || !success {
+	if !pyResponse.Success {
 		errorMsg := "Python script reported failure"
-		if errStr, exists := pyData["error"].(string); exists {
-			errorMsg = errStr
+		if pyResponse.Error != "" {
+			errorMsg = pyResponse.Error
 		}
-		resp := Response{
-			Success: false,
-			Error:   errorMsg,
-		}
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(resp)
+		sendErrorResponse(w, http.StatusOK, errorMsg)
 		return
 	}
 
-	// Return the complete Python script response
+	// Transform Python response to our enhanced format
+	response := BillCreationResponse{
+		Success: true,
+		Message: pyResponse.Message,
+	}
+
+	if pyResponse.Data != nil {
+		response.Summary = &pyResponse.Data.Summary
+
+		// Transform bills data and include PDF information
+		for _, bill := range pyResponse.Data.Bills {
+			enhancedBill := EnhancedBillData{
+				BillID:        bill.BillID,
+				ClientID:      bill.ClientID,
+				TotalAmount:   bill.TotalAmount,
+				Status:        bill.Status,
+				Error:         bill.Error,
+				ProductsCount: bill.ProductsCount,
+				CreationDate:  bill.CreationDate,
+			}
+
+			// Add PDF information if available
+			if bill.PDFContent != "" && bill.PDFFilename != "" {
+				// Decode base64 to get actual size
+				decodedSize := 0
+				if decoded, err := base64.StdEncoding.DecodeString(bill.PDFContent); err == nil {
+					decodedSize = len(decoded)
+				}
+
+				enhancedBill.PDFFile = &PDFFileInfo{
+					Filename:    bill.PDFFilename,
+					Content:     bill.PDFContent,
+					Size:        decodedSize,
+					ContentType: "application/pdf",
+				}
+			}
+
+			response.Bills = append(response.Bills, enhancedBill)
+		}
+	}
+
+	// Send successful response
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(pyData); err != nil {
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Failed to encode response: %v", err)
 	}
+}
+
+func sendErrorResponse(w http.ResponseWriter, statusCode int, errorMessage string) {
+	resp := BillCreationResponse{
+		Success: false,
+		Error:   errorMessage,
+	}
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(resp)
 }
