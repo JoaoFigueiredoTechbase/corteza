@@ -136,13 +136,52 @@ def safe_get_input_value(page, selector, timeout=3000):
     return ""
 
 def safe_is_checked(page, selector, timeout=3000):
-    """Safely check if checkbox is checked"""
+    """Safely check if checkbox is checked - works with hidden elements"""
+    print(f"[DEBUG] Checking checkbox with selector: {selector}", file=sys.stderr)
     try:
-        element = page.wait_for_selector(selector, timeout=timeout)
+        # Wait for element to exist in DOM, regardless of visibility
+        element = page.wait_for_selector(selector, timeout=timeout, state='attached')
         if element:
-            return element.is_checked()
-    except (PlaywrightTimeoutError, Exception):
-        pass
+            print(f"[DEBUG] Element found for selector: {selector}", file=sys.stderr)
+            
+            # Method 1: Check the outerHTML for 'checked' attribute
+            try:
+                outer_html = element.get_attribute('outerHTML')
+                print(f"[DEBUG] outerHTML: {outer_html}", file=sys.stderr)
+                has_checked = 'checked' in outer_html.lower()
+                print(f"[DEBUG] 'checked' in outerHTML: {has_checked}", file=sys.stderr)
+                if has_checked:
+                    print(f"[DEBUG] SUCCESS: checkbox is checked (HTML contains 'checked')", file=sys.stderr)
+                    return True
+            except Exception as e:
+                print(f"[DEBUG] outerHTML check failed: {e}", file=sys.stderr)
+            
+            # Method 2: Check if 'checked' attribute exists
+            try:
+                checked_attr = element.get_attribute('checked')
+                print(f"[DEBUG] checked attribute: {repr(checked_attr)} (type: {type(checked_attr)})", file=sys.stderr)
+                if checked_attr is not None:
+                    print(f"[DEBUG] SUCCESS: checkbox is checked (attribute exists)", file=sys.stderr)
+                    return True
+            except Exception as e:
+                print(f"[DEBUG] attribute check failed: {e}", file=sys.stderr)
+                
+            # Method 3: Use JavaScript to check the checked property
+            try:
+                js_result = element.evaluate("el => el.checked")
+                print(f"[DEBUG] JavaScript result: {js_result} (type: {type(js_result)})", file=sys.stderr)
+                if bool(js_result):
+                    print(f"[DEBUG] SUCCESS: checkbox is checked (JS evaluation)", file=sys.stderr)
+                    return True
+            except Exception as e:
+                print(f"[DEBUG] JavaScript evaluation failed: {e}", file=sys.stderr)
+            
+            print(f"[DEBUG] All methods indicate checkbox is unchecked", file=sys.stderr)
+                
+    except (PlaywrightTimeoutError, Exception) as e:
+        print(f"[DEBUG] Failed to find element {selector}: {e}", file=sys.stderr)
+    
+    print(f"[DEBUG] Returning False for selector: {selector}", file=sys.stderr)
     return False
 
 def scrape_products(email, senha):
@@ -242,7 +281,7 @@ def scrape_products(email, senha):
                     try:
                         print("[DEBUG] Opening Artigos page", file=sys.stderr)
                         page.wait_for_selector('a:has-text("Artigos"):visible', timeout=10000)
-                        page.click('a[href*="ListaArtigos.php?SID=wrs1gheptgf9yjcztfhq9"]', timeout=5000)
+                        page.click('a[href*="ListaArtigos.php"]', timeout=5000)
                         page.wait_for_load_state('networkidle', timeout=15000)
                         print("[DEBUG] Artigos page loaded", file=sys.stderr)
                     except PlaywrightTimeoutError as e:
@@ -295,6 +334,7 @@ def scrape_products(email, senha):
                             print(f"[DEBUG] Processing product {i+1}/{len(links)}: {link}", file=sys.stderr)
                             full_link = f"{demo_url}{link}"
                             page.goto(full_link, timeout=NAVIGATION_TIMEOUT, wait_until='domcontentloaded')
+                            page.add_style_tag(content="* { all: unset !important; }")
                             
                             # Extract product data with safe methods
                             id_product = clean_text(safe_get_input_value(page, "#CodigoArtigo"))
@@ -306,7 +346,8 @@ def scrape_products(email, senha):
                             tax_value = safe_parse_number(tax_text.split("%")[0] if "%" in tax_text else tax_text)
                             
                             is_service = safe_is_checked(page, "#Servicos")
-                            handling_type = clean_text(safe_get_text(page, "#CodigoTratamento ~ p"))
+                            handling_type = clean_text(safe_get_text(page, "div.controls #CodigoTratamento ~ p"))
+
                             price = safe_parse_number(safe_get_input_value(page, "#COL_PRE_001"))
                             family = clean_text(safe_get_text(page, "#select2-CodigoFam_1-container"))
                             brand_name = clean_text(safe_get_text(page, "#select2-CodigoMarca-container"))
