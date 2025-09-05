@@ -14,6 +14,7 @@ from pathlib import Path
 import threading
 import base64
 import tempfile
+from datetime import datetime
 
 @dataclass
 class LoginCredentials:
@@ -225,10 +226,16 @@ class KeyInvoiceBillBot:
                             f"doc='{doc_text}', doc_number='{doc_number}', entity='{entity}'"
                         )
 
+                        try:
+                            parsed_date = datetime.strptime(date_text, "%Y-%m-%d")
+                            iso_date = parsed_date.strftime("%Y-%m-%dT00:00:00Z")
+                        except Exception:
+                            iso_date = date_text  # fallback in case format is unexpected
+
                         serial_data = {
                             "serial_number": serial_number,
                             "product_name": product_text,
-                            "date": date_text,
+                            "date": iso_date,
                             "document": doc_text,
                             "doc_number": doc_number,
                             "entity": entity,
