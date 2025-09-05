@@ -83,6 +83,9 @@ build: $(BUILD_DEST_DIR)/$(BUILD_BIN_NAME)
 $(BUILD_DEST_DIR)/$(BUILD_BIN_NAME):
 		GOOS=$(BUILD_OS) GOARCH=$(BUILD_ARCH) $(GO) build $(LDFLAGS) -o $@ cmd/corteza/main.go
 
+		mkdir -p $(BUILD_DEST_DIR)/PythonScrapper/python
+		cp -r pkg/api/server/PythonScrapper/python/* $(BUILD_DEST_DIR)/PythonScrapper/python
+
 release: build $(BUILD_DEST_DIR)/$(RELEASE_NAME)
 
 $(BUILD_DEST_DIR)/$(RELEASE_NAME):
