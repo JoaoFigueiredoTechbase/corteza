@@ -261,8 +261,13 @@ func HandleScrapeKeyInvoiceProducts(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), MaxScriptTimeout)
 	defer cancel()
 
+	pythonExec := "python3"
+	if _, err := exec.LookPath("py"); err == nil {
+		pythonExec = "py"
+	}
+
 	// Execute Python script with timeout
-	cmd := exec.CommandContext(ctx, "py", scriptPath, req.Email, req.Senha)
+	cmd := exec.CommandContext(ctx, pythonExec, scriptPath, req.Email, req.Senha)
 
 	// Set environment variables for better Python execution
 	cmd.Env = append(os.Environ(),

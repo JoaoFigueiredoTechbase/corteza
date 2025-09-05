@@ -166,9 +166,14 @@ func HandleGettingSerialNumbers(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), MaxScriptTimeout)
 	defer cancel()
 
+	pythonExec := "python3"
+	if _, err := exec.LookPath("py"); err == nil {
+		pythonExec = "py"
+	}
+
 	// Execute Python script with JSON as stdin or argument
 	// Option 1: Pass JSON as argument (you might want to use stdin instead for large data)
-	cmd := exec.CommandContext(ctx, "py", scriptPath, string(commandJSON))
+	cmd := exec.CommandContext(ctx, pythonExec, scriptPath, string(commandJSON))
 
 	// Option 2: Pass JSON as stdin (uncomment this and comment above if you prefer)
 	// cmd := exec.CommandContext(ctx, "py", scriptPath)

@@ -275,7 +275,13 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Send email, senha, and orders as arguments
-	cmd := exec.CommandContext(ctx, "py", scriptPath, req.Email, req.Senha, string(ordersJSON))
+	pythonExec := "python3"
+	if _, err := exec.LookPath("py"); err == nil {
+		pythonExec = "py"
+	}
+
+	// Execute Python script with timeout
+	cmd := exec.CommandContext(ctx, pythonExec, scriptPath, req.Email, req.Senha, string(ordersJSON))
 
 	cmd.Env = append(os.Environ(),
 		"PYTHONIOENCODING=utf-8",
