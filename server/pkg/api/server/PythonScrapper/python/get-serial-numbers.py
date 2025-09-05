@@ -44,12 +44,17 @@ class ProductsResult:
     """Result of bill creation"""
     success: bool
     product_name: str = ""
-    serial_number: List[SerialNumber]
+    serial_number: List[Dict[str, Any]] = None
+    error_message: str = ""
+    
+    def __post_init__(self):
+        if self.serial_number is None:
+            self.serial_number = []
 
 class KeyInvoiceBillBot:
     """Enhanced bot class for KeyInvoice bill/invoice automation"""
     
-    def __init__(self, credentials: LoginCredentials, headless: bool = True):
+    def __init__(self, credentials: LoginCredentials, headless: bool = False):
         self.credentials = credentials
         self.headless = headless
         self.base_url = "https://www.keyinvoice.com/"
@@ -58,6 +63,7 @@ class KeyInvoiceBillBot:
         self.context = None
         self.page = None
         self.step_counter = 0
+        self.playwright = None
     
     def log_step(self, message: str) -> None:
         """Log a step with timestamp"""
@@ -108,7 +114,7 @@ class KeyInvoiceBillBot:
         time.sleep(2)
     
     def navigate_to_serial_numbers(self) -> None:
-        """Navigate to seial numbers section"""
+        """Navigate to serial numbers section"""
         self.log_step("Navigating to Stocks section")
         self.page.hover('a[title="Stocks"]')
         self.page.click('a[title="Stocks"]')
@@ -137,10 +143,8 @@ class KeyInvoiceBillBot:
     def collect_serial_numbers(self, product: Product) -> ProductsResult:
         """Collect serial numbers"""
         try:
-            
-            self.log_step(f"Starting to collect  serial numbers for product {product.name}")
+            self.log_step(f"Starting to collect serial numbers for product {product.name}")
          
-            
             # Initialize browser session
             self.launch_browser()
             self.navigate_to_homepage()
@@ -153,48 +157,69 @@ class KeyInvoiceBillBot:
             self.log_step(f"Searching for product: {product.name}")
             self.page.fill('input[name="AR"]', product.name)
 
-            stock_checkbox = self.page.locator('input[name="XVS"][type="checkbox"]')
-            if not stock_checkbox.is_checked():
-                stock_checkbox.check()
+            stock_checkbox = self.page.click('label[for="XVS"]')
 
-            self.page.click('input[name="ATUALIZAR"]')
+            # Wait until visible and enabled
+            stock_checkbox.wait_for(state="visible")
+
+            if not stock_checkbox.is_checked():
+                stock_checkbox.scroll_into_view_if_needed()
+                stock_checkbox.click(force=True)  # force handles overlays
+                self.log_step("Stock checkbox checked")
+            else:
+                self.log_step("Stock checkbox already checked")
+
+
+            self.page.click('input[name="PESQUISAR"]')
             self.page.wait_for_load_state('networkidle')
             self.log_step("Search submitted")
 
-            serial_numbers = []
-            table = self.page.locator('table.table-docs-venc')
-            
-            # Process each serial number section
-            section_rows = table.locator('tbody tr:has(td[colspan="6"])')
+            table = self.page.locator("table.table-docs-venc")
+            rows = table.locator("tbody tr")
+            row_count = rows.count()
 
-            for i in range(section_rows.count()):
-                section_row = section_rows.nth(i)
-                section_text = section_row.text_content()
-                
-                # Extract serial number from section header
-                if "Nº série:" in section_text:
-                    serial_number = section_text.split("Nº série:")[1].strip()
-                    
-                    # Get the detail row following this section header
-                    detail_row = section_row.locator('xpath=following-sibling::tr[1]')
-                    
-                    if detail_row.count() > 0:                      
+            serial_numbers = []
+
+            i = 0
+            while i < row_count:
+                row = rows.nth(i)
+                text = row.text_content().strip()
+
+                if "Nº série:" in text:
+                    serial_number = text.split("Nº série:")[1].strip()
+
+                    # next row should be details
+                    if i + 1 < row_count:
+                        detail_row = rows.nth(i + 1)
+                        product_text = detail_row.locator("td:nth-child(2)").text_content().strip()
+                        date_text = detail_row.locator("td:nth-child(3)").text_content().strip()
+                        doc_text = detail_row.locator("td:nth-child(4)").text_content().strip()
+                        doc_number = detail_row.locator("td:nth-child(5)").text_content().strip()
+                        entity = detail_row.locator("td:nth-child(6)").text_content().strip()
+
                         serial_data = {
-                            'serial_number': serial_number,
-                            'product_name': product.name
+                            "serial_number": serial_number,
+                            "product_name": product_text,
+                            "date": date_text,
+                            "document": doc_text,
+                            "doc_number": doc_number,
+                            "entity": entity,
                         }
-                        
                         serial_numbers.append(serial_data)
-                                
+
+                    i += 2  # skip detail row
+                else:
+                    i += 1
+
+                                            
             self.log_step(f"Collecting serial numbers process completed successfully for product {product.name}")
             
             result = ProductsResult(
                 success=True,
-                product_name= product.name,
-                serial_number= serial_numbers,
+                product_name=product.name,
+                serial_number=serial_numbers,
             )
             
-
             return result
             
         except Exception as e:
@@ -203,48 +228,23 @@ class KeyInvoiceBillBot:
             return ProductsResult(success=False, product_name=product.name, error_message=error_msg)
         
         finally:
-
             if not self.headless:
                 time.sleep(5)
             self.close()
-
-# def parse_products_from_json(products: str) -> List[Products]:
-#     """Parse orders from JSON string"""
-#     try:
-#         products_data = json.loads(products)
-#         products_array = []
-        
-#         for product_data in products_data:
-#             products = []
-#             for product_data in product_data.get('Products', []):
-#                 product = Product(
-#                     name=product_data.get('product_name', ''),
-#                 )
-#                 products.append(product)
-            
-#             product_list = Products(
-#                 products=products
-#             )
-#             products_array.append(product_list)
-        
-#         return products_array
-#     except Exception as e:
-#         raise ValueError(f"Failed to parse orders JSON: {str(e)}")
-    
 
 def parse_products_from_json(products: Any) -> List[Product]:
     """Parse products from JSON structure"""
     try:
         parsed_products = []
         for product in products:
-            name = product.get("product_name", "")
+            name = product.get("ProductName", "")
             parsed_products.append(Product(name=name))
         return parsed_products
     except Exception as e:
         raise ValueError(f"Failed to parse products JSON: {str(e)}")
 
-def get_serial_numbers(email: str, senha: str, products: str) -> Dict[str, Any]:
-    """Extract serial numbers for a specific product from the serial number search page"""
+def get_serial_numbers(email: str, senha: str, products: Any) -> Dict[str, Any]:
+    """Extract serial numbers for products from the serial number search page"""
     try:
         product_list = parse_products_from_json(products)
         print(f"Processing {len(product_list)} products...", file=sys.stderr)
@@ -253,56 +253,30 @@ def get_serial_numbers(email: str, senha: str, products: str) -> Dict[str, Any]:
             email=email,
             password=senha
         )
+
+        all_serial_numbers = []
 
         for i, product in enumerate(product_list, 1):
-            print(f"Processing product {i}/{len(product)}...", file=sys.stderr)
+            print(f"Processing product {i}/{len(product_list)}: {product.name}", file=sys.stderr)
 
-            bot = KeyInvoiceBillBot(credentials, headless=True)
-            result = bot.collect_serial_numbers(product_list)
+            bot = KeyInvoiceBillBot(credentials, headless=False)
+            result = bot.collect_serial_numbers(product)
 
+            if result.success:
+                serial_entry = {
+                    "product_name": product.name,
+                    "serial_numbers": result.serial_number
+                }
+                all_serial_numbers.append(serial_entry)
+            else:
+                print(f"Failed to collect serial numbers for {product.name}: {result.error_message}", file=sys.stderr)
 
-
-
-
-
-        self.log_step(f"Found {len(serial_numbers)} serial numbers for product {product_name}")
-        return serial_numbers
+        return {
+            "success": True,
+            "serial_numbers": all_serial_numbers,
+            "count": len(all_serial_numbers)
+        }
         
-    except Exception as e:
-        self.log_step(f"Error extracting serial numbers: {str(e)}")
-        return []
-    
-
-def get_serial_numbers(email: str, senha: str, products: Any) -> Dict[str, Any]:
-    """Extract serial numbers for a specific product from the serial number search page"""
-    try:
-        product_list = parse_products_from_json(products)
-        print(f"Processing {len(product_list)} products...", file=sys.stderr)
-
-        credentials = LoginCredentials(
-            email=email,
-            password=senha
-        )
-
-        serial_numbers = []
-
-       for i, product in enumerate(product_list, 1):
-            print(f"Processing product {i}/{len(product)}...", file=sys.stderr)
-
-            bot = KeyInvoiceBillBot(credentials, headless=True)
-            result = bot.collect_serial_numbers(product_list)
-
-            serial_entry = {
-                "product_name": product.name,
-                "serial_number": result.serial_number
-            }
-            serial_numbers.append(serial_entry)
-
-            return {
-                "success": True,
-                "serial_numbers": serial_numbers,
-                "count": len(serial_numbers)
-            }
     except Exception as e:
         return {
             "success": False,
@@ -310,7 +284,6 @@ def get_serial_numbers(email: str, senha: str, products: Any) -> Dict[str, Any]:
             "count": 0,
             "error": str(e)
         }
-
 
 def run_get_serial_numbers(email, senha, products):
     return get_serial_numbers(email, senha, products)
@@ -347,7 +320,7 @@ def main():
 
         result = result_container.get('result')
         if result is None:
-            raise RuntimeError("Bill processing failed: no result returned")
+            raise RuntimeError("Serial number processing failed: no result returned")
 
         print(json.dumps(result, indent=2, ensure_ascii=False))
 
