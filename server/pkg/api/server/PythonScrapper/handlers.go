@@ -36,8 +36,8 @@ type Product struct {
 	BrandName        string  `json:"BrandName"`
 	BrandModels      string  `json:"BrandModels"`
 	DirectDiscount   float64 `json:"DirectDiscount"`
-	ShortDescription string  `json"ShortDescription"`
-	LongDescription  string  `json"LongDescription"`
+	ShortDescription string  `json:"ShortDescription"`
+	LongDescription  string  `json:"LongDescription"`
 }
 
 type Response struct {
