@@ -141,61 +141,89 @@ class KeyInvoiceBillBot:
         self.log_step("Browser closed")
 
     def collect_serial_numbers(self, product: Product) -> ProductsResult:
-        """Collect serial numbers"""
+        """Collect serial numbers with detailed debug logs"""
         try:
-            self.log_step(f"Starting to collect serial numbers for product {product.name}")
-         
+            self.log_step(f"STEP 0: Starting to collect serial numbers for product {product.name}")
+        
             # Initialize browser session
             self.launch_browser()
             self.navigate_to_homepage()
             self.login()
             self.enter_demo_mode()
-            
-            # Navigate to invoices and create new one
             self.navigate_to_serial_numbers()
 
-            self.log_step(f"Searching for product: {product.name}")
+            # --- Search input ---
+            self.log_step(f"STEP 1: Filling search input with: {product.name}")
             self.page.fill('input[name="AR"]', product.name)
 
-            stock_checkbox = self.page.click('label[for="XVS"]')
+            # --- Stock checkbox ---
+            self.log_step("STEP 2: Toggling stock checkbox (label[for='XVS'])")
+            checkbox = self.page.locator('input#XVS')
+            try:
+                checkbox.wait_for(state="attached", timeout=3000)
+                if not checkbox.is_checked():
+                    self.page.click('label[for="XVS"]')
+                    self.log_step("Stock checkbox clicked (was unchecked)")
+                else:
+                    self.log_step("Stock checkbox already checked")
+            except Exception as e:
+                self.log_step(f"WARNING: Could not toggle stock checkbox: {e}")
 
-            # Wait until visible and enabled
-            stock_checkbox.wait_for(state="visible")
+            # --- Submit search ---
+            self.log_step("STEP 3: Clicking Atualizar button (input#PESQUISAR)")
+            try:
+                self.page.click('input#PESQUISAR')
+                self.page.wait_for_load_state('networkidle')
+                self.log_step("Search submitted successfully")
+            except Exception as e:
+                self.log_step(f"ERROR: Could not click Atualizar button: {e}")
+                raise
 
-            if not stock_checkbox.is_checked():
-                stock_checkbox.scroll_into_view_if_needed()
-                stock_checkbox.click(force=True)  # force handles overlays
-                self.log_step("Stock checkbox checked")
-            else:
-                self.log_step("Stock checkbox already checked")
-
-
-            self.page.click('input[name="PESQUISAR"]')
-            self.page.wait_for_load_state('networkidle')
-            self.log_step("Search submitted")
-
+            # --- Locate table ---
+            self.log_step("STEP 4: Locating results table")
             table = self.page.locator("table.table-docs-venc")
+            try:
+                table.wait_for(state="visible", timeout=5000)
+                self.log_step("Results table found")
+            except Exception as e:
+                self.log_step(f"ERROR: Results table not found: {e}")
+                raise
+
             rows = table.locator("tbody tr")
             row_count = rows.count()
+            self.log_step(f"STEP 5: Found {row_count} rows in results table")
 
+            # --- Parse rows ---
             serial_numbers = []
-
             i = 0
             while i < row_count:
                 row = rows.nth(i)
-                text = row.text_content().strip()
+                text = (row.text_content() or "").strip()
+                self.log_step(f"Row {i} text: {text}")
 
                 if "Nº série:" in text:
                     serial_number = text.split("Nº série:")[1].strip()
+                    self.log_step(f"Found serial number: {serial_number}")
 
-                    # next row should be details
                     if i + 1 < row_count:
                         detail_row = rows.nth(i + 1)
-                        product_text = detail_row.locator("td:nth-child(2)").text_content().strip()
-                        date_text = detail_row.locator("td:nth-child(3)").text_content().strip()
-                        doc_text = detail_row.locator("td:nth-child(4)").text_content().strip()
-                        doc_number = detail_row.locator("td:nth-child(5)").text_content().strip()
-                        entity = detail_row.locator("td:nth-child(6)").text_content().strip()
+
+                        def safe_text(n):
+                            try:
+                                return detail_row.locator(f"td:nth-child({n})").text_content().strip()
+                            except Exception:
+                                return ""
+
+                        product_text = safe_text(2)
+                        date_text = safe_text(3)
+                        doc_text = safe_text(4)
+                        doc_number = safe_text(5)
+                        entity = safe_text(6)
+
+                        self.log_step(
+                            f"Detail row: product='{product_text}', date='{date_text}', "
+                            f"doc='{doc_text}', doc_number='{doc_number}', entity='{entity}'"
+                        )
 
                         serial_data = {
                             "serial_number": serial_number,
@@ -207,30 +235,31 @@ class KeyInvoiceBillBot:
                         }
                         serial_numbers.append(serial_data)
 
-                    i += 2  # skip detail row
+                    i += 2
                 else:
                     i += 1
 
-                                            
-            self.log_step(f"Collecting serial numbers process completed successfully for product {product.name}")
-            
-            result = ProductsResult(
+            self.log_step(
+                f"STEP 6: Collecting serial numbers completed for {product.name} "
+                f"→ {len(serial_numbers)} serials found"
+            )
+
+            return ProductsResult(
                 success=True,
                 product_name=product.name,
                 serial_number=serial_numbers,
             )
-            
-            return result
-            
+
         except Exception as e:
             error_msg = f"Error collecting serial numbers for product {product.name}: {str(e)}"
             self.log_step(error_msg)
             return ProductsResult(success=False, product_name=product.name, error_message=error_msg)
-        
+
         finally:
             if not self.headless:
                 time.sleep(5)
             self.close()
+
 
 def parse_products_from_json(products: Any) -> List[Product]:
     """Parse products from JSON structure"""
