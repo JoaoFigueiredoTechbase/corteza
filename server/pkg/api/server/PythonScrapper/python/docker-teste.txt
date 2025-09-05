@@ -1,0 +1,33 @@
+FROM ubuntu:22.04
+
+# Install Python & dependencies
+RUN apt-get update && \
+    apt-get install -y \
+        python3 python3-pip python3-venv curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python packages & playwright browsers
+RUN python3 -m pip install --upgrade pip setuptools wheel && \
+    python3 -m pip install playwright && \
+    python3 -m playwright install
+
+ENV STORAGE_PATH "/data"
+ENV CORREDOR_ADDR "corredor:80"
+ENV HTTP_ADDR "0.0.0.0:80"
+ENV HTTP_WEBAPP_ENABLED "true"
+ENV HTTP_WEBAPP_BASE_DIR "/corteza/webapp"
+ENV PATH "/opt/dart-sass:/corteza/bin:${PATH}"
+
+WORKDIR /corteza
+VOLUME /data
+
+COPY --from=build-stage /corteza ./
+COPY --from=build-stage /tmp/dart-sass /opt/dart-sass
+
+HEALTHCHECK --interval=30s --start-period=1m --timeout=30s --retries=3 \
+    CMD curl --silent --fail --fail-early http://127.0.0.1:80/healthcheck || exit 1
+
+EXPOSE 80
+
+ENTRYPOINT ["./bin/corteza-server"]
+CMD ["serve-api"]
