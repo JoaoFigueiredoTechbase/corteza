@@ -532,7 +532,7 @@ class KeyInvoiceBillBot:
 
             # Fill the textarea
             self.log_step(f"[{timestamp}] STEP: Filling description in textarea for line {line_number} with value: {description}")
-            self.page.fill(desc_field, description + " - Este po é referente aos itens apresentados a cima.")
+            self.page.fill(desc_field, description + "\n - Esta informação é referente aos itens apresentados a cima.")
             self.log_step(f"[{timestamp}] STEP: Filled description in textarea for line {line_number}")
 
             # Click the save button
