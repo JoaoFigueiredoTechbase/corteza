@@ -1,0 +1,17 @@
+py -m ensurepip --upgrade
+py -m pip install --upgrade pip
+py -m pip install playwright
+
+PS C:\Users\Admin\Desktop\fork-corteza\corteza\server> py -m pip show playwright
+Name: playwright
+Version: 1.55.0
+Summary: A high-level API to automate web browsers
+Home-page: https://github.com/Microsoft/playwright-python
+Author: Microsoft Corporation
+Author-email:
+License-Expression: Apache-2.0
+Location: C:\Python313\Lib\site-packages
+Requires: greenlet, pyee
+Required-by:
+
+py -m playwright install
