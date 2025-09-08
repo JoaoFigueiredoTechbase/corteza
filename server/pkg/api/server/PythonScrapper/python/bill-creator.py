@@ -55,6 +55,7 @@ class ProductBill:
 class Order:
     """Data class for order (matches Go structure)"""
     address: str = ""
+    avenca_record_id: str = ""  # Add this field
     doc_date: str = ""
     id_client: str = ""
     products: List[ProductBill] = None
@@ -70,6 +71,7 @@ class BillResult:
     success: bool
     bill_id: str = ""
     client_id: str = ""
+    avenca_record_id: str = ""  # Add this field
     total_amount: float = 0.0
     error_message: str = ""
     pdf_filename: str = ""
@@ -447,20 +449,6 @@ class KeyInvoiceBillBot:
             self.log_step(f"Error extracting invoice details: {str(e)}")
             return {'invoice_number': '', 'total_amount': 0.0, 'creation_date': datetime.now().isoformat()}
     
-    # def print_pdf_file(self, client_id: str) -> bool:
-    #     self.log_step("Clicking Imprimir button to print invoice")
-
-    #     with self.page.expect_download() as download_info:
-    #         self.page.click('#BOTAO4')
-
-    #     download = download_info.value
-
-    #     # Save file with custom name (e.g., per client)
-    #     file_path = f"invoice_{client_id}.pdf"
-    #     download.save_as(file_path)
-
-    #     self.log_step(f"Invoice downloaded successfully as {file_path}")
-
     def print_pdf_file(self, client_id: str) -> tuple[str, bytes]:
         """Download PDF file and return filename and content"""
         self.log_step("Clicking Imprimir button to download invoice PDF")
@@ -554,7 +542,7 @@ class KeyInvoiceBillBot:
     def create_bill_from_order(self, order: Order) -> BillResult:
         """Create a bill/invoice from an order"""
         try:
-            self.log_step(f"Starting bill creation for client {order.id_client}")
+            self.log_step(f"Starting bill creation for client {order.id_client} with record ID {order.avenca_record_id}")
             
             # Initialize browser session
             self.launch_browser()
@@ -568,7 +556,8 @@ class KeyInvoiceBillBot:
             
             # Select client
             if not self.select_client_by_id(order.id_client):
-                return BillResult(success=False, error_message=f"Failed to select client {order.id_client}")
+                return BillResult(success=False, client_id=order.id_client, avenca_record_id=order.avenca_record_id, 
+                                error_message=f"Failed to select client {order.id_client}")
             
             # Add all products first
             added_products = []
@@ -579,7 +568,8 @@ class KeyInvoiceBillBot:
                     self.log_step(f"Failed to add product {product.id_product}, skipping...")
             
             if not added_products:
-                return BillResult(success=False, error_message="No products could be added to the invoice")
+                return BillResult(success=False, client_id=order.id_client, avenca_record_id=order.avenca_record_id,
+                                error_message="No products could be added to the invoice")
             
             # Configure each added product
             total_amount = 0.0
@@ -590,22 +580,14 @@ class KeyInvoiceBillBot:
                     line_total = line_total * (1 - product.get_discount_float() / 100)
                     total_amount += line_total
             
-            # Set observations based on order address or other info
-            # observations = f"Order Date: {order.doc_date}"
-            # if order.address:
-            #     observations += f"\nAddress: {order.address}"
-            
-            # self.set_invoice_observations(observations)
-            
             # Finalize the invoice
             if not self.finalize_invoice():
-                return BillResult(success=False, error_message="Failed to finalize invoice")
+                return BillResult(success=False, client_id=order.id_client, avenca_record_id=order.avenca_record_id,
+                                error_message="Failed to finalize invoice")
             
 
             # Get invoice details
             invoice_details = self.get_invoice_details()
-
-            # self.print_pdf_file(order.id_client)
 
             pdf_filename, pdf_content = self.print_pdf_file(order.id_client)
             
@@ -615,6 +597,7 @@ class KeyInvoiceBillBot:
                 success=True,
                 bill_id=invoice_details.get('invoice_number', f"INV-{order.id_client}-{int(time.time())}"),
                 client_id=order.id_client,
+                avenca_record_id=order.avenca_record_id,  # Include the record ID
                 total_amount=invoice_details.get('total_amount', total_amount),
                 error_message=""
             )
@@ -628,7 +611,8 @@ class KeyInvoiceBillBot:
         except Exception as e:
             error_msg = f"Error creating bill for client {order.id_client}: {str(e)}"
             self.log_step(error_msg)
-            return BillResult(success=False, client_id=order.id_client, error_message=error_msg)
+            return BillResult(success=False, client_id=order.id_client, avenca_record_id=order.avenca_record_id, 
+                            error_message=error_msg)
         
         finally:
             # Keep browser open briefly for review in non-headless mode
@@ -671,6 +655,7 @@ def parse_orders_from_json(orders_json: str) -> List[Order]:
             
             order = Order(
                 address=order_data.get('Address', ''),
+                avenca_record_id=order_data.get('AvencaRecordID', ''),  # Map the record ID
                 doc_date=order_data.get('DocDate', ''),
                 id_client=order_data.get('IdClient', ''),
                 products=products
@@ -701,7 +686,7 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
         pdf_files = []
 
         for i, order in enumerate(orders, 1):
-            print(f"Processing order {i}/{len(orders)} for client {order.id_client}...", file=sys.stderr)
+            print(f"Processing order {i}/{len(orders)} for client {order.id_client} with record ID {order.avenca_record_id}...", file=sys.stderr)
 
             bot = KeyInvoiceBillBot(credentials, headless=True)
             result = bot.create_bill_from_order(order)
@@ -718,6 +703,7 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
                 bill_data = {
                     'bill_id': result.bill_id,
                     'client_id': result.client_id,
+                    'avenca_record_id': result.avenca_record_id,  # Include record ID
                     'total_amount': result.total_amount,
                     'status': 'created',
                     'products_count': len(order.products),
@@ -731,6 +717,7 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
                     pdf_files.append({
                         'client_id': result.client_id,
                         'bill_id': result.bill_id,
+                        'avenca_record_id': result.avenca_record_id,  # Include record ID
                         'filename': result.pdf_filename,
                         'content': pdf_base64
                     })
@@ -739,6 +726,7 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
                 bill_data = {
                     'bill_id': '',
                     'client_id': result.client_id,
+                    'avenca_record_id': result.avenca_record_id,  # Include record ID even for failures
                     'total_amount': 0.0,
                     'status': 'failed',
                     'error': result.error_message,
@@ -751,31 +739,6 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
             results.append(bill_data)
             time.sleep(2)
 
-            # if result.success:
-            #     successful_bills += 1
-            #     total_revenue += result.total_amount
-            #     bill_data = {
-            #         'bill_id': result.bill_id,
-            #         'client_id': result.client_id,
-            #         'total_amount': result.total_amount,
-            #         'status': 'created',
-            #         'products_count': len(order.products),
-            #         'creation_date': datetime.now().isoformat()
-            #     }
-            # else:
-            #     bill_data = {
-            #         'bill_id': '',
-            #         'client_id': result.client_id,
-            #         'total_amount': 0.0,
-            #         'status': 'failed',
-            #         'error': result.error_message,
-            #         'products_count': len(order.products),
-            #         'creation_date': datetime.now().isoformat()
-            #     }
-
-            # results.append(bill_data)
-            # time.sleep(2)
-
         return {
             'summary': {
                 'total_orders_processed': len(orders),
@@ -784,16 +747,8 @@ def process_bills(orders_json: str, email: str, senha: str) -> Dict[str, Any]:
                 'total_revenue': round(total_revenue, 2),
                 'processing_time': f"{len(orders) * 2:.1f} seconds (estimated)"
             },
-            'bills': results
-
-            # 'summary': {
-            #     'total_orders_processed': len(orders),
-            #     'successful_bills': successful_bills,
-            #     'failed_bills': len(orders) - successful_bills,
-            #     'total_revenue': round(total_revenue, 2),
-            #     'processing_time': f"{len(orders) * 2:.1f} seconds (estimated)"
-            # },
-            # 'bills': results
+            'bills': results,
+            'pdf_files': pdf_files  # Include PDF files array with record IDs
         }
 
     except Exception as e:

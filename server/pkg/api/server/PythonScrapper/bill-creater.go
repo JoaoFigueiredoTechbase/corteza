@@ -21,10 +21,11 @@ type KV struct {
 }
 
 type KVValue struct {
-	Address  string `json:"Address"`
-	DocDate  string `json:"DocDate"`
-	IdClient string `json:"IdClient"`
-	Products string `json:"Products"` // raw string containing products JSON
+	Address        string `json:"Address"`
+	DocDate        string `json:"DocDate"`
+	IdClient       string `json:"IdClient"`
+	Products       string `json:"Products"` // raw string containing products JSON
+	AvencaRecordID string `json:"AvencaRecordID"`
 }
 
 type ProductBill struct {
@@ -37,10 +38,11 @@ type ProductBill struct {
 }
 
 type Order struct {
-	Address  string        `json:"Address"`
-	DocDate  string        `json:"DocDate"`
-	IdClient string        `json:"IdClient"`
-	Products []ProductBill `json:"Products"`
+	Address        string        `json:"Address"`
+	AvencaRecordID string        `json:"AvencaRecordID"`
+	DocDate        string        `json:"DocDate"`
+	IdClient       string        `json:"IdClient"`
+	Products       []ProductBill `json:"Products"`
 }
 
 type BillRequest struct {
@@ -50,22 +52,24 @@ type BillRequest struct {
 }
 
 type PythonBillData struct {
-	BillID        string  `json:"bill_id"`
-	ClientID      string  `json:"client_id"`
-	TotalAmount   float64 `json:"total_amount"`
-	Status        string  `json:"status"`
-	Error         string  `json:"error,omitempty"`
-	ProductsCount int     `json:"products_count"`
-	CreationDate  string  `json:"creation_date"`
-	PDFFilename   string  `json:"pdf_filename"`
-	PDFContent    string  `json:"pdf_content"` // Base64 encoded
+	BillID         string  `json:"bill_id"`
+	ClientID       string  `json:"client_id"`
+	AvencaRecordID string  `json:"avenca_record_id"` // Add this field
+	TotalAmount    float64 `json:"total_amount"`
+	Status         string  `json:"status"`
+	Error          string  `json:"error,omitempty"`
+	ProductsCount  int     `json:"products_count"`
+	CreationDate   string  `json:"creation_date"`
+	PDFFilename    string  `json:"pdf_filename"`
+	PDFContent     string  `json:"pdf_content"` // Base64 encoded
 }
 
 type PythonPDFFile struct {
-	ClientID string `json:"client_id"`
-	BillID   string `json:"bill_id"`
-	Filename string `json:"filename"`
-	Content  string `json:"content"` // Base64 encoded
+	ClientID       string `json:"client_id"`
+	BillID         string `json:"bill_id"`
+	AvencaRecordID string `json:"avenca_record_id"` // Add this field
+	Filename       string `json:"filename"`
+	Content        string `json:"content"` // Base64 encoded
 }
 
 type PythonSummary struct {
@@ -99,21 +103,23 @@ type BillCreationResponse struct {
 }
 
 type EnhancedBillData struct {
-	BillID        string       `json:"bill_id"`
-	ClientID      string       `json:"client_id"`
-	TotalAmount   float64      `json:"total_amount"`
-	Status        string       `json:"status"`
-	Error         string       `json:"error,omitempty"`
-	ProductsCount int          `json:"products_count"`
-	CreationDate  string       `json:"creation_date"`
-	PDFFile       *PDFFileInfo `json:"pdf_file,omitempty"`
+	BillID         string       `json:"bill_id"`
+	ClientID       string       `json:"client_id"`
+	AvencaRecordID string       `json:"avenca_record_id"` // Add this field
+	TotalAmount    float64      `json:"total_amount"`
+	Status         string       `json:"status"`
+	Error          string       `json:"error,omitempty"`
+	ProductsCount  int          `json:"products_count"`
+	CreationDate   string       `json:"creation_date"`
+	PDFFile        *PDFFileInfo `json:"pdf_file,omitempty"`
 }
 
 type PDFFileInfo struct {
-	Filename    string `json:"filename"`
-	Content     string `json:"content"`      // Base64 encoded PDF content
-	Size        int    `json:"size"`         // Size in bytes
-	ContentType string `json:"content_type"` // Always "application/pdf"
+	Filename       string `json:"filename"`
+	Content        string `json:"content"`          // Base64 encoded PDF content
+	Size           int    `json:"size"`             // Size in bytes
+	ContentType    string `json:"content_type"`     // Always "application/pdf"
+	AvencaRecordID string `json:"avenca_record_id"` // Add this field
 }
 
 func ParseOrders(data []byte) ([]Order, error) {
@@ -128,13 +134,15 @@ func ParseOrders(data []byte) ([]Order, error) {
 
 	var orders []Order
 	for i, kv := range kvs {
-		log.Printf("ParseOrders: Processing KV %d - IdClient: %s, Address: %s", i, kv.Value.IdClient, kv.Value.Address)
+		log.Printf("ParseOrders: Processing KV %d - IdClient: %s, Address: %s, AvencaRecordID: %s",
+			i, kv.Value.IdClient, kv.Value.Address, kv.Value.AvencaRecordID)
 		log.Printf("ParseOrders: Raw Products string: %s", kv.Value.Products)
 
 		order := Order{
-			Address:  kv.Value.Address,
-			DocDate:  kv.Value.DocDate,
-			IdClient: kv.Value.IdClient,
+			Address:        kv.Value.Address,
+			AvencaRecordID: kv.Value.AvencaRecordID,
+			DocDate:        kv.Value.DocDate,
+			IdClient:       kv.Value.IdClient,
 		}
 
 		// Fix products string: wrap multiple arrays into one
@@ -162,7 +170,7 @@ func ParseOrders(data []byte) ([]Order, error) {
 			order.Products = append(order.Products, p.Value)
 		}
 
-		log.Printf("ParseOrders: Final order has %d products: %+v", len(order.Products), order)
+		log.Printf("ParseOrders: Final order has %d products and AvencaRecordID: %s", len(order.Products), order.AvencaRecordID)
 		orders = append(orders, order)
 	}
 
@@ -357,13 +365,14 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 		// Transform bills data and include PDF information
 		for _, bill := range pyResponse.Data.Bills {
 			enhancedBill := EnhancedBillData{
-				BillID:        bill.BillID,
-				ClientID:      bill.ClientID,
-				TotalAmount:   bill.TotalAmount,
-				Status:        bill.Status,
-				Error:         bill.Error,
-				ProductsCount: bill.ProductsCount,
-				CreationDate:  bill.CreationDate,
+				BillID:         bill.BillID,
+				ClientID:       bill.ClientID,
+				AvencaRecordID: bill.AvencaRecordID, // Include the record ID
+				TotalAmount:    bill.TotalAmount,
+				Status:         bill.Status,
+				Error:          bill.Error,
+				ProductsCount:  bill.ProductsCount,
+				CreationDate:   bill.CreationDate,
 			}
 
 			// Add PDF information if available
@@ -375,10 +384,11 @@ func HandleBillCreation(w http.ResponseWriter, r *http.Request) {
 				}
 
 				enhancedBill.PDFFile = &PDFFileInfo{
-					Filename:    bill.PDFFilename,
-					Content:     bill.PDFContent,
-					Size:        decodedSize,
-					ContentType: "application/pdf",
+					Filename:       bill.PDFFilename,
+					Content:        bill.PDFContent,
+					Size:           decodedSize,
+					ContentType:    "application/pdf",
+					AvencaRecordID: bill.AvencaRecordID, // Include record ID in PDF info too
 				}
 			}
 
