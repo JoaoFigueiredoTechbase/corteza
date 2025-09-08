@@ -55,7 +55,7 @@ class ProductsResult:
 class KeyInvoiceBillBot:
     """Enhanced bot class for KeyInvoice bill/invoice automation"""
     
-    def __init__(self, credentials: LoginCredentials, headless: bool = False):
+    def __init__(self, credentials: LoginCredentials, headless: bool = True):
         self.credentials = credentials
         self.headless = headless
         self.base_url = "https://www.keyinvoice.com/"
@@ -295,7 +295,7 @@ def get_serial_numbers(email: str, senha: str, products: Any) -> Dict[str, Any]:
         for i, product in enumerate(product_list, 1):
             print(f"Processing product {i}/{len(product_list)}: {product.name}", file=sys.stderr)
 
-            bot = KeyInvoiceBillBot(credentials, headless=False)
+            bot = KeyInvoiceBillBot(credentials, headless=True)
             result = bot.collect_serial_numbers(product)
 
             if result.success:
