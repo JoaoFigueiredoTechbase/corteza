@@ -139,6 +139,7 @@ func parseRecord(raw json.RawMessage) (NifApiResponse, error) {
 		Pc3      string   `json:"pc3"`
 		City     string   `json:"city"`
 		Activity string   `json:"activity"`
+		Status   string   `json:"status"`
 		CaeList  []string `json:"cae"`
 		Contacts struct {
 			Email   string `json:"email"`
@@ -166,6 +167,7 @@ func parseRecord(raw json.RawMessage) (NifApiResponse, error) {
 		Pc3:        tmp.Pc3,
 		City:       tmp.City,
 		Activity:   tmp.Activity,
+		Status:     tmp.Status,
 		CaeList:    tmp.CaeList,
 		Email:      tmp.Contacts.Email,
 		Phone:      tmp.Contacts.Phone,
