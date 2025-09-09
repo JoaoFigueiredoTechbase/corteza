@@ -39,6 +39,7 @@ type NifApiResponse struct {
 	Pc3        string   `json:"pc3"`
 	City       string   `json:"city"`
 	Activity   string   `json:"activity"`
+	Status     string   `json:"status"`
 	CaeList    []string `json:"cae"`
 	Email      string   `json:"email"`
 	Phone      string   `json:"phone"`

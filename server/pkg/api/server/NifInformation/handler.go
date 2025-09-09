@@ -162,6 +162,7 @@ func HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
+
 func HandleTest(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"nif":     513602011,

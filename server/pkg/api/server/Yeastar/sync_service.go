@@ -210,10 +210,8 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 	}
 
 	fmt.Println("CDRs processing completed.")
-	log.Printf("✓ All batches attempted. %d/%d CDRs processed successfully",
-		processed, totalCDRs)
+	log.Printf("✓ All batches attempted. %d/%d CDRs processed successfully", processed, totalCDRs)
 
-	// Always return nil so caller sees success
 	return nil
 }
 
@@ -390,7 +388,6 @@ func (cc *CortezaClient) CallCDRCalc() error {
 	return nil
 }
 
-// Now you can easily create individual sync functions
 func SyncAgentsOnly(baseUrl string) error {
 	service, ctx, cancel, err := setupSyncService(baseUrl)
 	if err != nil {
@@ -454,7 +451,6 @@ func StartPeriodicSync() error {
 
 	baseURL := fmt.Sprintf("http://%s", ip)
 
-	// Call your existing HandleSyncAll logic
 	err = SyncAll(baseURL)
 
 	if err != nil {

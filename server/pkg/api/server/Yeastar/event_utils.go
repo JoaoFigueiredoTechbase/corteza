@@ -49,7 +49,6 @@ func verifyMessageWithCleaning(event map[string]interface{}) (map[string]interfa
 		return nil, fmt.Errorf("msg field is not a string, got type %T", eventMessage)
 	}
 
-	// Clean the message (equivalent to PHP's trim and preg_replace)
 	cleanedMsg := cleanWhitespace(msgString)
 
 	var msg map[string]interface{}
@@ -142,7 +141,6 @@ func processMembers(msg map[string]interface{}) []CallMember {
 			continue
 		}
 
-		// Check for extension
 		if extensionData, exists := member["extension"]; exists {
 			if ext, ok := extensionData.(map[string]interface{}); ok {
 				members = append(members, CallMember{
@@ -155,7 +153,6 @@ func processMembers(msg map[string]interface{}) []CallMember {
 			}
 		}
 
-		// Check for inbound
 		if inboundData, exists := member["inbound"]; exists {
 			if inb, ok := inboundData.(map[string]interface{}); ok {
 				members = append(members, CallMember{
@@ -170,7 +167,6 @@ func processMembers(msg map[string]interface{}) []CallMember {
 			}
 		}
 
-		// Check for outbound
 		if outboundData, exists := member["outbound"]; exists {
 			if out, ok := outboundData.(map[string]interface{}); ok {
 				members = append(members, CallMember{
@@ -208,7 +204,6 @@ func processCalls(msg map[string]interface{}) []CallInfo {
 			continue
 		}
 
-		// Check for call_info
 		if callInfoData, exists := call["call_info"]; exists {
 			if callInfo, ok := callInfoData.(map[string]interface{}); ok {
 				calls = append(calls, CallInfo{

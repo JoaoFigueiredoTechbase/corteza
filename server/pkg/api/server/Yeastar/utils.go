@@ -79,17 +79,12 @@ func extractCallNoteInfo(callNote interface{}) (noteText, noteType, noteDescript
 
 	switch v := callNote.(type) {
 	case string:
-		// Plain string note
 		return v, "", ""
 	case map[string]interface{}:
-		// New format with fields
-
-		// Extract remark
 		if remark, ok := v["remark"].(string); ok {
 			noteDescription = strings.TrimSpace(remark)
 		}
 
-		// Extract first disposition_code_list item
 		if dcl, ok := v["disposition_code_list"].([]interface{}); ok && len(dcl) > 0 {
 			if first, ok := dcl[0].(map[string]interface{}); ok {
 				if name, ok := first["name"].(string); ok {
@@ -109,14 +104,13 @@ func extractCallNoteInfo(callNote interface{}) (noteText, noteType, noteDescript
 func mapAgent(raw Agent) Agent {
 	agent := Agent{
 		ID:             raw.ID,
-		Presence:       safeStringConvert(raw.Presence), // Use safeStringConvert for consistency, though raw.Presence is already string
+		Presence:       safeStringConvert(raw.Presence),
 		Number:         safeStringConvert(raw.Number),
 		Name:           safeStringConvert(raw.Name),
 		Email:          safeStringConvert(raw.Email),
 		CustomPresence: safeStringConvert(raw.CustomPresence),
 	}
 
-	// Set default values for empty fields
 	if agent.Presence == "" {
 		agent.Presence = "unknown"
 	}
@@ -127,10 +121,10 @@ func mapAgent(raw Agent) Agent {
 		agent.Name = "Unknown Agent"
 	}
 	if agent.Email == "" {
-		agent.Email = "" // Explicitly keep it as empty string if missing
+		agent.Email = ""
 	}
 	if agent.CustomPresence == "" {
-		agent.CustomPresence = "" // Explicitly keep it as empty string if missing
+		agent.CustomPresence = ""
 	}
 
 	return agent
@@ -145,7 +139,6 @@ func mapQueue(raw QueueRaw) Queue {
 		SLATime:      0, //safeIntConvert(raw.SLATime)
 	}
 
-	// Set default values for empty fields
 	if queue.Name == "" {
 		queue.Name = "Unknown Queue"
 	}
@@ -156,7 +149,7 @@ func mapQueue(raw QueueRaw) Queue {
 		queue.RingStrategy = "ring_all"
 	}
 	if queue.SLATime == 0 {
-		queue.SLATime = 60 // Default to 60 seconds
+		queue.SLATime = 60
 	}
 
 	return queue
@@ -367,7 +360,6 @@ func dumpCDRsToFile(cdrs []CDR) error {
 }
 
 func MergeRecordingsWithCDRs(recordings []Recording, cdrs []CDR) []CDR {
-	// Use a map for faster lookup by ID
 	recMap := make(map[int]string)
 	for _, rec := range recordings {
 		recMap[rec.ID] = rec.File

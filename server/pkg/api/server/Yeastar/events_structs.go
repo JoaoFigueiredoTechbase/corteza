@@ -36,18 +36,18 @@ type CallEvent struct {
 	TypeName    string       `json:"type_name"`
 	EventType   *string      `json:"event_type,omitempty"`
 	EventNumber *int         `json:"event_number,omitempty"`
-	SN          *string      `json:"sn,omitempty"` // Only used by CallTransfer
+	SN          *string      `json:"sn,omitempty"`
 	CallID      *string      `json:"call_id,omitempty"`
-	Reason      *string      `json:"reason"` // Only used by CallStatusChanged
+	Reason      *string      `json:"reason"`
 	Members     []CallMember `json:"members,omitempty"`
 }
 
 type CallMember struct {
 	Type      string  `json:"type"`
-	Number    *string `json:"number,omitempty"`     // for extension
-	From      *string `json:"from,omitempty"`       // for inbound/outbound
-	To        *string `json:"to,omitempty"`         // for inbound/outbound
-	TrunkName *string `json:"trunk_name,omitempty"` // for inbound/outbound
+	Number    *string `json:"number,omitempty"`
+	From      *string `json:"from,omitempty"`
+	To        *string `json:"to,omitempty"`
+	TrunkName *string `json:"trunk_name,omitempty"`
 	ChannelID *string `json:"channel_id,omitempty"`
 	Status    *string `json:"status,omitempty"`
 	CallPath  *string `json:"call_path,omitempty"`
