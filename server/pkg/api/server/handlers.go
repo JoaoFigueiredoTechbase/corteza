@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -131,12 +132,18 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		// r.Get("/api/sync/cdr", Yeastar.HandleSyncCDR)
 		// r.Get("/api/sync/agent", Yeastar.HandleSyncAgent)
 		// r.Get("/api/sync/queue", Yeastar.HandleSyncQueue)
+		// Before setting up routes, initialize the handler
 
 		r.Get("/api/sync/all", Yeastar.HandleSyncAllHTTP)
 		r.Post("/api/transcription", OpenAI.HandleTranscription)
 		r.Post("/api/summary", OpenAI.HandleCallSummary)
 		r.Post("/api/client-information", nifinformation.HandleClientInformationSearch)
 		r.Post("/api/client-test", nifinformation.HandleTest)
+
+		scriptsDir := filepath.Join("pkg", "api", "server", "PythonScrapper", "python")
+		logger := PythonScrapper.DefaultLogger{}
+		PythonScrapper.InitHTTPHandler(scriptsDir, logger)
+
 		r.Post("/api/scraper-products", PythonScrapper.HandleScrapeKeyInvoiceProducts)
 		r.Post("/api/bill-create", PythonScrapper.HandleBillCreation)
 		r.Post("/api/serial-number", PythonScrapper.HandleGettingSerialNumbers)
