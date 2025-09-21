@@ -134,3 +134,63 @@ func BuildCalculatePriceResponses(calls []KV[CallValue], priceMap map[string]Pri
 
 	return responses
 }
+
+// testPhoneNumber processes a phone number and returns detailed information
+func testPhoneNumber(number string) PhoneNumberTestResponse {
+	response := PhoneNumberTestResponse{
+		Number: number,
+	}
+
+	// Parse the phone number
+	parsed, err := phonenumbers.Parse(number, "")
+	if err != nil {
+		response.Error = err.Error()
+		response.Valid = false
+		return response
+	}
+
+	// Check if it's valid
+	response.Valid = phonenumbers.IsValidNumber(parsed)
+
+	// Get region code
+	response.Region = phonenumbers.GetRegionCodeForNumber(parsed)
+
+	// Get number type
+	numType := phonenumbers.GetNumberType(parsed)
+	response.Type = getNumberTypeString(numType)
+	response.IsMobile = numType == phonenumbers.MOBILE || numType == phonenumbers.FIXED_LINE_OR_MOBILE
+
+	return response
+}
+
+// getNumberTypeString converts phonenumbers.PhoneNumberType to string
+func getNumberTypeString(numType phonenumbers.PhoneNumberType) string {
+	switch numType {
+	case phonenumbers.FIXED_LINE:
+		return "fixed_line"
+	case phonenumbers.MOBILE:
+		return "mobile"
+	case phonenumbers.FIXED_LINE_OR_MOBILE:
+		return "fixed_line_or_mobile"
+	case phonenumbers.TOLL_FREE:
+		return "toll_free"
+	case phonenumbers.PREMIUM_RATE:
+		return "premium_rate"
+	case phonenumbers.SHARED_COST:
+		return "shared_cost"
+	case phonenumbers.VOIP:
+		return "voip"
+	case phonenumbers.PERSONAL_NUMBER:
+		return "personal_number"
+	case phonenumbers.PAGER:
+		return "pager"
+	case phonenumbers.UAN:
+		return "uan"
+	case phonenumbers.VOICEMAIL:
+		return "voicemail"
+	case phonenumbers.UNKNOWN:
+		return "unknown"
+	default:
+		return "unknown"
+	}
+}

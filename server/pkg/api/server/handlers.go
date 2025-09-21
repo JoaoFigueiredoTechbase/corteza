@@ -141,7 +141,8 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		r.Post("/api/client-information", nifinformation.HandleClientInformationSearch)
 		r.Post("/api/client-test", nifinformation.HandleTest)
 		r.Post("/api/calculate-price", freepbx.HandleCalculatePrice)
-
+		r.Post("/api/phone-test", freepbx.HandlePhoneNumberTest)
+		
 		scriptsDir := filepath.Join("pkg", "api", "server", "PythonScrapper", "python")
 		logger := PythonScrapper.DefaultLogger{}
 		PythonScrapper.InitHTTPHandler(scriptsDir, logger)
