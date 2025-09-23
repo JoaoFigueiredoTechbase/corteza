@@ -6,9 +6,19 @@ type KV[T any] struct {
 }
 
 type CallValue struct {
-	BillSec  string `json:"billsec"`
-	Dst      string `json:"dst"`
-	Sequence string `json:"sequence"`
+	BillSec           string `json:"billsec"`
+	CdrId             string `json:"cdr_id"`
+	Dst               string `json:"dst"`
+	Sequence          string `json:"sequence"`
+	UniqueId          string `json:"unique_id"`
+	TrunkClientRecord string `json:"trunk_cliente_record"`
+}
+
+type ClientValue struct {
+	ClientRecord  string `json:"client_record"`
+	PlanCountries string `json:"plan_countries"`
+	ServiceTime   string `json:"service_time"`
+	RecordID      string `json:"recordID"`
 }
 
 type PriceValue struct {
@@ -16,13 +26,13 @@ type PriceValue struct {
 	CountryCode string `json:"country_code"`
 	CountryName string `json:"country_name"`
 	Price       string `json:"price"`
-	PriceRecord string `json:"price_record"`
 	Type        string `json:"type"`
 }
 
 type HandleCalculatePriceBody struct {
-	Calls  []KV[CallValue]  `json:"Calls"`
-	Prices []KV[PriceValue] `json:"Prices"`
+	Calls   []string `json:"Calls"`
+	Clients []string `json:"Clients"`
+	Prices  []string `json:"Prices"`
 }
 
 type CalculatePriceResponse struct {
