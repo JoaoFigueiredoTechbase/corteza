@@ -60,10 +60,11 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 	clientMap := BuildClientMap(clients)
 	log.Printf("INFO: Built client map with %d entries", len(clientMap))
 
-	responses := BuildCalculatePriceResponses(calls, priceMap, clientMap)
-	log.Printf("INFO: Generated %d price calculation responses", len(responses))
+	responses := BuildFullPriceResponses(calls, priceMap, clientMap)
+	log.Printf("INFO: Generated %d calls and %d clients in response",
+		len(responses.Calls), len(responses.Clients))
 
-	if len(responses) == 0 {
+	if len(responses.Calls) == 0 {
 		log.Printf("WARNING: No responses generated - checking data...")
 
 		// Debug: Log first few calls and prices for inspection
@@ -114,8 +115,14 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	for _, r := range responses {
-		log.Printf("RESULT: Seq %s: %s call costs %.2f (price record %s)", r.Sequence, r.CallType, r.CallPrice, r.PriceRecord)
+	for _, r := range responses.Calls {
+		log.Printf("RESULT: Seq %s: %s call costs %.2f (country %s)",
+			r.Sequence, r.CallType, r.CallPrice, r.CountryName)
+	}
+
+	for _, c := range responses.Clients {
+		log.Printf("SUMMARY: Client %s -> total %.2f (national %.2f, international %.2f)",
+			c.ClientRecord, c.TotalCost, c.NationalCost, c.InternationalCost)
 	}
 
 	// Set response header and return the responses
@@ -126,7 +133,7 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("INFO: Response sent successfully with %d items", len(responses))
+	log.Printf("INFO: Response sent successfully with %d items", len(responses.Calls))
 }
 
 // Request structure for the phone number test

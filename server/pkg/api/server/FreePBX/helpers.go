@@ -70,13 +70,13 @@ func BuildPriceMap(prices []KV[PriceValue]) map[string]PriceValue {
 	}
 	return priceMap
 }
-
 func GetNumberInfo(number string) (region string, isMobile bool, err error) {
-	if !strings.HasPrefix(number, "+") {
-		number = "+" + number // assumes all are international without '+'
+	var parsed *phonenumbers.PhoneNumber
+	if strings.HasPrefix(number, "+") {
+		parsed, err = phonenumbers.Parse(number, "")
+	} else {
+		parsed, err = phonenumbers.Parse(number, "PT") // fallback region
 	}
-
-	parsed, err := phonenumbers.Parse(number, "")
 	if err != nil {
 		return "", false, err
 	}
@@ -263,5 +263,94 @@ func getNumberTypeString(numType phonenumbers.PhoneNumberType) string {
 		return "unknown"
 	default:
 		return "unknown"
+	}
+}
+
+func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) CalculatePriceFullResponse {
+	callDetails := make([]CallDetail, 0, len(calls))
+	clientTotals := make(map[string]*ClientSummary)
+
+	for _, call := range calls {
+		dst := call.Value.Dst
+		billSec, err := strconv.Atoi(call.Value.BillSec)
+		if err != nil {
+			log.Printf("DEBUG: Invalid billsec for call %s: %v", call.Value.Sequence, err)
+			continue
+		}
+
+		client, ok := clientMap[call.Value.TrunkClientRecord]
+		if !ok {
+			log.Printf("DEBUG: Client not found for record %s", call.Value.TrunkClientRecord)
+			continue
+		}
+
+		region, isMobile, err := GetNumberInfo(dst)
+		if err != nil {
+			log.Printf("DEBUG: Failed to parse number %s: %v", dst, err)
+			continue
+		}
+
+		priceEntry, ok := GetCallPrice(priceMap, region, isMobile)
+		if !ok {
+			log.Printf("DEBUG: No price found for region %s, mobile=%t", region, isMobile)
+			continue
+		}
+
+		countryName := priceEntry.CountryName
+
+		pricePerMinute, _ := strconv.ParseFloat(priceEntry.Price, 64)
+		callPrice, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
+		if err != nil {
+			log.Printf("DEBUG: Price calc failed for %s: %v", call.Value.Sequence, err)
+			continue
+		}
+
+		callType := "other"
+		if isMobile {
+			callType = "mobile"
+		}
+
+		// Add to call details
+		callDetails = append(callDetails, CallDetail{
+			Sequence:    call.Value.Sequence,
+			CdrId:       call.Value.CdrId,
+			UniqueId:    call.Value.UniqueId,
+			CallPrice:   math.Round(callPrice*100) / 100,
+			CountryName: countryName,
+			CountryCode: region,
+			CallType:    callType,
+		})
+
+		// Update client totals
+		totals, exists := clientTotals[client.RecordID]
+		if !exists {
+			totals = &ClientSummary{
+				ClientRecord: client.ClientRecord,
+				RecordID:     client.RecordID,
+			}
+			clientTotals[client.RecordID] = totals
+		}
+
+		totals.TotalCost += math.Round(callPrice*100) / 100
+		totals.TotalTime += billSec
+
+		if region == "PT" { // 🇵🇹 replace with your "national" region code
+			totals.NationalCost += math.Round(callPrice*100) / 100
+			totals.NationalTime += billSec
+		} else {
+			totals.InternationalCost += math.Round(callPrice*100) / 100
+			totals.InternationalTime += billSec
+		}
+	}
+
+	// Convert client map → slice
+	clients := make([]ClientSummary, 0, len(clientTotals))
+	for _, c := range clientTotals {
+		clients = append(clients, *c)
+	}
+
+	return CalculatePriceFullResponse{
+		Clients: clients,
+		Calls:   callDetails,
 	}
 }

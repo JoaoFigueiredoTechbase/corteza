@@ -41,3 +41,29 @@ type CalculatePriceResponse struct {
 	CallPrice   float64 `json:"call_price"`
 	PriceRecord string  `json:"price_record"`
 }
+
+type ClientSummary struct {
+	ClientRecord      string  `json:"client_record"`
+	RecordID          string  `json:"record_id"`
+	TotalCost         float64 `json:"total_cost"`
+	NationalCost      float64 `json:"national_cost"`
+	InternationalCost float64 `json:"international_cost"`
+	TotalTime         int     `json:"total_time"`
+	NationalTime      int     `json:"national_time"`
+	InternationalTime int     `json:"international_time"`
+}
+
+type CallDetail struct {
+	Sequence    string  `json:"sequence"`
+	CdrId       string  `json:"cdr_id"`
+	UniqueId    string  `json:"unique_id"`
+	CallPrice   float64 `json:"call_price"`
+	CountryName string  `json:"country_name"`
+	CountryCode string  `json:"country_code"`
+	CallType    string  `json:"call_type"`
+}
+
+type CalculatePriceFullResponse struct {
+	Clients []ClientSummary `json:"clients"`
+	Calls   []CallDetail    `json:"calls"`
+}
