@@ -33,16 +33,49 @@ func ParseCallsFromJSON(callsJSON []string) ([]KV[CallValue], error) {
 
 	return calls, nil
 }
-
 func ParseClientsFromJSON(clientsJSON []string) ([]KV[ClientValue], error) {
 	var clients []KV[ClientValue]
 
 	for _, clientStr := range clientsJSON {
-		var clientArray []KV[ClientValue]
-		if err := json.Unmarshal([]byte(clientStr), &clientArray); err != nil {
+		var rawClients []struct {
+			Value struct {
+				ClientRecord  string `json:"client_record"`
+				PlanCountries string `json:"plan_countries"` // JSON string
+				RecordID      string `json:"recordID"`
+				ServiceTime   string `json:"service_time"`
+			} `json:"@value"`
+			Type string `json:"@type"`
+		}
+
+		if err := json.Unmarshal([]byte(clientStr), &rawClients); err != nil {
 			return nil, fmt.Errorf("failed to parse clients JSON: %v", err)
 		}
-		clients = append(clients, clientArray...)
+
+		for _, rc := range rawClients {
+			// Parse the inner JSON string for countries
+			var countryKVs []struct {
+				Value string `json:"@value"`
+				Type  string `json:"@type"`
+			}
+			if err := json.Unmarshal([]byte(rc.Value.PlanCountries), &countryKVs); err != nil {
+				return nil, fmt.Errorf("failed to parse plan_countries for client %s: %v", rc.Value.ClientRecord, err)
+			}
+
+			countries := make([]string, len(countryKVs))
+			for i, c := range countryKVs {
+				countries[i] = c.Value
+			}
+
+			clients = append(clients, KV[ClientValue]{
+				Value: ClientValue{
+					ClientRecord:  rc.Value.ClientRecord,
+					PlanCountries: countries,
+					RecordID:      rc.Value.RecordID,
+					ServiceTime:   rc.Value.ServiceTime,
+				},
+				Type: rc.Type,
+			})
+		}
 	}
 
 	return clients, nil
@@ -142,68 +175,6 @@ func BuildClientMap(clients []KV[ClientValue]) map[string]ClientValue {
 		clientMap[kv.Value.RecordID] = kv.Value
 	}
 	return clientMap
-}
-
-func BuildCalculatePriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) []CalculatePriceResponse {
-	responses := make([]CalculatePriceResponse, 0, len(calls))
-
-	for _, call := range calls {
-		dst := call.Value.Dst
-		trunkClientRecord := call.Value.TrunkClientRecord
-		billSec, err := strconv.Atoi(call.Value.BillSec)
-		if err != nil {
-			log.Printf("DEBUG: Invalid billsec for call %s: %v", call.Value.Sequence, err)
-			continue
-		}
-
-		// Check if client exists
-		client, clientExists := clientMap[trunkClientRecord]
-		if !clientExists {
-			log.Printf("DEBUG: Client not found for trunk_cliente_record %s", trunkClientRecord)
-			continue
-		}
-
-		region, isMobile, err := GetNumberInfo(dst)
-		if err != nil {
-			log.Printf("DEBUG: Failed to parse number %s for call %s: %v", dst, call.Value.Sequence, err)
-			continue
-		}
-
-		priceEntry, ok := GetCallPrice(priceMap, region, isMobile)
-		if !ok {
-			log.Printf("DEBUG: No price found for region %s, mobile %t (call %s)", region, isMobile, call.Value.Sequence)
-			continue
-		}
-
-		pricePerMinute, err := strconv.ParseFloat(priceEntry.Price, 64)
-		if err != nil {
-			log.Printf("DEBUG: Invalid price %s for call %s: %v", priceEntry.Price, call.Value.Sequence, err)
-			continue
-		}
-
-		price, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
-		if err != nil {
-			log.Printf("DEBUG: Failed to calculate price for call %s: %v", call.Value.Sequence, err)
-			continue
-		}
-
-		callType := "other"
-		if isMobile {
-			callType = "mobile"
-		}
-
-		responses = append(responses, CalculatePriceResponse{
-			Sequence:    call.Value.Sequence,
-			CallType:    callType,
-			CallPrice:   price,
-			PriceRecord: fmt.Sprintf("%s_%s", priceEntry.CountryCode, priceEntry.Type),
-		})
-
-		log.Printf("DEBUG: Successfully calculated price for call %s: client=%s, region=%s, mobile=%t, price=%.4f",
-			call.Value.Sequence, client.ClientRecord, region, isMobile, price)
-	}
-
-	return responses
 }
 
 // testPhoneNumber processes a phone number and returns detailed information

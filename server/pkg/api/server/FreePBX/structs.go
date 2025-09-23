@@ -15,10 +15,10 @@ type CallValue struct {
 }
 
 type ClientValue struct {
-	ClientRecord  string `json:"client_record"`
-	PlanCountries string `json:"plan_countries"`
-	ServiceTime   string `json:"service_time"`
-	RecordID      string `json:"recordID"`
+	ClientRecord  string   `json:"client_record"`
+	PlanCountries []string `json:"plan_countries"`
+	ServiceTime   string   `json:"service_time"`
+	RecordID      string   `json:"recordID"`
 }
 
 type PriceValue struct {
