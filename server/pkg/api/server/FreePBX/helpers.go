@@ -5,11 +5,38 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/nyaruka/phonenumbers"
 )
+
+func parseCallDate(dateStr string) time.Time {
+	// Remove timezone info if present for consistent parsing
+	if strings.Contains(dateStr, " +") {
+		parts := strings.Split(dateStr, " +")
+		dateStr = parts[0]
+	}
+
+	// Try different date formats
+	formats := []string{
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+		"02/01/2006 15:04:05",
+		time.RFC3339,
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, dateStr); err == nil {
+			return t
+		}
+	}
+
+	// Return zero time if parsing fails
+	return time.Time{}
+}
 
 func ParseData(data []byte) (*HandleCalculatePriceBody, error) {
 	var root HandleCalculatePriceBody
@@ -33,6 +60,7 @@ func ParseCallsFromJSON(callsJSON []string) ([]KV[CallValue], error) {
 
 	return calls, nil
 }
+
 func ParseClientsFromJSON(clientsJSON []string) ([]KV[ClientValue], error) {
 	var clients []KV[ClientValue]
 
@@ -52,19 +80,34 @@ func ParseClientsFromJSON(clientsJSON []string) ([]KV[ClientValue], error) {
 		}
 
 		for _, rc := range rawClients {
-			// Parse the inner JSON string for countries
-			var countryKVs []struct {
-				Value string `json:"@value"`
-				Type  string `json:"@type"`
-			}
-			if err := json.Unmarshal([]byte(rc.Value.PlanCountries), &countryKVs); err != nil {
-				return nil, fmt.Errorf("failed to parse plan_countries for client %s: %v", rc.Value.ClientRecord, err)
+			var countries []string
+
+			// Handle empty or invalid plan_countries
+			if rc.Value.PlanCountries != "" && rc.Value.PlanCountries != "null" {
+				// Parse the inner JSON string for countries
+				var countryKVs []struct {
+					Value string `json:"@value"`
+					Type  string `json:"@type"`
+				}
+
+				if err := json.Unmarshal([]byte(rc.Value.PlanCountries), &countryKVs); err != nil {
+					log.Printf("WARNING: Failed to parse plan_countries for client %s, using empty list: %v", rc.Value.ClientRecord, err)
+					// Continue with empty countries list instead of returning error
+					countries = []string{}
+				} else {
+					// Remove duplicates from country codes
+					countryMap := make(map[string]bool)
+					for _, c := range countryKVs {
+						upperCountry := strings.ToUpper(c.Value)
+						if !countryMap[upperCountry] {
+							countryMap[upperCountry] = true
+							countries = append(countries, upperCountry)
+						}
+					}
+				}
 			}
 
-			countries := make([]string, len(countryKVs))
-			for i, c := range countryKVs {
-				countries[i] = c.Value
-			}
+			log.Printf("DEBUG: Client %s has %d plan countries: %v", rc.Value.ClientRecord, len(countries), countries)
 
 			clients = append(clients, KV[ClientValue]{
 				Value: ClientValue{
@@ -103,6 +146,7 @@ func BuildPriceMap(prices []KV[PriceValue]) map[string]PriceValue {
 	}
 	return priceMap
 }
+
 func GetNumberInfo(number string) (region string, isMobile bool, err error) {
 	var parsed *phonenumbers.PhoneNumber
 	if strings.HasPrefix(number, "+") {
@@ -237,7 +281,24 @@ func getNumberTypeString(numType phonenumbers.PhoneNumberType) string {
 	}
 }
 
+func isCountryInPlan(region string, planCountries []string) bool {
+	upperRegion := strings.ToUpper(region)
+	for _, country := range planCountries {
+		if strings.ToUpper(country) == upperRegion {
+			return true
+		}
+	}
+	return false
+}
+
 func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) CalculatePriceFullResponse {
+	// Sort calls by date (chronological order)
+	sort.Slice(calls, func(i, j int) bool {
+		dateI := parseCallDate(calls[i].Value.Calldate)
+		dateJ := parseCallDate(calls[j].Value.Calldate)
+		return dateI.Before(dateJ)
+	})
+
 	callDetails := make([]CallDetail, 0, len(calls))
 	clientTotals := make(map[string]*ClientSummary)
 
@@ -268,20 +329,106 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 		}
 
 		countryName := priceEntry.CountryName
-
 		pricePerMinute, _ := strconv.ParseFloat(priceEntry.Price, 64)
-		callPrice, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
-		if err != nil {
-			log.Printf("DEBUG: Price calc failed for %s: %v", call.Value.Sequence, err)
-			continue
+
+		// Check if country is in client's plan (using deduplicated list)
+		inPlan := isCountryInPlan(region, client.PlanCountries)
+
+		// Determine call type (national/international)
+		isNational := strings.ToUpper(region) == "PT"
+
+		// Initialize client totals if not exists
+		totals, exists := clientTotals[client.RecordID]
+		if !exists {
+			serviceTime, _ := strconv.Atoi(client.ServiceTime)
+			totals = &ClientSummary{
+				ClientRecord:     client.ClientRecord,
+				RecordID:         client.RecordID,
+				TotalServiceTime: serviceTime, // Total plan time available
+				RemainingTime:    serviceTime, // Time remaining in plan
+				UsedPlanTime:     0,           // Time used from plan
+				PlanEndDate:      "",          // Date when plan ended
+			}
+			clientTotals[client.RecordID] = totals
 		}
 
+		var callPrice float64
 		callType := "other"
 		if isMobile {
 			callType = "mobile"
 		}
 
-		// Add to call details
+		if inPlan {
+			totals.PlanCalls++
+			totals.PlanTotalTime += billSec
+
+			if totals.RemainingTime > 0 {
+				// Call is within plan time
+				if billSec <= totals.RemainingTime {
+					// Call completely covered by plan
+					totals.UsedPlanTime += billSec
+					totals.RemainingTime -= billSec
+					callPrice = 0
+				} else {
+					// Call exceeds remaining plan time
+					coveredTime := totals.RemainingTime
+					exceededTime := billSec - totals.RemainingTime
+
+					totals.UsedPlanTime += coveredTime
+					totals.ExceededPlanTime += exceededTime
+					totals.RemainingTime = 0
+
+					// Calculate price only for exceeded time
+					exceededPrice, err := CalculateCallPrice(exceededTime, priceEntry.CallRating, pricePerMinute)
+					if err != nil {
+						log.Printf("DEBUG: Price calc failed for exceeded time: %v", err)
+						exceededPrice = 0
+					}
+
+					callPrice = exceededPrice
+					totals.ExceededPlanCost += exceededPrice
+
+					// Save the date when plan ended
+					if totals.PlanEndDate == "" {
+						totals.PlanEndDate = call.Value.Calldate
+					}
+				}
+			} else {
+				// Plan already ended, charge full call
+				totals.ExceededPlanTime += billSec
+				exceededPrice, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
+				if err != nil {
+					log.Printf("DEBUG: Price calc failed: %v", err)
+					exceededPrice = 0
+				}
+				callPrice = exceededPrice
+				totals.ExceededPlanCost += exceededPrice
+			}
+		} else {
+			// Call outside plan
+			totals.NonPlanCalls++
+			totals.NonPlanTotalTime += billSec
+
+			exceededPrice, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
+			if err != nil {
+				log.Printf("DEBUG: Price calc failed: %v", err)
+				exceededPrice = 0
+			}
+			callPrice = exceededPrice
+		}
+
+		// Update totals based on call type (national/international)
+		if isNational {
+			totals.NationalCalls++
+			totals.NationalTime += billSec
+			totals.NationalCost += math.Round(callPrice*100) / 100
+		} else {
+			totals.InternationalCalls++
+			totals.InternationalTime += billSec
+			totals.InternationalCost += math.Round(callPrice*100) / 100
+		}
+
+		// Add call details
 		callDetails = append(callDetails, CallDetail{
 			Sequence:    call.Value.Sequence,
 			CdrId:       call.Value.CdrId,
@@ -290,31 +437,16 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			CountryName: countryName,
 			CountryCode: region,
 			CallType:    callType,
+			InPlan:      inPlan,
+			IsNational:  isNational,
 		})
 
-		// Update client totals
-		totals, exists := clientTotals[client.RecordID]
-		if !exists {
-			totals = &ClientSummary{
-				ClientRecord: client.ClientRecord,
-				RecordID:     client.RecordID,
-			}
-			clientTotals[client.RecordID] = totals
-		}
-
+		// Update total costs and time
 		totals.TotalCost += math.Round(callPrice*100) / 100
 		totals.TotalTime += billSec
-
-		if region == "PT" { // 🇵🇹 replace with your "national" region code
-			totals.NationalCost += math.Round(callPrice*100) / 100
-			totals.NationalTime += billSec
-		} else {
-			totals.InternationalCost += math.Round(callPrice*100) / 100
-			totals.InternationalTime += billSec
-		}
 	}
 
-	// Convert client map → slice
+	// Convert map to slice
 	clients := make([]ClientSummary, 0, len(clientTotals))
 	for _, c := range clientTotals {
 		clients = append(clients, *c)

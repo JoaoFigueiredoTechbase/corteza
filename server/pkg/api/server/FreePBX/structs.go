@@ -12,6 +12,7 @@ type CallValue struct {
 	Sequence          string `json:"sequence"`
 	UniqueId          string `json:"unique_id"`
 	TrunkClientRecord string `json:"trunk_cliente_record"`
+	Calldate          string `json:"calldate"`
 }
 
 type ClientValue struct {
@@ -43,14 +44,37 @@ type CalculatePriceResponse struct {
 }
 
 type ClientSummary struct {
-	ClientRecord      string  `json:"client_record"`
-	RecordID          string  `json:"record_id"`
-	TotalCost         float64 `json:"total_cost"`
-	NationalCost      float64 `json:"national_cost"`
-	InternationalCost float64 `json:"international_cost"`
-	TotalTime         int     `json:"total_time"`
-	NationalTime      int     `json:"national_time"`
-	InternationalTime int     `json:"international_time"`
+	// Basic client info
+	ClientRecord string `json:"client_record"`
+	RecordID     string `json:"record_id"`
+
+	// Time tracking
+	TotalServiceTime int    `json:"total_service_time"` // Original plan time in seconds
+	TotalTime        int    `json:"total_time"`         // Total time of all calls
+	UsedPlanTime     int    `json:"used_plan_time"`     // Time used from plan (covered time)
+	RemainingTime    int    `json:"remaining_time"`     // Time remaining in plan
+	ExceededPlanTime int    `json:"exceeded_plan_time"` // Time that exceeded the plan
+	PlanEndDate      string `json:"plan_end_date"`      // Date when service ended
+
+	// Time breakdown by plan/non-plan
+	PlanTotalTime    int `json:"plan_total_time"`     // Total time of plan calls
+	NonPlanTotalTime int `json:"non_plan_total_time"` // Total time of non-plan calls
+
+	// Time breakdown by location
+	NationalTime      int `json:"national_time"`      // Total national call time
+	InternationalTime int `json:"international_time"` // Total international call time
+
+	// Cost tracking
+	TotalCost         float64 `json:"total_cost"`         // Total cost of all calls
+	NationalCost      float64 `json:"national_cost"`      // Cost of national calls
+	InternationalCost float64 `json:"international_cost"` // Cost of international calls
+	ExceededPlanCost  float64 `json:"exceeded_plan_cost"` // Cost of time that exceeded plan
+
+	// Call counting
+	PlanCalls          int `json:"plan_calls"`          // Number of calls within plan countries
+	NonPlanCalls       int `json:"non_plan_calls"`      // Number of calls outside plan countries
+	NationalCalls      int `json:"national_calls"`      // Number of national calls (PT)
+	InternationalCalls int `json:"international_calls"` // Number of international calls (non-PT)
 }
 
 type CallDetail struct {
@@ -61,6 +85,8 @@ type CallDetail struct {
 	CountryName string  `json:"country_name"`
 	CountryCode string  `json:"country_code"`
 	CallType    string  `json:"call_type"`
+	InPlan      bool    `json:"in_plan"`
+	IsNational  bool    `json:"is_national"`
 }
 
 type CalculatePriceFullResponse struct {
