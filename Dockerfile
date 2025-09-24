@@ -38,6 +38,12 @@ WORKDIR /tmp
 RUN curl -sOL $SASS_URL
 RUN tar -xzf dart-sass-${SASS_VERSION}-linux-x64.tar.gz
 
+# CREATE PYTHON SCRIPTS DIRECTORY AND COPY SCRIPTS
+RUN mkdir -p /corteza/pkg/api/server/PythonScrapper/python
+COPY sync-products.py /corteza/pkg/api/server/PythonScrapper/python/
+COPY bill-creator.py /corteza/pkg/api/server/PythonScrapper/python/
+COPY get-serial-numbers.py /corteza/pkg/api/server/PythonScrapper/python/
+
 # deploy-stage
 FROM ubuntu:22.04
 
@@ -45,7 +51,14 @@ RUN apt-get -y update \
  && apt-get -y install \
     ca-certificates \
     curl \
+    python3 \
+    python3-pip \
  && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages
+RUN python3 -m pip install --upgrade pip setuptools wheel && \
+    python3 -m pip install playwright && \
+    python3 -m playwright install --with-deps
 
 ENV STORAGE_PATH "/data"
 ENV CORREDOR_ADDR "corredor:80"
