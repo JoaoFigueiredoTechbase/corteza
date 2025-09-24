@@ -12,6 +12,7 @@ import (
 
 	"github.com/cortezaproject/corteza/server/assets"
 	"github.com/cortezaproject/corteza/server/pkg/api"
+	freepbx "github.com/cortezaproject/corteza/server/pkg/api/server/FreePBX"
 	nifinformation "github.com/cortezaproject/corteza/server/pkg/api/server/NifInformation"
 	"github.com/cortezaproject/corteza/server/pkg/api/server/OpenAI"
 	"github.com/cortezaproject/corteza/server/pkg/api/server/PythonScrapper"
@@ -139,7 +140,9 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		r.Post("/api/summary", OpenAI.HandleCallSummary)
 		r.Post("/api/client-information", nifinformation.HandleClientInformationSearch)
 		r.Post("/api/client-test", nifinformation.HandleTest)
-
+		r.Post("/api/calculate-price", freepbx.HandleCalculatePrice)
+		r.Post("/api/phone-test", freepbx.HandlePhoneNumberTest)
+		
 		scriptsDir := filepath.Join("pkg", "api", "server", "PythonScrapper", "python")
 		logger := PythonScrapper.DefaultLogger{}
 		PythonScrapper.InitHTTPHandler(scriptsDir, logger)
