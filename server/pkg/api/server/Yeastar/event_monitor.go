@@ -95,9 +95,12 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 	}
 
 	const (
-		initialBackoff = 5 * time.Second
-		maxBackoff     = 5 * time.Minute
-		maxAuthRetries = 3
+		initialBackoff           = 5 * time.Second
+		maxBackoff               = 5 * time.Minute
+		maxAuthRetries           = 3
+		criticalCooldown         = 20 * time.Minute
+		maxConsecutiveFails      = 10
+		consecutiveFailsCooldown = 5 * time.Minute
 	)
 
 	var (
@@ -112,26 +115,36 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 			return
 		}
 
+		// Check connectivity first
 		if !em.checkConnectivity() {
 			log.Print("[EventMonitor] No internet connectivity")
 			time.Sleep(30 * time.Second)
 			continue
 		}
 
+		// Auth setup phase
 		log.Println("[EventMonitor] Initializing auth...")
 		if err := setupAuth(ctx, em.yeastarService); err != nil {
 			authFailures++
+			log.Printf("[EventMonitor] Auth setup failed (attempt %d/%d): %v",
+				authFailures, maxAuthRetries, err)
+
 			if authFailures >= maxAuthRetries {
-				log.Printf("[EventMonitor] CRITICAL: Auth setup failed %d times: %v", authFailures, err)
-				if !em.waitWithContext(ctx, 1*time.Hour) {
+				log.Printf("[EventMonitor] CRITICAL: Auth setup failed %d times, entering %v cooldown",
+					maxAuthRetries, criticalCooldown)
+
+				if !em.waitWithContext(ctx, criticalCooldown) {
 					return
 				}
+
+				// Reset both auth failures and backoff after cooldown
 				authFailures = 0
+				backoff = initialBackoff
+				log.Println("[EventMonitor] Cooldown complete, retrying auth setup...")
 				continue
 			}
 
-			log.Printf("[EventMonitor] Auth setup failed (attempt %d/%d): %v",
-				authFailures, maxAuthRetries, err)
+			// Wait with exponential backoff for auth retries
 			if !em.waitWithContext(ctx, backoff) {
 				return
 			}
@@ -139,13 +152,29 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 			continue
 		}
 
+		// Token validation phase
 		log.Println("[EventMonitor] Ensuring valid token...")
 		if err := em.yeastarService.EnsureValidToken(ctx); err != nil {
 			log.Printf("[EventMonitor] Token error: %v", err)
+
 			if errors.Is(err, ErrInvalidCredentials) {
 				log.Fatal("[EventMonitor] FATAL: Invalid credentials")
 			}
 
+			// Treat token errors similar to auth failures
+			authFailures++
+			if authFailures >= maxAuthRetries {
+				log.Printf("[EventMonitor] CRITICAL: Token validation failed %d times, entering %v cooldown",
+					maxAuthRetries, criticalCooldown)
+
+				if !em.waitWithContext(ctx, criticalCooldown) {
+					return
+				}
+				authFailures = 0
+				backoff = initialBackoff
+				continue
+			}
+
 			if !em.waitWithContext(ctx, backoff) {
 				return
 			}
@@ -153,24 +182,53 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 			continue
 		}
 
+		// Reset counters after successful auth and token validation
 		authFailures = 0
 		backoff = initialBackoff
 
+		// WebSocket connection phase
 		log.Println("[EventMonitor] Connecting WebSocket...")
 		if err := em.webSocketService.Connect(ctx); err != nil {
-			log.Printf("[EventMonitor] Connect failed: %v (retry in %v)", err, backoff)
+			consecutiveFails++
+			log.Printf("[EventMonitor] Connect failed (%d consecutive): %v (retry in %v)",
+				consecutiveFails, err, backoff)
+
+			if consecutiveFails > maxConsecutiveFails {
+				log.Printf("[EventMonitor] Too many consecutive connection failures (%d), entering cooldown",
+					consecutiveFails)
+				if !em.waitWithContext(ctx, consecutiveFailsCooldown) {
+					return
+				}
+				consecutiveFails = 0
+				backoff = initialBackoff
+				continue
+			}
+
 			if !em.waitWithContext(ctx, backoff) {
 				return
 			}
-
 			backoff = min(backoff*2, maxBackoff)
 			continue
 		}
 
+		// Subscription phase
 		log.Println("[EventMonitor] Subscribing to events...")
 		if err := em.webSocketService.Subscribe(eventIDs); err != nil {
-			log.Printf("[EventMonitor] Subscribe error: %v", err)
+			consecutiveFails++
+			log.Printf("[EventMonitor] Subscribe error (%d consecutive): %v", consecutiveFails, err)
 			em.webSocketService.Close()
+
+			if consecutiveFails > maxConsecutiveFails {
+				log.Printf("[EventMonitor] Too many consecutive subscribe failures (%d), entering cooldown",
+					consecutiveFails)
+				if !em.waitWithContext(ctx, consecutiveFailsCooldown) {
+					return
+				}
+				consecutiveFails = 0
+				backoff = initialBackoff
+				continue
+			}
+
 			if !em.waitWithContext(ctx, backoff) {
 				return
 			}
@@ -178,31 +236,36 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 			continue
 		}
 
+		// Start heartbeat and listen for events
 		em.webSocketService.StartHeartbeat()
-		defer func() {
-			em.webSocketService.StopHeartbeat()
-			log.Println("[EventMonitor] Heartbeat stopped")
-		}()
-
 		log.Println("[EventMonitor] Listening for events...")
+
 		err := em.webSocketService.Listen(ctx)
+
+		// Always stop heartbeat after listening ends
+		em.webSocketService.StopHeartbeat()
+		em.webSocketService.Close()
 
 		if err != nil {
 			consecutiveFails++
 			log.Printf("[EventMonitor] Listen error (%d consecutive): %v", consecutiveFails, err)
 
-			if consecutiveFails > 10 {
-				log.Println("[EventMonitor] Too many consecutive failures, entering cooldown")
-				if !em.waitWithContext(ctx, 5*time.Minute) {
+			if consecutiveFails > maxConsecutiveFails {
+				log.Printf("[EventMonitor] Too many consecutive listen failures (%d), entering cooldown",
+					consecutiveFails)
+				if !em.waitWithContext(ctx, consecutiveFailsCooldown) {
 					return
 				}
 				consecutiveFails = 0
+				backoff = initialBackoff
+				continue
 			}
 		} else {
+			// Reset consecutive fails on successful operation
 			consecutiveFails = 0
+			backoff = initialBackoff
 		}
 
-		em.webSocketService.Close()
 		log.Printf("[EventMonitor] Disconnected. Next attempt in %v", backoff)
 		if !em.waitWithContext(ctx, backoff) {
 			return
