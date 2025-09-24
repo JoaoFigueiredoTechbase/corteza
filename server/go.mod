@@ -58,6 +58,7 @@ require (
 	github.com/minio/minio-go/v6 v6.0.57
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/ngrok/sqlmw v0.0.0-20211220175533-9d16fdc47b31
+	github.com/nyaruka/phonenumbers v1.6.5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.1
 	github.com/sony/sonyflake v1.0.0
@@ -136,6 +137,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/valyala/fasthttp v1.35.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
@@ -148,3 +150,15 @@ require (
 replace github.com/doug-martin/goqu/v9 => github.com/cortezaproject/goqu/v9 v9.18.4
 
 replace github.com/PaesslerAG/gval => github.com/cortezaproject/gval v1.2.4
+
+replace github.com/stretchr/testify => github.com/stretchr/testify v1.9.0
+
+replace golang.org/x/text => golang.org/x/text v0.21.0
+
+replace google.golang.org/protobuf => google.golang.org/protobuf v1.32.0
+
+exclude github.com/stretchr/testify v1.10.0
+
+exclude golang.org/x/text v0.23.0
+
+exclude google.golang.org/protobuf v1.36.5

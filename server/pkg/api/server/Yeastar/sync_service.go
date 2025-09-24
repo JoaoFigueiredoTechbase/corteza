@@ -215,115 +215,79 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 	return nil
 }
 
-// func syncCDRs(ctx context.Context, service *YeastarService) error {
-// 	fmt.Println("\n--- Processing cdrs ---")
-// 	rawCDRsData, err := service.ListMethod(ctx, "cdr")
-// 	if err != nil {
-// 		return fmt.Errorf("failed to fetch cdrs: %w", err)
-// 	}
+func syncNewestCDRs(ctx context.Context, service *YeastarService) error {
+	fmt.Println("\n--- Processing cdrs ---")
+	rawCDRsData, err := service.ListMethod(ctx, "cdr")
+	if err != nil {
+		return fmt.Errorf("failed to fetch cdrs: %w", err)
+	}
 
-// 	cdrs, err := processCDRsData(service, rawCDRsData)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to process cdrs: %w", err)
-// 	}
+	allCDRs, err := processCDRsData(service, rawCDRsData)
+	if err != nil {
+		return fmt.Errorf("failed to process cdrs: %w", err)
+	}
 
-// 	batchSize := 10
-// 	totalCDRs := len(cdrs)
-// 	processed := 0
-// 	var failedBatches []BatchError
+	// Filter CDRs from the last 5 hours
+	fiveHoursAgo := time.Now().Add(-3 * time.Hour)
+	var cdrs []CDR
 
-// 	log.Printf("Total CDRs to process: %d in batches of %d", totalCDRs, batchSize)
+	log.Printf("Filtering CDRs from the last 5 hours (since %v)", fiveHoursAgo.Format("2006-01-02 15:04:05"))
 
-// 	for i := 0; i < totalCDRs; i += batchSize {
-// 		end := i + batchSize
-// 		if end > totalCDRs {
-// 			end = totalCDRs
-// 		}
+	for _, cdr := range allCDRs {
+		// Convert unix timestamp to time.Time for comparison
+		cdrTime := time.Unix(cdr.Timestamp, 0)
+		if cdrTime.After(fiveHoursAgo) {
+			cdrs = append(cdrs, cdr)
+		}
+	}
 
-// 		batch := cdrs[i:end]
-// 		batchNum := i/batchSize + 1
+	totalAllCDRs := len(allCDRs)
+	totalFilteredCDRs := len(cdrs)
 
-// 		if err := processBatchWithRetry(ctx, service, batch, batchNum, i+1, end); err != nil {
-// 			failedBatches = append(failedBatches, BatchError{
-// 				BatchNum: batchNum,
-// 				Range:    fmt.Sprintf("%d-%d", i+1, end),
-// 				Error:    err,
-// 			})
-// 			log.Printf("Batch %d [%d-%d] failed after all retries: %v", batchNum, i+1, end, err)
-// 			continue
-// 		}
+	log.Printf("Total CDRs fetched: %d", totalAllCDRs)
+	log.Printf("CDRs from last 3 hours: %d (%.1f%%)",
+		totalFilteredCDRs,
+		float64(totalFilteredCDRs)/float64(totalAllCDRs)*100)
 
-// 		processed += len(batch)
-// 		fmt.Printf("✓ Processed batch %d-%d of %d (%.1f%%)\n", i+1, end, totalCDRs, float64(processed)/float64(totalCDRs)*100)
+	if totalFilteredCDRs == 0 {
+		fmt.Println("No CDRs found from the last 3 hours.")
+		return nil
+	}
 
-// 		time.Sleep(2 * time.Second)
-// 	}
+	batchSize := 10
+	processed := 0
 
-// 	fmt.Println("CDRs processing completed.")
+	log.Printf("Total CDRs to process: %d in batches of %d", totalFilteredCDRs, batchSize)
 
-// 	if len(failedBatches) > 0 {
-// 		log.Printf("Summary: %d/%d batches failed", len(failedBatches), (totalCDRs+batchSize-1)/batchSize)
-// 		for _, fb := range failedBatches {
-// 			log.Printf("  - Batch %d [%s]: %v", fb.BatchNum, fb.Range, fb.Error)
-// 		}
-// 		return fmt.Errorf("failed to process %d batches out of %d", len(failedBatches), (totalCDRs+batchSize-1)/batchSize)
-// 	}
+	for i := 0; i < totalFilteredCDRs; i += batchSize {
+		end := i + batchSize
+		if end > totalFilteredCDRs {
+			end = totalFilteredCDRs
+		}
 
-// 	log.Printf("✓ All batches processed successfully (%d CDRs)", totalCDRs)
-// 	return nil
-// }
+		batch := cdrs[i:end]
+		batchCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-// type BatchError struct {
-// 	BatchNum int
-// 	Range    string
-// 	Error    error
-// }
+		if err := service.SendDataToCorteza(batchCtx, "cdr", batch); err != nil {
+			log.Printf("Error sending CDRs batch [%d-%d] to Corteza: %v", i+1, end, err)
+			continue
+		}
 
-// func processBatchWithRetry(ctx context.Context, service *YeastarService, batch interface{}, batchNum, start, end int) error {
-// 	const maxRetries = 3
-// 	const baseDelay = 5 * time.Second
-// 	const requestTimeout = 90 * time.Second
+		processed += len(batch)
+		fmt.Printf("Processed batch %d-%d of %d (%.1f%%)\n",
+			i+1, end, totalFilteredCDRs,
+			float64(processed)/float64(totalFilteredCDRs)*100)
 
-// 	for attempt := 1; attempt <= maxRetries; attempt++ {
-// 		if ctx.Err() != nil {
-// 			return fmt.Errorf("parent context cancelled before attempt %d: %w", attempt, ctx.Err())
-// 		}
+		time.Sleep(2 * time.Second)
+	}
 
-// 		batchCtx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	fmt.Println("CDRs processing completed.")
+	log.Printf("✓ All batches attempted. %d/%d recent CDRs processed successfully",
+		processed, totalFilteredCDRs)
 
-// 		log.Printf("Sending batch %d [%d-%d] (attempt %d/%d)", batchNum, start, end, attempt, maxRetries)
-
-// 		err := service.SendDataToCorteza(batchCtx, "cdr", batch)
-// 		cancel()
-
-// 		if err == nil {
-// 			return nil
-// 		}
-
-// 		log.Printf("Batch %d [%d-%d] attempt %d failed: %v", batchNum, start, end, attempt, err)
-
-// 		if ctx.Err() != nil {
-// 			return fmt.Errorf("parent context cancelled after attempt %d: %w", attempt, ctx.Err())
-// 		}
-
-// 		if attempt < maxRetries {
-// 			delay := time.Duration(float64(baseDelay) * math.Pow(2, float64(attempt-1)))
-// 			if delay > 30*time.Second {
-// 				delay = 30 * time.Second
-// 			}
-
-// 			log.Printf("Retrying batch %d in %v...", batchNum, delay)
-
-// 			select {
-// 			case <-time.After(delay):
-// 			case <-ctx.Done():
-// 				return fmt.Errorf("parent context cancelled during retry wait: %w", ctx.Err())
-// 			}
-// 		}
-// 	}
-
-// 	return fmt.Errorf("batch failed after %d attempts", maxRetries)
-// }
+	return nil
+}
 
 var syncInProgress int32
 
@@ -358,6 +322,47 @@ func SyncAll(baseUrl string) error {
 	}
 
 	if err := syncCDRs(ctx, service); err != nil {
+		return err
+	}
+
+	if err := service.cortezaClient.CallCDRCalc(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func SyncAllwithNewestCDRs(baseUrl string) error {
+	if !atomic.CompareAndSwapInt32(&syncInProgress, 0, 1) {
+		return errors.New("sync already in progress")
+	}
+	defer atomic.StoreInt32(&syncInProgress, 0)
+
+	fmt.Println("Starting sync...")
+
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncAgents(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncQueues(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncQueueMembers(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncNewestCDRs(ctx, service); err != nil {
 		return err
 	}
 
@@ -451,7 +456,7 @@ func StartPeriodicSync() error {
 
 	baseURL := fmt.Sprintf("http://%s", ip)
 
-	err = SyncAll(baseURL)
+	err = SyncAllwithNewestCDRs(baseURL)
 
 	if err != nil {
 		return fmt.Errorf("Synchronization failed")
