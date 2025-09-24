@@ -132,15 +132,15 @@ func pickBestMatch(records []NifApiResponse, query string) (NifApiResponse, bool
 
 func parseRecord(raw json.RawMessage) (NifApiResponse, error) {
 	var tmp struct {
-		Nif      int      `json:"nif"`
-		Title    string   `json:"title"`
-		Address  string   `json:"address"`
-		Pc4      string   `json:"pc4"`
-		Pc3      string   `json:"pc3"`
-		City     string   `json:"city"`
-		Activity string   `json:"activity"`
-		Status   string   `json:"status"`
-		CaeList  []string `json:"cae"`
+		Nif      int             `json:"nif"`
+		Title    string          `json:"title"`
+		Address  string          `json:"address"`
+		Pc4      string          `json:"pc4"`
+		Pc3      string          `json:"pc3"`
+		City     string          `json:"city"`
+		Activity string          `json:"activity"`
+		Status   string          `json:"status"`
+		CaeRaw   json.RawMessage `json:"cae"`
 		Contacts struct {
 			Email   string `json:"email"`
 			Phone   string `json:"phone"`
@@ -159,6 +159,20 @@ func parseRecord(raw json.RawMessage) (NifApiResponse, error) {
 		return NifApiResponse{}, fmt.Errorf("unmarshaling record: %w", err)
 	}
 
+	var caeList []string
+	if len(tmp.CaeRaw) > 0 {
+		// try as array
+		if err := json.Unmarshal(tmp.CaeRaw, &caeList); err != nil {
+			// try as string
+			var single string
+			if err := json.Unmarshal(tmp.CaeRaw, &single); err == nil {
+				caeList = []string{single}
+			} else {
+				return NifApiResponse{}, fmt.Errorf("invalid cae format: %s", string(tmp.CaeRaw))
+			}
+		}
+	}
+
 	return NifApiResponse{
 		Nif:        tmp.Nif,
 		Title:      tmp.Title,
@@ -168,7 +182,7 @@ func parseRecord(raw json.RawMessage) (NifApiResponse, error) {
 		City:       tmp.City,
 		Activity:   tmp.Activity,
 		Status:     tmp.Status,
-		CaeList:    tmp.CaeList,
+		CaeList:    caeList,
 		Email:      tmp.Contacts.Email,
 		Phone:      tmp.Contacts.Phone,
 		Website:    tmp.Contacts.Website,
