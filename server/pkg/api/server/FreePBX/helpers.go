@@ -291,6 +291,11 @@ func isCountryInPlan(region string, planCountries []string) bool {
 	return false
 }
 
+// Helper function to format date as YYYY-MM-DD
+func formatDateKey(t time.Time) string {
+	return t.Format("2006-01-02")
+}
+
 func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) CalculatePriceFullResponse {
 	// Sort calls by date (chronological order)
 	sort.Slice(calls, func(i, j int) bool {
@@ -301,6 +306,9 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 
 	callDetails := make([]CallDetail, 0, len(calls))
 	clientTotals := make(map[string]*ClientSummary)
+
+	// Track daily statistics for each client
+	clientDailyStats := make(map[string]map[string]*DailySummary) // client_id -> date -> daily_stats
 
 	for _, call := range calls {
 		dst := call.Value.Dst
@@ -331,11 +339,15 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 		countryName := priceEntry.CountryName
 		pricePerMinute, _ := strconv.ParseFloat(priceEntry.Price, 64)
 
-		// Check if country is in client's plan (using deduplicated list)
+		// Check if country is in client's plan
 		inPlan := isCountryInPlan(region, client.PlanCountries)
 
 		// Determine call type (national/international)
 		isNational := strings.ToUpper(region) == "PT"
+
+		// Get call date
+		callDate := parseCallDate(call.Value.Calldate)
+		dateKey := formatDateKey(callDate)
 
 		// Initialize client totals if not exists
 		totals, exists := clientTotals[client.RecordID]
@@ -352,15 +364,34 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			clientTotals[client.RecordID] = totals
 		}
 
+		// Initialize daily stats for this client if not exists
+		if clientDailyStats[client.RecordID] == nil {
+			clientDailyStats[client.RecordID] = make(map[string]*DailySummary)
+		}
+
+		dailyStats, exists := clientDailyStats[client.RecordID][dateKey]
+		if !exists {
+			dailyStats = &DailySummary{
+				Date:                 dateKey,
+				RemainingTimeAtStart: totals.RemainingTime, // This will be updated properly below
+			}
+			clientDailyStats[client.RecordID][dateKey] = dailyStats
+		}
+
 		var callPrice float64
 		callType := "other"
 		if isMobile {
 			callType = "mobile"
 		}
 
+		// Store remaining time at start of processing this call
+		remainingAtStart := totals.RemainingTime
+
 		if inPlan {
 			totals.PlanCalls++
 			totals.PlanTotalTime += billSec
+			dailyStats.PlanCalls++
+			dailyStats.PlanTotalTime += billSec
 
 			if totals.RemainingTime > 0 {
 				// Call is within plan time
@@ -368,6 +399,7 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 					// Call completely covered by plan
 					totals.UsedPlanTime += billSec
 					totals.RemainingTime -= billSec
+					dailyStats.UsedPlanTime += billSec
 					callPrice = 0
 				} else {
 					// Call exceeds remaining plan time
@@ -378,6 +410,9 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 					totals.ExceededPlanTime += exceededTime
 					totals.RemainingTime = 0
 
+					dailyStats.UsedPlanTime += coveredTime
+					dailyStats.ExceededPlanTime += exceededTime
+
 					// Calculate price only for exceeded time
 					exceededPrice, err := CalculateCallPrice(exceededTime, priceEntry.CallRating, pricePerMinute)
 					if err != nil {
@@ -387,15 +422,19 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 
 					callPrice = exceededPrice
 					totals.ExceededPlanCost += exceededPrice
+					dailyStats.ExceededPlanCost += exceededPrice
 
 					// Save the date when plan ended
 					if totals.PlanEndDate == "" {
 						totals.PlanEndDate = call.Value.Calldate
+						dailyStats.PlanEndedThisDay = true
 					}
 				}
 			} else {
 				// Plan already ended, charge full call
 				totals.ExceededPlanTime += billSec
+				dailyStats.ExceededPlanTime += billSec
+
 				exceededPrice, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
 				if err != nil {
 					log.Printf("DEBUG: Price calc failed: %v", err)
@@ -403,11 +442,14 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 				}
 				callPrice = exceededPrice
 				totals.ExceededPlanCost += exceededPrice
+				dailyStats.ExceededPlanCost += exceededPrice
 			}
 		} else {
 			// Call outside plan
 			totals.NonPlanCalls++
 			totals.NonPlanTotalTime += billSec
+			dailyStats.NonPlanCalls++
+			dailyStats.NonPlanTotalTime += billSec
 
 			exceededPrice, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
 			if err != nil {
@@ -417,23 +459,37 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			callPrice = exceededPrice
 		}
 
-		// Update totals based on call type (national/international)
+		// Update totals and daily stats based on call type (national/international)
+		roundedPrice := math.Round(callPrice*100) / 100
+
 		if isNational {
 			totals.NationalCalls++
 			totals.NationalTime += billSec
-			totals.NationalCost += math.Round(callPrice*100) / 100
+			totals.NationalCost += roundedPrice
+
+			dailyStats.NationalCalls++
+			dailyStats.NationalTime += billSec
+			dailyStats.NationalCost += roundedPrice
 		} else {
 			totals.InternationalCalls++
 			totals.InternationalTime += billSec
-			totals.InternationalCost += math.Round(callPrice*100) / 100
+			totals.InternationalCost += roundedPrice
+
+			dailyStats.InternationalCalls++
+			dailyStats.InternationalTime += billSec
+			dailyStats.InternationalCost += roundedPrice
 		}
+
+		// Update remaining time tracking for daily stats
+		dailyStats.RemainingTimeAtStart = remainingAtStart
+		dailyStats.RemainingTimeAtEnd = totals.RemainingTime
 
 		// Add call details
 		callDetails = append(callDetails, CallDetail{
 			Sequence:    call.Value.Sequence,
 			CdrId:       call.Value.CdrId,
 			UniqueId:    call.Value.UniqueId,
-			CallPrice:   math.Round(callPrice*100) / 100,
+			CallPrice:   roundedPrice,
 			CountryName: countryName,
 			CountryCode: region,
 			CallType:    callType,
@@ -442,14 +498,32 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 		})
 
 		// Update total costs and time
-		totals.TotalCost += math.Round(callPrice*100) / 100
+		totals.TotalCost += roundedPrice
 		totals.TotalTime += billSec
+
+		dailyStats.TotalCost += roundedPrice
+		dailyStats.TotalTime += billSec
 	}
 
-	// Convert map to slice
+	// Convert client map to slice and add daily statistics
 	clients := make([]ClientSummary, 0, len(clientTotals))
-	for _, c := range clientTotals {
-		clients = append(clients, *c)
+	for clientID, totals := range clientTotals {
+		// Convert daily stats map to sorted slice
+		if dailyStatsMap, exists := clientDailyStats[clientID]; exists {
+			dailyStats := make([]DailySummary, 0, len(dailyStatsMap))
+			for _, daily := range dailyStatsMap {
+				dailyStats = append(dailyStats, *daily)
+			}
+
+			// Sort daily stats by date
+			sort.Slice(dailyStats, func(i, j int) bool {
+				return dailyStats[i].Date < dailyStats[j].Date
+			})
+
+			totals.DailyStats = dailyStats
+		}
+
+		clients = append(clients, *totals)
 	}
 
 	return CalculatePriceFullResponse{
