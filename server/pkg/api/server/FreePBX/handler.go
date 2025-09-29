@@ -152,7 +152,7 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		if len(c.GeographicCallers) > 0 {
 			log.Printf("GEOGRAPHIC CALLERS: Client %s has %d geographic (landline) callers", c.ClientRecord, len(c.GeographicCallers))
 			for callerNum, stats := range c.GeographicCallers {
-				log.Printf("  📞 Caller %s: Total=%d calls/%d min",
+				log.Printf("  📞 Caller %d: Total=%d calls/%d min",
 					callerNum, stats.TotalCalls, stats.TotalMinutes)
 
 				log.Printf("    └─ Landline: %d calls/%d min | Mobile: %d calls/%d min | International: %d calls/%d min",
@@ -179,7 +179,7 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		if len(c.NomadCallers) > 0 {
 			log.Printf("NOMAD CALLERS: Client %s has %d nomad callers", c.ClientRecord, len(c.NomadCallers))
 			for callerNum, stats := range c.NomadCallers {
-				log.Printf("  📱 Caller %s: Total=%d calls/%d min | International=%d calls/%d min",
+				log.Printf("  📱 Caller %d: Total=%d calls/%d min | International=%d calls/%d min",
 					callerNum,
 					stats.TotalCalls, stats.TotalMinutes,
 					stats.InternationalCalls, stats.InternationalMinutes)

@@ -579,7 +579,6 @@ func formatDateKey(t time.Time) string {
 // }
 
 // Add this to your existing helpers.go file, replacing the BuildFullPriceResponses function
-
 func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) CalculatePriceFullResponse {
 	// Sort calls by date (chronological order)
 	sort.Slice(calls, func(i, j int) bool {
@@ -596,7 +595,7 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 
 	for _, call := range calls {
 		dst := call.Value.Dst
-		src := call.Value.Src // Caller number
+		src := call.Value.Src
 		billSec, err := strconv.Atoi(call.Value.BillSec)
 		if err != nil {
 			log.Printf("DEBUG: Invalid billsec for call %s: %v", call.Value.Sequence, err)
@@ -630,10 +629,6 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 		// Determine call type (national/international)
 		isNational := strings.ToUpper(region) == "PT"
 
-		// Classify caller and destination
-		callerType := ClassifyCallerType(src)
-		destinationType := ClassifyNumber(dst)
-
 		// Get call date
 		callDate := parseCallDate(call.Value.Calldate)
 		dateKey := formatDateKey(callDate)
@@ -649,8 +644,8 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 				RemainingTime:     serviceTime,
 				UsedPlanTime:      0,
 				PlanEndDate:       "",
-				GeographicCallers: make(map[string]*GeographicCallerStats),
-				NomadCallers:      make(map[string]*NomadCallerStats),
+				GeographicCallers: []*GeographicCallerStats{},
+				NomadCallers:      []*NomadCallerStats{},
 			}
 			clientTotals[client.RecordID] = totals
 		}
@@ -674,6 +669,10 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 		if isMobile {
 			callType = "mobile"
 		}
+
+		// Classify caller and destination
+		callerType := ClassifyCallerType(src)
+		destinationType := ClassifyNumber(dst)
 
 		// Store remaining time at start of processing this call
 		remainingAtStart := totals.RemainingTime
@@ -1178,8 +1177,6 @@ func ClassifyNumber(number string) CallClassification {
 
 	// At this point, length == 9, so it's a Portuguese number
 	// Get the first digit(s) to classify
-
-	// For Portuguese numbers in different formats
 	var firstDigit string
 	var firstThreeDigits string
 
