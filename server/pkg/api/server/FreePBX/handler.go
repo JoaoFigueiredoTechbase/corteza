@@ -2,6 +2,7 @@ package freepbx
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -29,7 +30,6 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 	log.Printf("INFO: Parsed payload - Calls: %d, Clients: %d, Prices: %d",
 		len(payload.Calls), len(payload.Clients), len(payload.Prices))
 
-	// Parse the JSON strings into proper structs
 	calls, err := ParseCallsFromJSON(payload.Calls)
 	if err != nil {
 		log.Printf("ERROR: Failed to parse calls: %v", err)
@@ -67,31 +67,23 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 	if len(responses.Calls) == 0 {
 		log.Printf("WARNING: No responses generated - checking data...")
 
-		// Debug: Log first few calls and prices for inspection
 		if len(calls) > 0 {
 			log.Printf("DEBUG: First call - Dst: %s, BillSec: %s, Sequence: %s, TrunkClientRecord: %s",
 				calls[0].Value.Dst, calls[0].Value.BillSec, calls[0].Value.Sequence, calls[0].Value.TrunkClientRecord)
 		}
 
-		if len(clients) > 0 {
-			log.Printf("DEBUG: First client - Record: %s, RecordID: %s",
-				clients[0].Value.ClientRecord, clients[0].Value.RecordID)
-		}
-
-		if len(prices) > 0 {
-			log.Printf("DEBUG: First price - CountryCode: %s, Type: %s, Price: %s",
-				prices[0].Value.CountryCode, prices[0].Value.Type, prices[0].Value.Price)
-		}
-
-		// Test number parsing for first call if available
 		if len(calls) > 0 {
-			region, isMobile, err := GetNumberInfo(calls[0].Value.Dst)
+			region, isMobile, ptCallType, err := GetNumberInfo(calls[0].Value.Dst)
 			if err != nil {
 				log.Printf("DEBUG: Failed to parse number %s: %v", calls[0].Value.Dst, err)
 			} else {
 				log.Printf("DEBUG: Number %s - Region: %s, Mobile: %t", calls[0].Value.Dst, region, isMobile)
 
-				// Check if price exists for this region/type
+				if ptCallType != nil {
+					log.Printf("DEBUG: Portuguese call type - Type: %s, Description: %s, Prefix: %s, Category: %s",
+						ptCallType.Type, ptCallType.Description, ptCallType.Prefix, ptCallType.Category)
+				}
+
 				typeKey := "other"
 				if isMobile {
 					typeKey = "mobile"
@@ -116,16 +108,37 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, r := range responses.Calls {
-		log.Printf("RESULT: Seq %s: %s call costs %.2f (country %s)",
+		logMsg := fmt.Sprintf("RESULT: Seq %s: %s call costs %.2f (country %s)",
 			r.Sequence, r.CallType, r.CallPrice, r.CountryName)
+
+		if r.PortugueseCallType != nil {
+			logMsg += fmt.Sprintf(" [PT: %s - %s]", r.PortugueseCallType.Type, r.PortugueseCallType.Description)
+		}
+
+		log.Print(logMsg)
 	}
 
 	for _, c := range responses.Clients {
 		log.Printf("SUMMARY: Client %s -> total %.2f (national %.2f, international %.2f)",
 			c.ClientRecord, c.TotalCost, c.NationalCost, c.InternationalCost)
+
+		log.Printf("PORTUGUESE STATS: Client %s -> Mobile: %d calls/%.2f€, Landline: %d calls/%.2f€, Premium: %d calls/%.2f€, Free: %d calls/%.2f€",
+			c.ClientRecord,
+			c.MobileCalls, c.MobileCost,
+			c.LandlineCalls, c.LandlineCost,
+			c.PremiumCalls, c.PremiumCost,
+			c.FreeCalls, c.FreeCost)
+
+		if c.SharedCostCalls > 0 || c.InternetCalls > 0 || c.AudiotextCalls > 0 || c.SpecialServiceCalls > 0 {
+			log.Printf("PORTUGUESE SPECIAL: Client %s -> SharedCost: %d/%.2f€, Internet: %d/%.2f€, Audiotext: %d/%.2f€, Special: %d/%.2f€",
+				c.ClientRecord,
+				c.SharedCostCalls, c.SharedCostCost,
+				c.InternetCalls, c.InternetCost,
+				c.AudiotextCalls, c.AudiotextCost,
+				c.SpecialServiceCalls, c.SpecialServiceCost)
+		}
 	}
 
-	// Set response header and return the responses
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(responses); err != nil {
 		log.Printf("ERROR: Failed to encode response: %v", err)
@@ -133,10 +146,9 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("INFO: Response sent successfully with %d items", len(responses.Calls))
+	log.Printf("INFO: Response sent successfully with %d items including Portuguese call type counts", len(responses.Calls))
 }
 
-// Request structure for the phone number test
 type PhoneNumberTestRequest struct {
 	Number string `json:"number"`
 }

@@ -92,7 +92,6 @@ func ParseClientsFromJSON(clientsJSON []string) ([]KV[ClientValue], error) {
 
 				if err := json.Unmarshal([]byte(rc.Value.PlanCountries), &countryKVs); err != nil {
 					log.Printf("WARNING: Failed to parse plan_countries for client %s, using empty list: %v", rc.Value.ClientRecord, err)
-					// Continue with empty countries list instead of returning error
 					countries = []string{}
 				} else {
 					// Remove duplicates from country codes
@@ -147,7 +146,7 @@ func BuildPriceMap(prices []KV[PriceValue]) map[string]PriceValue {
 	return priceMap
 }
 
-func GetNumberInfo(number string) (region string, isMobile bool, err error) {
+func GetNumberInfo(number string) (region string, isMobile bool, ptCallType *PortugueseCallType, err error) {
 	var parsed *phonenumbers.PhoneNumber
 	if strings.HasPrefix(number, "+") {
 		parsed, err = phonenumbers.Parse(number, "")
@@ -155,14 +154,21 @@ func GetNumberInfo(number string) (region string, isMobile bool, err error) {
 		parsed, err = phonenumbers.Parse(number, "PT") // fallback region
 	}
 	if err != nil {
-		return "", false, err
+		return "", false, nil, err
 	}
 
 	region = phonenumbers.GetRegionCodeForNumber(parsed)
 	numType := phonenumbers.GetNumberType(parsed)
 	isMobile = numType == phonenumbers.MOBILE || numType == phonenumbers.FIXED_LINE_OR_MOBILE
 
-	return region, isMobile, nil
+	// Get Portuguese-specific details if it's a Portuguese number
+	var callType *PortugueseCallType
+	if region == "PT" {
+		ptType := GetPortugueseCallType(number)
+		callType = &ptType
+	}
+
+	return region, isMobile, callType, nil
 }
 
 func GetCallPrice(priceMap map[string]PriceValue, region string, isMobile bool) (PriceValue, bool) {
@@ -296,6 +302,7 @@ func formatDateKey(t time.Time) string {
 	return t.Format("2006-01-02")
 }
 
+// Updated BuildFullPriceResponses function with Portuguese call type counts
 func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) CalculatePriceFullResponse {
 	// Sort calls by date (chronological order)
 	sort.Slice(calls, func(i, j int) bool {
@@ -324,7 +331,7 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			continue
 		}
 
-		region, isMobile, err := GetNumberInfo(dst)
+		region, isMobile, ptCallType, err := GetNumberInfo(dst)
 		if err != nil {
 			log.Printf("DEBUG: Failed to parse number %s: %v", dst, err)
 			continue
@@ -356,10 +363,10 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			totals = &ClientSummary{
 				ClientRecord:     client.ClientRecord,
 				RecordID:         client.RecordID,
-				TotalServiceTime: serviceTime, // Total plan time available
-				RemainingTime:    serviceTime, // Time remaining in plan
-				UsedPlanTime:     0,           // Time used from plan
-				PlanEndDate:      "",          // Date when plan ended
+				TotalServiceTime: serviceTime,
+				RemainingTime:    serviceTime,
+				UsedPlanTime:     0,
+				PlanEndDate:      "",
 			}
 			clientTotals[client.RecordID] = totals
 		}
@@ -373,7 +380,7 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 		if !exists {
 			dailyStats = &DailySummary{
 				Date:                 dateKey,
-				RemainingTimeAtStart: totals.RemainingTime, // This will be updated properly below
+				RemainingTimeAtStart: totals.RemainingTime,
 			}
 			clientDailyStats[client.RecordID][dateKey] = dailyStats
 		}
@@ -394,15 +401,12 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			dailyStats.PlanTotalTime += billSec
 
 			if totals.RemainingTime > 0 {
-				// Call is within plan time
 				if billSec <= totals.RemainingTime {
-					// Call completely covered by plan
 					totals.UsedPlanTime += billSec
 					totals.RemainingTime -= billSec
 					dailyStats.UsedPlanTime += billSec
 					callPrice = 0
 				} else {
-					// Call exceeds remaining plan time
 					coveredTime := totals.RemainingTime
 					exceededTime := billSec - totals.RemainingTime
 
@@ -413,7 +417,6 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 					dailyStats.UsedPlanTime += coveredTime
 					dailyStats.ExceededPlanTime += exceededTime
 
-					// Calculate price only for exceeded time
 					exceededPrice, err := CalculateCallPrice(exceededTime, priceEntry.CallRating, pricePerMinute)
 					if err != nil {
 						log.Printf("DEBUG: Price calc failed for exceeded time: %v", err)
@@ -424,14 +427,12 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 					totals.ExceededPlanCost += exceededPrice
 					dailyStats.ExceededPlanCost += exceededPrice
 
-					// Save the date when plan ended
 					if totals.PlanEndDate == "" {
 						totals.PlanEndDate = call.Value.Calldate
 						dailyStats.PlanEndedThisDay = true
 					}
 				}
 			} else {
-				// Plan already ended, charge full call
 				totals.ExceededPlanTime += billSec
 				dailyStats.ExceededPlanTime += billSec
 
@@ -445,7 +446,6 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 				dailyStats.ExceededPlanCost += exceededPrice
 			}
 		} else {
-			// Call outside plan
 			totals.NonPlanCalls++
 			totals.NonPlanTotalTime += billSec
 			dailyStats.NonPlanCalls++
@@ -480,21 +480,68 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			dailyStats.InternationalCost += roundedPrice
 		}
 
+		// Update Portuguese call counts if it's a Portuguese number
+		if ptCallType != nil && isNational {
+			switch ptCallType.Type {
+			case "landline":
+				totals.LandlineCalls++
+				totals.LandlineCost += roundedPrice
+				dailyStats.LandlineCalls++
+				dailyStats.LandlineCost += roundedPrice
+			case "mobile":
+				totals.MobileCalls++
+				totals.MobileCost += roundedPrice
+				dailyStats.MobileCalls++
+				dailyStats.MobileCost += roundedPrice
+			case "premium":
+				totals.PremiumCalls++
+				totals.PremiumCost += roundedPrice
+				dailyStats.PremiumCalls++
+				dailyStats.PremiumCost += roundedPrice
+			case "free":
+				totals.FreeCalls++
+				totals.FreeCost += roundedPrice
+				dailyStats.FreeCalls++
+				dailyStats.FreeCost += roundedPrice
+			case "shared_cost":
+				totals.SharedCostCalls++
+				totals.SharedCostCost += roundedPrice
+				dailyStats.SharedCostCalls++
+				dailyStats.SharedCostCost += roundedPrice
+			case "internet":
+				totals.InternetCalls++
+				totals.InternetCost += roundedPrice
+				dailyStats.InternetCalls++
+				dailyStats.InternetCost += roundedPrice
+			case "audiotext":
+				totals.AudiotextCalls++
+				totals.AudiotextCost += roundedPrice
+				dailyStats.AudiotextCalls++
+				dailyStats.AudiotextCost += roundedPrice
+			case "special_service":
+				totals.SpecialServiceCalls++
+				totals.SpecialServiceCost += roundedPrice
+				dailyStats.SpecialServiceCalls++
+				dailyStats.SpecialServiceCost += roundedPrice
+			}
+		}
+
 		// Update remaining time tracking for daily stats
 		dailyStats.RemainingTimeAtStart = remainingAtStart
 		dailyStats.RemainingTimeAtEnd = totals.RemainingTime
 
-		// Add call details
+		// Add call details with Portuguese call type information
 		callDetails = append(callDetails, CallDetail{
-			Sequence:    call.Value.Sequence,
-			CdrId:       call.Value.CdrId,
-			UniqueId:    call.Value.UniqueId,
-			CallPrice:   roundedPrice,
-			CountryName: countryName,
-			CountryCode: region,
-			CallType:    callType,
-			InPlan:      inPlan,
-			IsNational:  isNational,
+			Sequence:           call.Value.Sequence,
+			CdrId:              call.Value.CdrId,
+			UniqueId:           call.Value.UniqueId,
+			CallPrice:          roundedPrice,
+			CountryName:        countryName,
+			CountryCode:        region,
+			CallType:           callType,
+			InPlan:             inPlan,
+			IsNational:         isNational,
+			PortugueseCallType: ptCallType,
 		})
 
 		// Update total costs and time
@@ -508,7 +555,6 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 	// Convert client map to slice and add daily statistics
 	clients := make([]ClientSummary, 0, len(clientTotals))
 	for clientID, totals := range clientTotals {
-		// Convert daily stats map to sorted slice
 		if dailyStatsMap, exists := clientDailyStats[clientID]; exists {
 			dailyStats := make([]DailySummary, 0, len(dailyStatsMap))
 			for _, daily := range dailyStatsMap {
@@ -529,5 +575,203 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 	return CalculatePriceFullResponse{
 		Clients: clients,
 		Calls:   callDetails,
+	}
+}
+
+func GetPortugueseCallType(number string) PortugueseCallType {
+	parsed, err := phonenumbers.Parse(number, "PT")
+	if err != nil {
+		return PortugueseCallType{
+			Type:        "unknown",
+			Description: "Invalid phone number",
+			Prefix:      "",
+			Category:    "unknown",
+		}
+	}
+
+	region := phonenumbers.GetRegionCodeForNumber(parsed)
+	if region != "PT" {
+		return PortugueseCallType{
+			Type:        "foreign",
+			Description: "Non-Portuguese number",
+			Prefix:      "",
+			Category:    "foreign",
+		}
+	}
+
+	nationalNumber := strconv.FormatUint(parsed.GetNationalNumber(), 10)
+
+	if len(nationalNumber) != 9 {
+		return PortugueseCallType{
+			Type:        "unknown",
+			Description: "Invalid Portuguese number format",
+			Prefix:      "",
+			Category:    "unknown",
+		}
+	}
+
+	firstDigit := string(nationalNumber[0])
+
+	switch firstDigit {
+	case "2":
+		return PortugueseCallType{
+			Type:        "landline",
+			Description: "Fixed line (landline)",
+			Prefix:      "2",
+			Category:    "standard",
+		}
+	case "3":
+		return PortugueseCallType{
+			Type:        "special_service",
+			Description: "Special service number",
+			Prefix:      "3",
+			Category:    "special_service",
+		}
+	case "6":
+		if len(nationalNumber) >= 3 {
+			prefix3 := nationalNumber[:3]
+			switch prefix3 {
+			case "646":
+				return PortugueseCallType{
+					Type:        "audiotext",
+					Description: "Audiotext/Entertainment service",
+					Prefix:      "646",
+					Category:    "premium_rate",
+				}
+			case "671":
+				return PortugueseCallType{
+					Type:        "internet",
+					Description: "Internet access service",
+					Prefix:      "671",
+					Category:    "special_service",
+				}
+			default:
+				return PortugueseCallType{
+					Type:        "premium",
+					Description: "Premium rate service",
+					Prefix:      "6",
+					Category:    "premium_rate",
+				}
+			}
+		}
+		return PortugueseCallType{
+			Type:        "premium",
+			Description: "Premium rate service",
+			Prefix:      "6",
+			Category:    "premium_rate",
+		}
+	case "7":
+		if len(nationalNumber) >= 3 {
+			prefix3 := nationalNumber[:3]
+			switch prefix3 {
+			case "707", "708":
+				return PortugueseCallType{
+					Type:        "shared_cost",
+					Description: "Shared cost service",
+					Prefix:      prefix3,
+					Category:    "special_service",
+				}
+			case "760":
+				return PortugueseCallType{
+					Type:        "shared_cost",
+					Description: "Shared cost service",
+					Prefix:      "760",
+					Category:    "special_service",
+				}
+			}
+		}
+		return PortugueseCallType{
+			Type:        "special_service",
+			Description: "Special service number",
+			Prefix:      "7",
+			Category:    "special_service",
+		}
+	case "8":
+		if len(nationalNumber) >= 3 {
+			prefix3 := nationalNumber[:3]
+			switch prefix3 {
+			case "800":
+				return PortugueseCallType{
+					Type:        "free",
+					Description: "Toll-free number",
+					Prefix:      "800",
+					Category:    "free_service",
+				}
+			case "808":
+				return PortugueseCallType{
+					Type:        "shared_cost",
+					Description: "Shared cost service",
+					Prefix:      "808",
+					Category:    "special_service",
+				}
+			case "809":
+				return PortugueseCallType{
+					Type:        "special_service",
+					Description: "Special service number",
+					Prefix:      "809",
+					Category:    "special_service",
+				}
+			}
+		}
+		return PortugueseCallType{
+			Type:        "special_service",
+			Description: "Special service number",
+			Prefix:      "8",
+			Category:    "special_service",
+		}
+	case "9":
+		if len(nationalNumber) >= 2 {
+			prefix2 := nationalNumber[:2]
+			switch prefix2 {
+			case "91":
+				return PortugueseCallType{
+					Type:        "mobile",
+					Description: "Mobile (Vodafone/original Telecel)",
+					Prefix:      "91",
+					Category:    "mobile",
+				}
+			case "92":
+				return PortugueseCallType{
+					Type:        "mobile",
+					Description: "Mobile (MEO/TMN)",
+					Prefix:      "92",
+					Category:    "mobile",
+				}
+			case "93":
+				return PortugueseCallType{
+					Type:        "mobile",
+					Description: "Mobile (NOS/Optimus)",
+					Prefix:      "93",
+					Category:    "mobile",
+				}
+			case "96":
+				return PortugueseCallType{
+					Type:        "mobile",
+					Description: "Mobile (MEO/TMN)",
+					Prefix:      "96",
+					Category:    "mobile",
+				}
+			default:
+				return PortugueseCallType{
+					Type:        "mobile",
+					Description: "Mobile number",
+					Prefix:      "9",
+					Category:    "mobile",
+				}
+			}
+		}
+		return PortugueseCallType{
+			Type:        "mobile",
+			Description: "Mobile number",
+			Prefix:      "9",
+			Category:    "mobile",
+		}
+	default:
+		return PortugueseCallType{
+			Type:        "unknown",
+			Description: "Unknown Portuguese number type",
+			Prefix:      firstDigit,
+			Category:    "unknown",
+		}
 	}
 }

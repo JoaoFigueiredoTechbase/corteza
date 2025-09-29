@@ -43,7 +43,6 @@ type CalculatePriceResponse struct {
 	PriceRecord string  `json:"price_record"`
 }
 
-// DailySummary represents statistics for a single day
 type DailySummary struct {
 	Date string `json:"date"` // Format: YYYY-MM-DD
 
@@ -72,15 +71,32 @@ type DailySummary struct {
 	RemainingTimeAtStart int  `json:"remaining_time_at_start"` // Remaining plan time at start of day
 	RemainingTimeAtEnd   int  `json:"remaining_time_at_end"`   // Remaining plan time at end of day
 	PlanEndedThisDay     bool `json:"plan_ended_this_day"`     // Whether the plan ended on this day
+
+	// Portuguese call counts
+	MobileCalls         int     `json:"mobile_calls"`
+	LandlineCalls       int     `json:"landline_calls"`
+	PremiumCalls        int     `json:"premium_calls"`
+	FreeCalls           int     `json:"free_calls"`
+	SharedCostCalls     int     `json:"shared_cost_calls"`
+	InternetCalls       int     `json:"internet_calls"`
+	AudiotextCalls      int     `json:"audiotext_calls"`
+	SpecialServiceCalls int     `json:"special_service_calls"`
+	MobileCost          float64 `json:"mobile_cost"`
+	LandlineCost        float64 `json:"landline_cost"`
+	PremiumCost         float64 `json:"premium_cost"`
+	FreeCost            float64 `json:"free_cost"`
+	SharedCostCost      float64 `json:"shared_cost_cost"`
+	InternetCost        float64 `json:"internet_cost"`
+	AudiotextCost       float64 `json:"audiotext_cost"`
+	SpecialServiceCost  float64 `json:"special_service_cost"`
 }
 
-// ClientSummary represents the monthly totals and daily breakdown for a client
 type ClientSummary struct {
 	// Basic client info
 	ClientRecord string `json:"client_record"`
 	RecordID     string `json:"record_id"`
 
-	// Monthly totals (same as before)
+	// Monthly totals
 	TotalServiceTime int    `json:"total_service_time"` // Original plan time in seconds
 	TotalTime        int    `json:"total_time"`         // Total time of all calls
 	UsedPlanTime     int    `json:"used_plan_time"`     // Time used from plan (covered time)
@@ -108,23 +124,49 @@ type ClientSummary struct {
 	NationalCalls      int `json:"national_calls"`      // Number of national calls (PT)
 	InternationalCalls int `json:"international_calls"` // Number of international calls (non-PT)
 
-	// NEW: Daily breakdown
+	// Portuguese call counts
+	MobileCalls         int     `json:"mobile_calls"`
+	LandlineCalls       int     `json:"landline_calls"`
+	PremiumCalls        int     `json:"premium_calls"`
+	FreeCalls           int     `json:"free_calls"`
+	SharedCostCalls     int     `json:"shared_cost_calls"`
+	InternetCalls       int     `json:"internet_calls"`
+	AudiotextCalls      int     `json:"audiotext_calls"`
+	SpecialServiceCalls int     `json:"special_service_calls"`
+	MobileCost          float64 `json:"mobile_cost"`
+	LandlineCost        float64 `json:"landline_cost"`
+	PremiumCost         float64 `json:"premium_cost"`
+	FreeCost            float64 `json:"free_cost"`
+	SharedCostCost      float64 `json:"shared_cost_cost"`
+	InternetCost        float64 `json:"internet_cost"`
+	AudiotextCost       float64 `json:"audiotext_cost"`
+	SpecialServiceCost  float64 `json:"special_service_cost"`
+
+	// Daily breakdown
 	DailyStats []DailySummary `json:"daily_stats"` // Statistics broken down by day
 }
 
 type CallDetail struct {
-	Sequence    string  `json:"sequence"`
-	CdrId       string  `json:"cdr_id"`
-	UniqueId    string  `json:"unique_id"`
-	CallPrice   float64 `json:"call_price"`
-	CountryName string  `json:"country_name"`
-	CountryCode string  `json:"country_code"`
-	CallType    string  `json:"call_type"`
-	InPlan      bool    `json:"in_plan"`
-	IsNational  bool    `json:"is_national"`
+	Sequence           string              `json:"sequence"`
+	CdrId              string              `json:"cdr_id"`
+	UniqueId           string              `json:"unique_id"`
+	CallPrice          float64             `json:"call_price"`
+	CountryName        string              `json:"country_name"`
+	CountryCode        string              `json:"country_code"`
+	CallType           string              `json:"call_type"`
+	InPlan             bool                `json:"in_plan"`
+	IsNational         bool                `json:"is_national"`
+	PortugueseCallType *PortugueseCallType `json:"portuguese_call_type"`
 }
 
 type CalculatePriceFullResponse struct {
 	Clients []ClientSummary `json:"clients"`
 	Calls   []CallDetail    `json:"calls"`
+}
+
+type PortugueseCallType struct {
+	Type        string `json:"type"`        // "mobile", "landline", "premium", "free", "internet", "audiotext", "shared_cost", "unknown"
+	Description string `json:"description"` // Human readable description
+	Prefix      string `json:"prefix"`      // The identifying prefix (3, 6, 7, 8, 9, etc.)
+	Category    string `json:"category"`    // "standard", "special_service", "premium_rate"
 }
