@@ -154,6 +154,7 @@ type ClientSummary struct {
 	RemainingTime    int    `json:"remaining_time"`     // Time remaining in plan
 	ExceededPlanTime int    `json:"exceeded_plan_time"` // Time that exceeded the plan
 	PlanEndDate      string `json:"plan_end_date"`      // Date when plan ended
+	PlanEnded        bool   `json:"plan_ended"`         // Whether the plan ended for this client
 
 	// Time breakdown by plan/non-plan (monthly totals)
 	PlanTotalTime    int `json:"plan_total_time"`     // Total time of plan calls

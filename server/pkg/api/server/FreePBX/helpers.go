@@ -712,6 +712,7 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 
 					if totals.PlanEndDate == "" {
 						totals.PlanEndDate = call.Value.Calldate
+						totals.PlanEnded = true // Set the new field
 						dailyStats.PlanEndedThisDay = true
 					}
 				}
