@@ -9,6 +9,7 @@ type CallValue struct {
 	BillSec           string `json:"billsec"`
 	CdrId             string `json:"cdr_id"`
 	Dst               string `json:"dst"`
+	Src               string `json:"src"` // Caller number - to be added to request
 	Sequence          string `json:"sequence"`
 	UniqueId          string `json:"unique_id"`
 	TrunkClientRecord string `json:"trunk_cliente_record"`
@@ -41,6 +42,56 @@ type CalculatePriceResponse struct {
 	CallType    string  `json:"call_type"`
 	CallPrice   float64 `json:"call_price"`
 	PriceRecord string  `json:"price_record"`
+}
+
+// Call classification type
+type CallClassification struct {
+	Type        string `json:"type"`        // "landline", "mobile", "non_geographic", "international", "short", "value_added", "other"
+	Description string `json:"description"` // Human readable description
+}
+
+// Caller type classification
+type CallerType struct {
+	Type           string `json:"type"`           // "geographic" (landline), "nomad", "other"
+	Number         string `json:"number"`         // The caller number
+	Classification string `json:"classification"` // Detailed classification
+}
+
+// Statistics for geographic (landline) callers
+type GeographicCallerStats struct {
+	CallerNumber string `json:"caller_number"`
+
+	// Call counts by destination type
+	LandlineCalls      int `json:"landline_calls"`
+	MobileCalls        int `json:"mobile_calls"`
+	InternationalCalls int `json:"international_calls"`
+	NonGeographicCalls int `json:"non_geographic_calls"`
+	ShortCalls         int `json:"short_calls"`
+	NomadCalls         int `json:"nomad_calls"`
+	ValueAddedCalls    int `json:"value_added_calls"` // 760/761 numbers
+	Value760Calls      int `json:"value_760_calls"`   // Specifically 760 numbers
+
+	// Minutes by destination type
+	LandlineMinutes      int `json:"landline_minutes"`
+	MobileMinutes        int `json:"mobile_minutes"`
+	InternationalMinutes int `json:"international_minutes"`
+	NonGeographicMinutes int `json:"non_geographic_minutes"`
+	ShortMinutes         int `json:"short_minutes"`
+	NomadMinutes         int `json:"nomad_minutes"`
+	ValueAddedMinutes    int `json:"value_added_minutes"`
+	Value760Minutes      int `json:"value_760_minutes"`
+
+	TotalCalls   int `json:"total_calls"`
+	TotalMinutes int `json:"total_minutes"`
+}
+
+// Statistics for nomad callers
+type NomadCallerStats struct {
+	CallerNumber         string `json:"caller_number"`
+	TotalCalls           int    `json:"total_calls"`
+	TotalMinutes         int    `json:"total_minutes"`
+	InternationalCalls   int    `json:"international_calls"`
+	InternationalMinutes int    `json:"international_minutes"`
 }
 
 type DailySummary struct {
@@ -144,6 +195,10 @@ type ClientSummary struct {
 
 	// Daily breakdown
 	DailyStats []DailySummary `json:"daily_stats"` // Statistics broken down by day
+
+	// Caller statistics
+	GeographicCallers []*GeographicCallerStats `json:"geographic_callers,omitempty"` // Stats by geographic caller
+	NomadCallers      []*NomadCallerStats      `json:"nomad_callers,omitempty"`      // Stats by nomad caller
 }
 
 type CallDetail struct {
@@ -157,6 +212,8 @@ type CallDetail struct {
 	InPlan             bool                `json:"in_plan"`
 	IsNational         bool                `json:"is_national"`
 	PortugueseCallType *PortugueseCallType `json:"portuguese_call_type"`
+	CallerType         *CallerType         `json:"caller_type"`      // Classification of caller
+	DestinationType    *CallClassification `json:"destination_type"` // Classification of destination
 }
 
 type CalculatePriceFullResponse struct {

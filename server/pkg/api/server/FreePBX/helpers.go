@@ -303,6 +303,283 @@ func formatDateKey(t time.Time) string {
 }
 
 // Updated BuildFullPriceResponses function with Portuguese call type counts
+// func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) CalculatePriceFullResponse {
+// 	// Sort calls by date (chronological order)
+// 	sort.Slice(calls, func(i, j int) bool {
+// 		dateI := parseCallDate(calls[i].Value.Calldate)
+// 		dateJ := parseCallDate(calls[j].Value.Calldate)
+// 		return dateI.Before(dateJ)
+// 	})
+
+// 	callDetails := make([]CallDetail, 0, len(calls))
+// 	clientTotals := make(map[string]*ClientSummary)
+
+// 	// Track daily statistics for each client
+// 	clientDailyStats := make(map[string]map[string]*DailySummary) // client_id -> date -> daily_stats
+
+// 	for _, call := range calls {
+// 		dst := call.Value.Dst
+// 		billSec, err := strconv.Atoi(call.Value.BillSec)
+// 		if err != nil {
+// 			log.Printf("DEBUG: Invalid billsec for call %s: %v", call.Value.Sequence, err)
+// 			continue
+// 		}
+
+// 		client, ok := clientMap[call.Value.TrunkClientRecord]
+// 		if !ok {
+// 			log.Printf("DEBUG: Client not found for record %s", call.Value.TrunkClientRecord)
+// 			continue
+// 		}
+
+// 		region, isMobile, ptCallType, err := GetNumberInfo(dst)
+// 		if err != nil {
+// 			log.Printf("DEBUG: Failed to parse number %s: %v", dst, err)
+// 			continue
+// 		}
+
+// 		priceEntry, ok := GetCallPrice(priceMap, region, isMobile)
+// 		if !ok {
+// 			log.Printf("DEBUG: No price found for region %s, mobile=%t", region, isMobile)
+// 			continue
+// 		}
+
+// 		countryName := priceEntry.CountryName
+// 		pricePerMinute, _ := strconv.ParseFloat(priceEntry.Price, 64)
+
+// 		// Check if country is in client's plan
+// 		inPlan := isCountryInPlan(region, client.PlanCountries)
+
+// 		// Determine call type (national/international)
+// 		isNational := strings.ToUpper(region) == "PT"
+
+// 		// Get call date
+// 		callDate := parseCallDate(call.Value.Calldate)
+// 		dateKey := formatDateKey(callDate)
+
+// 		// Initialize client totals if not exists
+// 		totals, exists := clientTotals[client.RecordID]
+// 		if !exists {
+// 			serviceTime, _ := strconv.Atoi(client.ServiceTime)
+// 			totals = &ClientSummary{
+// 				ClientRecord:     client.ClientRecord,
+// 				RecordID:         client.RecordID,
+// 				TotalServiceTime: serviceTime,
+// 				RemainingTime:    serviceTime,
+// 				UsedPlanTime:     0,
+// 				PlanEndDate:      "",
+// 			}
+// 			clientTotals[client.RecordID] = totals
+// 		}
+
+// 		// Initialize daily stats for this client if not exists
+// 		if clientDailyStats[client.RecordID] == nil {
+// 			clientDailyStats[client.RecordID] = make(map[string]*DailySummary)
+// 		}
+
+// 		dailyStats, exists := clientDailyStats[client.RecordID][dateKey]
+// 		if !exists {
+// 			dailyStats = &DailySummary{
+// 				Date:                 dateKey,
+// 				RemainingTimeAtStart: totals.RemainingTime,
+// 			}
+// 			clientDailyStats[client.RecordID][dateKey] = dailyStats
+// 		}
+
+// 		var callPrice float64
+// 		callType := "other"
+// 		if isMobile {
+// 			callType = "mobile"
+// 		}
+
+// 		// Store remaining time at start of processing this call
+// 		remainingAtStart := totals.RemainingTime
+
+// 		if inPlan {
+// 			totals.PlanCalls++
+// 			totals.PlanTotalTime += billSec
+// 			dailyStats.PlanCalls++
+// 			dailyStats.PlanTotalTime += billSec
+
+// 			if totals.RemainingTime > 0 {
+// 				if billSec <= totals.RemainingTime {
+// 					totals.UsedPlanTime += billSec
+// 					totals.RemainingTime -= billSec
+// 					dailyStats.UsedPlanTime += billSec
+// 					callPrice = 0
+// 				} else {
+// 					coveredTime := totals.RemainingTime
+// 					exceededTime := billSec - totals.RemainingTime
+
+// 					totals.UsedPlanTime += coveredTime
+// 					totals.ExceededPlanTime += exceededTime
+// 					totals.RemainingTime = 0
+
+// 					dailyStats.UsedPlanTime += coveredTime
+// 					dailyStats.ExceededPlanTime += exceededTime
+
+// 					exceededPrice, err := CalculateCallPrice(exceededTime, priceEntry.CallRating, pricePerMinute)
+// 					if err != nil {
+// 						log.Printf("DEBUG: Price calc failed for exceeded time: %v", err)
+// 						exceededPrice = 0
+// 					}
+
+// 					callPrice = exceededPrice
+// 					totals.ExceededPlanCost += exceededPrice
+// 					dailyStats.ExceededPlanCost += exceededPrice
+
+// 					if totals.PlanEndDate == "" {
+// 						totals.PlanEndDate = call.Value.Calldate
+// 						dailyStats.PlanEndedThisDay = true
+// 					}
+// 				}
+// 			} else {
+// 				totals.ExceededPlanTime += billSec
+// 				dailyStats.ExceededPlanTime += billSec
+
+// 				exceededPrice, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
+// 				if err != nil {
+// 					log.Printf("DEBUG: Price calc failed: %v", err)
+// 					exceededPrice = 0
+// 				}
+// 				callPrice = exceededPrice
+// 				totals.ExceededPlanCost += exceededPrice
+// 				dailyStats.ExceededPlanCost += exceededPrice
+// 			}
+// 		} else {
+// 			totals.NonPlanCalls++
+// 			totals.NonPlanTotalTime += billSec
+// 			dailyStats.NonPlanCalls++
+// 			dailyStats.NonPlanTotalTime += billSec
+
+// 			exceededPrice, err := CalculateCallPrice(billSec, priceEntry.CallRating, pricePerMinute)
+// 			if err != nil {
+// 				log.Printf("DEBUG: Price calc failed: %v", err)
+// 				exceededPrice = 0
+// 			}
+// 			callPrice = exceededPrice
+// 		}
+
+// 		// Update totals and daily stats based on call type (national/international)
+// 		roundedPrice := math.Round(callPrice*100) / 100
+
+// 		if isNational {
+// 			totals.NationalCalls++
+// 			totals.NationalTime += billSec
+// 			totals.NationalCost += roundedPrice
+
+// 			dailyStats.NationalCalls++
+// 			dailyStats.NationalTime += billSec
+// 			dailyStats.NationalCost += roundedPrice
+// 		} else {
+// 			totals.InternationalCalls++
+// 			totals.InternationalTime += billSec
+// 			totals.InternationalCost += roundedPrice
+
+// 			dailyStats.InternationalCalls++
+// 			dailyStats.InternationalTime += billSec
+// 			dailyStats.InternationalCost += roundedPrice
+// 		}
+
+// 		// Update Portuguese call counts if it's a Portuguese number
+// 		if ptCallType != nil && isNational {
+// 			switch ptCallType.Type {
+// 			case "landline":
+// 				totals.LandlineCalls++
+// 				totals.LandlineCost += roundedPrice
+// 				dailyStats.LandlineCalls++
+// 				dailyStats.LandlineCost += roundedPrice
+// 			case "mobile":
+// 				totals.MobileCalls++
+// 				totals.MobileCost += roundedPrice
+// 				dailyStats.MobileCalls++
+// 				dailyStats.MobileCost += roundedPrice
+// 			case "premium":
+// 				totals.PremiumCalls++
+// 				totals.PremiumCost += roundedPrice
+// 				dailyStats.PremiumCalls++
+// 				dailyStats.PremiumCost += roundedPrice
+// 			case "free":
+// 				totals.FreeCalls++
+// 				totals.FreeCost += roundedPrice
+// 				dailyStats.FreeCalls++
+// 				dailyStats.FreeCost += roundedPrice
+// 			case "shared_cost":
+// 				totals.SharedCostCalls++
+// 				totals.SharedCostCost += roundedPrice
+// 				dailyStats.SharedCostCalls++
+// 				dailyStats.SharedCostCost += roundedPrice
+// 			case "internet":
+// 				totals.InternetCalls++
+// 				totals.InternetCost += roundedPrice
+// 				dailyStats.InternetCalls++
+// 				dailyStats.InternetCost += roundedPrice
+// 			case "audiotext":
+// 				totals.AudiotextCalls++
+// 				totals.AudiotextCost += roundedPrice
+// 				dailyStats.AudiotextCalls++
+// 				dailyStats.AudiotextCost += roundedPrice
+// 			case "special_service":
+// 				totals.SpecialServiceCalls++
+// 				totals.SpecialServiceCost += roundedPrice
+// 				dailyStats.SpecialServiceCalls++
+// 				dailyStats.SpecialServiceCost += roundedPrice
+// 			}
+// 		}
+
+// 		// Update remaining time tracking for daily stats
+// 		dailyStats.RemainingTimeAtStart = remainingAtStart
+// 		dailyStats.RemainingTimeAtEnd = totals.RemainingTime
+
+// 		// Add call details with Portuguese call type information
+// 		callDetails = append(callDetails, CallDetail{
+// 			Sequence:           call.Value.Sequence,
+// 			CdrId:              call.Value.CdrId,
+// 			UniqueId:           call.Value.UniqueId,
+// 			CallPrice:          roundedPrice,
+// 			CountryName:        countryName,
+// 			CountryCode:        region,
+// 			CallType:           callType,
+// 			InPlan:             inPlan,
+// 			IsNational:         isNational,
+// 			PortugueseCallType: ptCallType,
+// 		})
+
+// 		// Update total costs and time
+// 		totals.TotalCost += roundedPrice
+// 		totals.TotalTime += billSec
+
+// 		dailyStats.TotalCost += roundedPrice
+// 		dailyStats.TotalTime += billSec
+// 	}
+
+// 	// Convert client map to slice and add daily statistics
+// 	clients := make([]ClientSummary, 0, len(clientTotals))
+// 	for clientID, totals := range clientTotals {
+// 		if dailyStatsMap, exists := clientDailyStats[clientID]; exists {
+// 			dailyStats := make([]DailySummary, 0, len(dailyStatsMap))
+// 			for _, daily := range dailyStatsMap {
+// 				dailyStats = append(dailyStats, *daily)
+// 			}
+
+// 			// Sort daily stats by date
+// 			sort.Slice(dailyStats, func(i, j int) bool {
+// 				return dailyStats[i].Date < dailyStats[j].Date
+// 			})
+
+// 			totals.DailyStats = dailyStats
+// 		}
+
+// 		clients = append(clients, *totals)
+// 	}
+
+// 	return CalculatePriceFullResponse{
+// 		Clients: clients,
+// 		Calls:   callDetails,
+// 	}
+// }
+
+// Add this to your existing helpers.go file, replacing the BuildFullPriceResponses function
+
 func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) CalculatePriceFullResponse {
 	// Sort calls by date (chronological order)
 	sort.Slice(calls, func(i, j int) bool {
@@ -319,6 +596,7 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 
 	for _, call := range calls {
 		dst := call.Value.Dst
+		src := call.Value.Src // Caller number
 		billSec, err := strconv.Atoi(call.Value.BillSec)
 		if err != nil {
 			log.Printf("DEBUG: Invalid billsec for call %s: %v", call.Value.Sequence, err)
@@ -352,6 +630,10 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 		// Determine call type (national/international)
 		isNational := strings.ToUpper(region) == "PT"
 
+		// Classify caller and destination
+		callerType := ClassifyCallerType(src)
+		destinationType := ClassifyNumber(dst)
+
 		// Get call date
 		callDate := parseCallDate(call.Value.Calldate)
 		dateKey := formatDateKey(callDate)
@@ -361,12 +643,14 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 		if !exists {
 			serviceTime, _ := strconv.Atoi(client.ServiceTime)
 			totals = &ClientSummary{
-				ClientRecord:     client.ClientRecord,
-				RecordID:         client.RecordID,
-				TotalServiceTime: serviceTime,
-				RemainingTime:    serviceTime,
-				UsedPlanTime:     0,
-				PlanEndDate:      "",
+				ClientRecord:      client.ClientRecord,
+				RecordID:          client.RecordID,
+				TotalServiceTime:  serviceTime,
+				RemainingTime:     serviceTime,
+				UsedPlanTime:      0,
+				PlanEndDate:       "",
+				GeographicCallers: make(map[string]*GeographicCallerStats),
+				NomadCallers:      make(map[string]*NomadCallerStats),
 			}
 			clientTotals[client.RecordID] = totals
 		}
@@ -526,6 +810,93 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			}
 		}
 
+		// Update caller statistics based on caller type
+		billMinutes := billSec / 60
+
+		switch callerType.Type {
+		case "geographic":
+			// Update geographic caller stats
+			var geoStats *GeographicCallerStats
+			found := false
+			for _, gs := range totals.GeographicCallers {
+				if gs.CallerNumber == src {
+					geoStats = gs
+					found = true
+					break
+				}
+			}
+			if !found {
+				geoStats = &GeographicCallerStats{
+					CallerNumber: src,
+				}
+				totals.GeographicCallers = append(totals.GeographicCallers, geoStats)
+			}
+
+			geoStats.TotalCalls++
+			geoStats.TotalMinutes += billMinutes
+
+			// Classify destination and update appropriate counters
+			switch destinationType.Type {
+			case "landline":
+				geoStats.LandlineCalls++
+				geoStats.LandlineMinutes += billMinutes
+			case "mobile":
+				geoStats.MobileCalls++
+				geoStats.MobileMinutes += billMinutes
+			case "international":
+				geoStats.InternationalCalls++
+				geoStats.InternationalMinutes += billMinutes
+			case "non_geographic":
+				geoStats.NonGeographicCalls++
+				geoStats.NonGeographicMinutes += billMinutes
+			case "short":
+				geoStats.ShortCalls++
+				geoStats.ShortMinutes += billMinutes
+			case "value_added":
+				geoStats.ValueAddedCalls++
+				geoStats.ValueAddedMinutes += billMinutes
+
+				// Check if it's specifically a 760 number
+				if IsValue760Number(dst) {
+					geoStats.Value760Calls++
+					geoStats.Value760Minutes += billMinutes
+				}
+			default:
+				// Nomad or other types
+				if strings.Contains(destinationType.Description, "nomad") {
+					geoStats.NomadCalls++
+					geoStats.NomadMinutes += billMinutes
+				}
+			}
+
+		case "nomad":
+			// Update nomad caller stats
+			var nomadStats *NomadCallerStats
+			found := false
+			for _, ns := range totals.NomadCallers {
+				if ns.CallerNumber == src {
+					nomadStats = ns
+					found = true
+					break
+				}
+			}
+			if !found {
+				nomadStats = &NomadCallerStats{
+					CallerNumber: src,
+				}
+				totals.NomadCallers = append(totals.NomadCallers, nomadStats)
+			}
+
+			nomadStats.TotalCalls++
+			nomadStats.TotalMinutes += billMinutes
+
+			// Track international calls for nomad callers
+			if destinationType.Type == "international" {
+				nomadStats.InternationalCalls++
+				nomadStats.InternationalMinutes += billMinutes
+			}
+		}
+
 		// Update remaining time tracking for daily stats
 		dailyStats.RemainingTimeAtStart = remainingAtStart
 		dailyStats.RemainingTimeAtEnd = totals.RemainingTime
@@ -542,6 +913,8 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			InPlan:             inPlan,
 			IsNational:         isNational,
 			PortugueseCallType: ptCallType,
+			CallerType:         &callerType,
+			DestinationType:    &destinationType,
 		})
 
 		// Update total costs and time
@@ -774,4 +1147,197 @@ func GetPortugueseCallType(number string) PortugueseCallType {
 			Category:    "unknown",
 		}
 	}
+}
+
+// ClassifyNumber classifies a phone number based on the provided rules
+func ClassifyNumber(number string) CallClassification {
+	// Clean the number
+	cleanNumber := strings.TrimSpace(number)
+
+	// Remove + prefix for length calculation
+	numberForLength := strings.TrimPrefix(cleanNumber, "+")
+	numberForLength = strings.TrimPrefix(numberForLength, "00")
+
+	length := len(numberForLength)
+
+	// Short codes (less than 9 digits)
+	if length < 9 {
+		return CallClassification{
+			Type:        "short",
+			Description: "Short code",
+		}
+	}
+
+	// International calls (more than 9 digits)
+	if length > 9 {
+		return CallClassification{
+			Type:        "international",
+			Description: "International call",
+		}
+	}
+
+	// At this point, length == 9, so it's a Portuguese number
+	// Get the first digit(s) to classify
+
+	// For Portuguese numbers in different formats
+	var firstDigit string
+	var firstThreeDigits string
+
+	if strings.HasPrefix(cleanNumber, "+3512") && len(cleanNumber) == 13 {
+		// +3512XXXXXXX format (landline)
+		firstDigit = "2"
+		if len(cleanNumber) >= 8 {
+			firstThreeDigits = cleanNumber[5:8]
+		}
+	} else if strings.HasPrefix(cleanNumber, "003512") && len(cleanNumber) == 14 {
+		// 003512XXXXXXX format (landline)
+		firstDigit = "2"
+		if len(cleanNumber) >= 9 {
+			firstThreeDigits = cleanNumber[6:9]
+		}
+	} else if strings.HasPrefix(cleanNumber, "3512") && len(cleanNumber) == 12 {
+		// 3512XXXXXXX format (landline)
+		firstDigit = "2"
+		if len(cleanNumber) >= 7 {
+			firstThreeDigits = cleanNumber[4:7]
+		}
+	} else if strings.HasPrefix(cleanNumber, "+3519") && len(cleanNumber) == 13 {
+		// +3519XXXXXXX format (mobile)
+		firstDigit = "9"
+		if len(cleanNumber) >= 8 {
+			firstThreeDigits = cleanNumber[5:8]
+		}
+	} else if strings.HasPrefix(cleanNumber, "003519") && len(cleanNumber) == 14 {
+		// 003519XXXXXXX format (mobile)
+		firstDigit = "9"
+		if len(cleanNumber) >= 9 {
+			firstThreeDigits = cleanNumber[6:9]
+		}
+	} else if strings.HasPrefix(cleanNumber, "3519") && len(cleanNumber) == 12 {
+		// 3519XXXXXXX format (mobile)
+		firstDigit = "9"
+		if len(cleanNumber) >= 7 {
+			firstThreeDigits = cleanNumber[4:7]
+		}
+	} else if len(numberForLength) == 9 {
+		// National format (9 digits)
+		firstDigit = string(numberForLength[0])
+		if len(numberForLength) >= 3 {
+			firstThreeDigits = numberForLength[0:3]
+		}
+	} else {
+		// Fallback
+		firstDigit = string(numberForLength[0])
+		if len(numberForLength) >= 3 {
+			firstThreeDigits = numberForLength[0:3]
+		}
+	}
+
+	// Value-added numbers (760, 761)
+	if firstThreeDigits == "760" || firstThreeDigits == "761" {
+		return CallClassification{
+			Type:        "value_added",
+			Description: "Value-added service (760/761)",
+		}
+	}
+
+	// Landline (starts with 2)
+	if firstDigit == "2" {
+		return CallClassification{
+			Type:        "landline",
+			Description: "Portuguese landline",
+		}
+	}
+
+	// Mobile (starts with 9)
+	if firstDigit == "9" {
+		return CallClassification{
+			Type:        "mobile",
+			Description: "Portuguese mobile",
+		}
+	}
+
+	// Non-geographic numbers (starts with 3, 7, or 8)
+	// Exception: 760 and 761 are already handled above
+	if firstDigit == "3" {
+		return CallClassification{
+			Type:        "non_geographic",
+			Description: "Non-geographic number (3xx)",
+		}
+	}
+
+	if firstDigit == "8" {
+		return CallClassification{
+			Type:        "non_geographic",
+			Description: "Non-geographic number (8xx)",
+		}
+	}
+
+	if firstDigit == "7" {
+		// 7xx but not 760/761
+		return CallClassification{
+			Type:        "non_geographic",
+			Description: "Non-geographic number (7xx)",
+		}
+	}
+
+	// Default to other
+	return CallClassification{
+		Type:        "other",
+		Description: "Other number type",
+	}
+}
+
+// ClassifyCallerType determines if a caller is geographic (landline), nomad, or other
+func ClassifyCallerType(number string) CallerType {
+	// Clean the number
+	cleanNumber := strings.TrimSpace(number)
+
+	// Classify the number
+	classification := ClassifyNumber(cleanNumber)
+
+	callerType := CallerType{
+		Number:         cleanNumber,
+		Classification: classification.Type,
+	}
+
+	// Geographic = landline
+	switch classification.Type {
+	case "landline":
+		callerType.Type = "geographic"
+	case "non_geographic":
+		// Nomad numbers are a subset of non-geographic
+		// For simplicity, we'll consider all non-geographic as potentially nomad
+		// You can refine this logic based on specific prefixes if needed
+		callerType.Type = "nomad"
+	default:
+		callerType.Type = "other"
+	}
+
+	return callerType
+}
+
+// IsValue760Number checks if a number specifically starts with 760
+func IsValue760Number(number string) bool {
+	cleanNumber := strings.TrimSpace(number)
+
+	// Remove + prefix and country code
+	numberForCheck := strings.TrimPrefix(cleanNumber, "+")
+	numberForCheck = strings.TrimPrefix(numberForCheck, "00")
+
+	// Check different formats
+	if strings.HasPrefix(cleanNumber, "+351760") && len(cleanNumber) == 13 {
+		return true
+	}
+	if strings.HasPrefix(cleanNumber, "00351760") && len(cleanNumber) == 14 {
+		return true
+	}
+	if strings.HasPrefix(cleanNumber, "351760") && len(cleanNumber) == 12 {
+		return true
+	}
+	if strings.HasPrefix(numberForCheck, "760") && len(numberForCheck) == 9 {
+		return true
+	}
+
+	return false
 }

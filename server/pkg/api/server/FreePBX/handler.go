@@ -107,6 +107,7 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Log individual call details with classifications
 	for _, r := range responses.Calls {
 		logMsg := fmt.Sprintf("RESULT: Seq %s: %s call costs %.2f (country %s)",
 			r.Sequence, r.CallType, r.CallPrice, r.CountryName)
@@ -115,9 +116,18 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 			logMsg += fmt.Sprintf(" [PT: %s - %s]", r.PortugueseCallType.Type, r.PortugueseCallType.Description)
 		}
 
+		if r.CallerType != nil {
+			logMsg += fmt.Sprintf(" [Caller: %s/%s]", r.CallerType.Type, r.CallerType.Classification)
+		}
+
+		if r.DestinationType != nil {
+			logMsg += fmt.Sprintf(" [Dest: %s]", r.DestinationType.Type)
+		}
+
 		log.Print(logMsg)
 	}
 
+	// Log client summaries
 	for _, c := range responses.Clients {
 		log.Printf("SUMMARY: Client %s -> total %.2f (national %.2f, international %.2f)",
 			c.ClientRecord, c.TotalCost, c.NationalCost, c.InternationalCost)
@@ -137,8 +147,47 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 				c.AudiotextCalls, c.AudiotextCost,
 				c.SpecialServiceCalls, c.SpecialServiceCost)
 		}
+
+		// Log geographic caller statistics
+		if len(c.GeographicCallers) > 0 {
+			log.Printf("GEOGRAPHIC CALLERS: Client %s has %d geographic (landline) callers", c.ClientRecord, len(c.GeographicCallers))
+			for callerNum, stats := range c.GeographicCallers {
+				log.Printf("  📞 Caller %s: Total=%d calls/%d min",
+					callerNum, stats.TotalCalls, stats.TotalMinutes)
+
+				log.Printf("    └─ Landline: %d calls/%d min | Mobile: %d calls/%d min | International: %d calls/%d min",
+					stats.LandlineCalls, stats.LandlineMinutes,
+					stats.MobileCalls, stats.MobileMinutes,
+					stats.InternationalCalls, stats.InternationalMinutes)
+
+				if stats.NonGeographicCalls > 0 || stats.ShortCalls > 0 || stats.ValueAddedCalls > 0 || stats.NomadCalls > 0 {
+					log.Printf("    └─ NonGeo: %d/%d min | Short: %d/%d min | Nomad: %d/%d min",
+						stats.NonGeographicCalls, stats.NonGeographicMinutes,
+						stats.ShortCalls, stats.ShortMinutes,
+						stats.NomadCalls, stats.NomadMinutes)
+				}
+
+				if stats.ValueAddedCalls > 0 {
+					log.Printf("    └─ ValueAdded (760/761): %d calls/%d min | Specifically 760: %d calls/%d min",
+						stats.ValueAddedCalls, stats.ValueAddedMinutes,
+						stats.Value760Calls, stats.Value760Minutes)
+				}
+			}
+		}
+
+		// Log nomad caller statistics
+		if len(c.NomadCallers) > 0 {
+			log.Printf("NOMAD CALLERS: Client %s has %d nomad callers", c.ClientRecord, len(c.NomadCallers))
+			for callerNum, stats := range c.NomadCallers {
+				log.Printf("  📱 Caller %s: Total=%d calls/%d min | International=%d calls/%d min",
+					callerNum,
+					stats.TotalCalls, stats.TotalMinutes,
+					stats.InternationalCalls, stats.InternationalMinutes)
+			}
+		}
 	}
 
+	// Send JSON response
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(responses); err != nil {
 		log.Printf("ERROR: Failed to encode response: %v", err)
@@ -146,7 +195,7 @@ func HandleCalculatePrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("INFO: Response sent successfully with %d items including Portuguese call type counts", len(responses.Calls))
+	log.Printf("INFO: Response sent successfully with %d calls and caller classification data", len(responses.Calls))
 }
 
 type PhoneNumberTestRequest struct {
