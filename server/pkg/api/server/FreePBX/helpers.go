@@ -578,7 +578,6 @@ func formatDateKey(t time.Time) string {
 // 	}
 // }
 
-// Add this to your existing helpers.go file, replacing the BuildFullPriceResponses function
 func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceValue, clientMap map[string]ClientValue) CalculatePriceFullResponse {
 	// Sort calls by date (chronological order)
 	sort.Slice(calls, func(i, j int) bool {
@@ -828,8 +827,11 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			if !found {
 				geoStats = &GeographicCallerStats{
 					CallerNumber: src,
+					Date:         dateKey, // Set to the date of the first call for this caller
 				}
 				totals.GeographicCallers = append(totals.GeographicCallers, geoStats)
+			} else {
+				// Optionally update date to latest if desired: geoStats.Date = dateKey
 			}
 
 			geoStats.TotalCalls++
@@ -883,8 +885,11 @@ func BuildFullPriceResponses(calls []KV[CallValue], priceMap map[string]PriceVal
 			if !found {
 				nomadStats = &NomadCallerStats{
 					CallerNumber: src,
+					Date:         dateKey, // Set to the date of the first call for this caller
 				}
 				totals.NomadCallers = append(totals.NomadCallers, nomadStats)
+			} else {
+				// Optionally update date to latest if desired: nomadStats.Date = dateKey
 			}
 
 			nomadStats.TotalCalls++

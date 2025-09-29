@@ -60,6 +60,7 @@ type CallerType struct {
 // Statistics for geographic (landline) callers
 type GeographicCallerStats struct {
 	CallerNumber string `json:"caller_number"`
+	Date         string `json:"date"` // Added date field in format "YYYY-MM-DD"
 
 	// Call counts by destination type
 	LandlineCalls      int `json:"landline_calls"`
@@ -88,6 +89,7 @@ type GeographicCallerStats struct {
 // Statistics for nomad callers
 type NomadCallerStats struct {
 	CallerNumber         string `json:"caller_number"`
+	Date                 string `json:"date"` // Added date field in format "YYYY-MM-DD"
 	TotalCalls           int    `json:"total_calls"`
 	TotalMinutes         int    `json:"total_minutes"`
 	InternationalCalls   int    `json:"international_calls"`
