@@ -228,7 +228,7 @@ func syncNewestCDRs(ctx context.Context, service *YeastarService) error {
 	}
 
 	// Filter CDRs from the last 5 hours
-	fiveHoursAgo := time.Now().Add(-3 * time.Hour)
+	fiveHoursAgo := time.Now().Add(-5 * time.Hour)
 	var cdrs []CDR
 
 	log.Printf("Filtering CDRs from the last 5 hours (since %v)", fiveHoursAgo.Format("2006-01-02 15:04:05"))
@@ -245,12 +245,12 @@ func syncNewestCDRs(ctx context.Context, service *YeastarService) error {
 	totalFilteredCDRs := len(cdrs)
 
 	log.Printf("Total CDRs fetched: %d", totalAllCDRs)
-	log.Printf("CDRs from last 3 hours: %d (%.1f%%)",
+	log.Printf("CDRs from last 5 hours: %d (%.1f%%)",
 		totalFilteredCDRs,
 		float64(totalFilteredCDRs)/float64(totalAllCDRs)*100)
 
 	if totalFilteredCDRs == 0 {
-		fmt.Println("No CDRs found from the last 3 hours.")
+		fmt.Println("No CDRs found from the last 5 hours.")
 		return nil
 	}
 
@@ -380,7 +380,7 @@ func (cc *CortezaClient) CallCDRCalc() error {
 	req, err := cc.client.Get(url)
 	if err != nil {
 		fmt.Printf("Failed to create HTTP request: %v\n", err)
-		return fmt.Errorf("Failed to create HTTP request: %v\n", err)
+		return fmt.Errorf("failed to create HTTP request: %v\n", err)
 	}
 	defer req.Body.Close()
 

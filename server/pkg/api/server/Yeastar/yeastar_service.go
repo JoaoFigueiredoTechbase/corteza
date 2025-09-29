@@ -274,7 +274,7 @@ func (ys *YeastarService) SendDataToCorteza(ctx context.Context, moduleName stri
 	return ys.cortezaClient.SendData(ctx, moduleName, data)
 }
 
-func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]byte, error) {
+func (ys *YeastarService) SearchNewCDRMethod(ctx context.Context, endpoint string) ([]byte, error) {
 	var lastErr error
 
 	for attempt := 0; attempt <= ys.maxRetries; attempt++ {
@@ -306,8 +306,8 @@ func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]
 		}
 
 		now := time.Now()
-		startTime := now.Add(-10*time.Minute - 1*time.Hour).Format("02/01/2006 15:04:05")
-		endTime := now.Add(2*time.Minute - 1*time.Hour).Format("02/01/2006 15:04:05")
+		startTime := now.Add(-15*time.Minute - 2*time.Hour).Format("02/01/2006 15:04:05")
+		endTime := now.Add(5*time.Minute + 1*time.Hour).Format("02/01/2006 15:04:05")
 
 		url := fmt.Sprintf("%s/openapi/v1.0/%s/search?access_token=%s&start_time=%s&end_time=%s",
 			config.ApiBaseUrl,
@@ -318,6 +318,8 @@ func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]
 		)
 
 		log.Printf("[Attempt %d] Making GET request to URL: %s", attempt, url)
+		log.Printf("[Attempt %d] Search window: %s to %s", attempt, startTime, endTime)
+
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			lastErr = fmt.Errorf("failed to create request: %w", err)
@@ -339,8 +341,6 @@ func (ys *YeastarService) SearchMethod(ctx context.Context, endpoint string) ([]
 			log.Printf("[Attempt %d] Failed to read response body: %v", attempt, err)
 			continue
 		}
-
-		//log.Printf("[Attempt %d] Response Status: %d, Body: %s", attempt, resp.StatusCode, string(body))
 
 		if resp.StatusCode == http.StatusOK {
 			log.Printf("[Attempt %d] Successful response received, length %d bytes", attempt, len(body))
@@ -450,32 +450,33 @@ func SearchNewCDR(baseUrl, uid string) error {
 		return err
 	}
 
-	rawCDRsData, err := service.SearchMethod(ctx, "cdr")
+	// Use the new method with wider time window
+	rawCDRsData, err := service.SearchNewCDRMethod(ctx, "cdr")
 	if err != nil {
 		return fmt.Errorf("failed to search cdrs: %w", err)
 	}
-
-	// log.Printf("Raw CDRs data length: %d", len(rawCDRsData))
-	// log.Printf("Raw CDRs data: %+v", rawCDRsData)
 
 	cdrs, err := processCDRsData(service, rawCDRsData)
 	if err != nil {
 		return fmt.Errorf("failed to process cdrs: %w", err)
 	}
 
-	// log.Printf("Processed CDRs count: %d", len(cdrs))
+	log.Printf("Processed %d CDRs, looking for UID: %s", len(cdrs), uid)
 	for i, cdr := range cdrs {
-		log.Printf("CDR[%d]: UID=%s", i, cdr.UID)
+		log.Printf("CDR[%d]: UID=%s, Time=%s", i, cdr.UID, cdr.Time)
 	}
-	// log.Printf("Looking for UID: %s", uid)
 
 	results, err := findCDRsByUID(cdrs, uid)
 	if err != nil {
-		log.Printf("Error: %v\n", err)
-	} else {
-		for _, cdr := range results {
-			fmt.Printf("Found CDR: %+v\n", cdr)
-		}
+		log.Printf("CDR with UID %s not found in search results: %v", uid, err)
+		log.Printf("This CDR will be captured in the next full sync")
+		return nil // Don't treat as fatal error
+	}
+
+	log.Printf("Found %d CDR(s) matching UID %s", len(results), uid)
+	for _, cdr := range results {
+		log.Printf("Matched CDR: UID=%s, From=%s, To=%s, Duration=%d",
+			cdr.UID, cdr.CallFrom, cdr.CallTo, cdr.TalkDuration)
 	}
 
 	if err := service.SendDataToCorteza(ctx, "cdr", results); err != nil {
@@ -484,7 +485,7 @@ func SearchNewCDR(baseUrl, uid string) error {
 
 	service.cortezaClient.CallCDRCalc()
 
-	fmt.Println("cdrs processed and sent to Corteza successfully!")
+	log.Println("CDR processed and sent to Corteza successfully!")
 	return nil
 }
 
