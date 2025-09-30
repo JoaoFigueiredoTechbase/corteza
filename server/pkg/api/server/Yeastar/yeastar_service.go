@@ -551,8 +551,8 @@ func (ys *YeastarService) SearchMethodWithParameters(ctx context.Context, endpoi
 		start := url.QueryEscape(startTime.Format("02/01/2006 15:04:05"))
 		end := url.QueryEscape(endTime.Format("02/01/2006 15:04:05"))
 
-		log.Printf("%s", start)
-		log.Printf("%s", end)
+		log.Printf("Search CDR with Parameters (start time): %s", start)
+		log.Printf("Search CDR with Parameters (end time): %s", end)
 
 		url := fmt.Sprintf("%s/openapi/v1.0/%s/search?access_token=%s&start_time=%s&end_time=%s",
 			config.ApiBaseUrl,
