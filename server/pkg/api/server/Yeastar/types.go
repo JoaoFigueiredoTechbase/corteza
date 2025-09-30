@@ -67,7 +67,7 @@ type CDR struct {
 	CallToName          string      `json:"call_to_name"`
 	CallID              string      `json:"call_id"`
 	CallNote            interface{} `json:"call_note"`
-	CallNoteType        string      `json:"call_note_type"`
+	CallNoteType        []string    `json:"call_note_type"`
 	CallNoteDescription string      `json:"call_note_description"`
 	CallNoteID          string      `json:"call_note_id"`
 	EnbCallNote         int         `json:"enb_call_note"`
