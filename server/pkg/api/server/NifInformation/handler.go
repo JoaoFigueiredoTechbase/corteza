@@ -3,10 +3,8 @@ package nifinformation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -17,174 +15,60 @@ const (
 	APIRateLimit   = time.Minute
 )
 
-func HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
-	usage, err := loadUsage()
-	if err != nil {
-		log.Printf("ERROR: failed to load usage: %v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
-	}
+// ClientHandler lida com as requisições HTTP para busca de informações de clientes.
+type ClientHandler struct {
+	service ClientService
+}
 
-	limits := RateLimits{
-		Month:  1000,
-		Day:    100,
-		Hour:   10,
-		Minute: 1,
-	}
+// NewClientHandler cria uma nova instância de ClientHandler.
+func NewClientHandler(service ClientService) *ClientHandler {
+	return &ClientHandler{service: service}
+}
 
-	if !checkAndUpdateQuota(&usage, limits) {
-		http.Error(w, "API request limit exceeded", http.StatusTooManyRequests)
-		return
-	}
-
-	if err := saveUsage(usage); err != nil {
-		log.Printf("WARN: failed to save usage: %v", err)
-	}
+func (h *ClientHandler) HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 	defer cancel()
 
-	log.Println("Received Client Information Search Request")
+	log.Println("Requisição de busca de informações de cliente recebida")
 
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var payload ClientInformation
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		log.Printf("ERROR: Failed to decode request body: %v", err)
-		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		log.Printf("ERROR: Falha ao decodificar corpo da requisição: %v", err)
+		http.Error(w, "Payload JSON inválido", http.StatusBadRequest)
 		return
 	}
 
-	if strings.TrimSpace(payload.ApiKey) == "" {
-		log.Println("ERROR: Missing API key")
-		http.Error(w, "API key is required", http.StatusBadRequest)
+	if payload.ApiKey == "" {
+		log.Println("ERROR: Chave de API ausente")
+		http.Error(w, "Chave de API é obrigatória", http.StatusBadRequest)
 		return
 	}
 
-	var query string
-	isNameQuery := false
-
-	payload.ClientNif = strings.TrimSpace(payload.ClientNif)
-	payload.ClientName = strings.TrimSpace(payload.ClientName)
-
-	if payload.ClientNif != "" {
-		if !validateNif(payload.ClientNif) {
-			log.Printf("ERROR: Invalid NIF format: %s", payload.ClientNif)
-			http.Error(w, "NIF must be exactly 9 digits", http.StatusBadRequest)
-			return
-		}
-		query = payload.ClientNif
-	} else if payload.ClientName != "" {
-		query = sanitizeQuery(payload.ClientName)
-		if query == "" {
-			log.Println("ERROR: Client name contains no valid characters")
-			http.Error(w, "Client name contains no valid characters", http.StatusBadRequest)
-			return
-		}
-		isNameQuery = true
-	} else {
-		log.Println("ERROR: Neither client_nif nor client_name provided")
-		http.Error(w, "Either client_nif (9 digits) or client_name is required", http.StatusBadRequest)
-		return
-	}
-
-	apiURL := fmt.Sprintf("%s/?json=1&q=%s&key=%s", APIBaseURL, url.QueryEscape(query), payload.ApiKey)
-	log.Printf("Making API request to: %s", strings.Replace(apiURL, payload.ApiKey, "[REDACTED]", 1))
-
-	apiResp, err := makeAPIRequest(ctx, apiURL)
+	resp, err := h.service.SearchClientInformation(ctx, payload)
 	if err != nil {
-		log.Printf("ERROR: API request failed: %v", err)
-		http.Error(w, "Failed to query NIF API", http.StatusInternalServerError)
-		return
-	}
-
-	var results []NifApiResponse
-	for _, raw := range apiResp.Records {
-		record, err := parseRecord(raw)
-		if err != nil {
-			log.Printf("WARN: Failed to parse record: %v", err)
-			continue
-		}
-		if record.Nif != 0 {
-			results = append(results, record)
-		}
-	}
-
-	if len(results) == 0 {
-		log.Printf("INFO: No records found for query: %s", query)
-		http.Error(w, "No records found", http.StatusNotFound)
-		return
-	}
-
-	if isNameQuery && len(results) != 1 {
-		best, ok := pickBestMatch(results, payload.ClientName)
-		if !ok {
-			log.Printf("INFO: No suitable match found for name: %s", payload.ClientName)
-			http.Error(w, "No suitable match found", http.StatusNotFound)
-			return
-		}
-
-		log.Printf("INFO: Best match found - NIF: %d, Title: %s", best.Nif, best.Title)
-		log.Printf("INFO: Waiting %v due to API rate limiting before fetching full details", APIRateLimit)
-
-		select {
-		case <-time.After(APIRateLimit):
-			// Continue after delay
-		case <-ctx.Done():
-			log.Println("ERROR: Request cancelled during rate limit wait")
-			http.Error(w, "Request timeout", http.StatusRequestTimeout)
-			return
-		}
-
-		fullRecord, err := fetchFullInfo(ctx, best.Nif, payload.ApiKey)
-		if err != nil {
-			log.Printf("ERROR: Failed to fetch full info for NIF %d: %v", best.Nif, err)
-			http.Error(w, "Failed to fetch complete information", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("INFO: Successfully retrieved full information for NIF: %d", fullRecord.Nif)
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(fullRecord); err != nil {
-			log.Printf("ERROR: Failed to encode full record: %v", err)
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Printf("ERROR: Falha na busca de informações do cliente: %v", err)
+		if strings.Contains(err.Error(), "NIF inválido") || strings.Contains(err.Error(), "nome do cliente não contém caracteres válidos") || strings.Contains(err.Error(), "é necessário fornecer") {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		} else if strings.Contains(err.Error(), "nenhum registo encontrado") || strings.Contains(err.Error(), "nenhuma correspondência adequada") {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		} else if strings.Contains(err.Error(), "cancelado durante a espera do limite de taxa") {
+			http.Error(w, "Requisição expirou", http.StatusRequestTimeout)
+		} else {
+			http.Error(w, "Falha ao buscar informações do cliente", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	log.Printf("INFO: Returning %d records for NIF query", len(results))
+	log.Printf("INFO: Informações recuperadas com sucesso para NIF: %d, Créditos: %+v", resp.Data.Nif, resp.Credits)
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(results[0]); err != nil {
-		log.Printf("ERROR: Failed to encode response: %v", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("ERROR: Falha ao codificar resposta: %v", err)
+		http.Error(w, "Falha ao codificar resposta", http.StatusInternalServerError)
 	}
-}
-
-func HandleTest(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{
-		"nif":     513602011,
-		"title":   "Mendes L. It & Communications, Unipessoal Lda",
-		"address": "Rua Padre Francisco Rodrigues, Nº 2250",
-		"pc4":     "4800",
-		"pc3":     "606",
-		"city":    "Prazins Santa Eufémia",
-		"activity": "Actividades de serviços de consultoria e formação em engenharia de comunicações e informática. " +
-			"Comércio a retalho e por grosso de equipamentos de comunicações e informática. " +
-			"Implementação de redes de dados e informática.",
-		"cae":     []string{"62020", "47420", "47410"},
-		"email":   "geral@techbase.pt",
-		"phone":   "220035908",
-		"website": "www.techbase.pt",
-		"fax":     "220035908",
-		"region":  "Braga",
-		"county":  "Guimarães",
-		"parish":  "Santa Eufémia Prazins",
-		"racius":  "https://www.racius.com/mendes-l-it-communications-unipessoal-lda/",
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
 }

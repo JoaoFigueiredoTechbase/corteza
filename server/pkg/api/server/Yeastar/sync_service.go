@@ -52,6 +52,32 @@ func HandleSyncAllHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("Full synchronization process completed successfully.")
 }
 
+func HandleSyncNoCalls(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	protocol := "http"
+	if r.TLS != nil {
+		protocol = "https"
+	}
+
+	baseURL := fmt.Sprintf("%s://%s", protocol, r.Host)
+
+	go func() {
+		if err := SyncNoCalls(baseURL); err != nil {
+			log.Printf("Error during full sync: %v", err)
+			return
+		}
+		log.Println("Full synchronization process completed successfully.")
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte("Synchronization process initiated successfully. Check logs for details."))
+	log.Println("Full synchronization process completed successfully.")
+}
+
 func setupSyncService(baseUrl string) (*YeastarService, context.Context, context.CancelFunc, error) {
 	InitializeGlobalManagers()
 	ctx := context.Background()
@@ -329,6 +355,47 @@ func SyncAll(baseUrl string) error {
 	if err := service.cortezaClient.CallCDRCalc(); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func SyncNoCalls(baseUrl string) error {
+	if !atomic.CompareAndSwapInt32(&syncInProgress, 0, 1) {
+		return errors.New("sync already in progress")
+	}
+	defer atomic.StoreInt32(&syncInProgress, 0)
+
+	fmt.Println("Starting sync no calls...")
+
+	service, ctx, cancel, err := setupSyncService(baseUrl)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	if err := setupAuth(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncAgents(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncQueues(ctx, service); err != nil {
+		return err
+	}
+
+	if err := syncQueueMembers(ctx, service); err != nil {
+		return err
+	}
+
+	// if err := syncCDRs(ctx, service); err != nil {
+	// 	return err
+	// }
+
+	// if err := service.cortezaClient.CallCDRCalc(); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

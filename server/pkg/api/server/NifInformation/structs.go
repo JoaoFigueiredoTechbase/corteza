@@ -14,6 +14,7 @@ type ClientInformation struct {
 type ApiResponse struct {
 	Result  string                     `json:"result"`
 	Records map[string]json.RawMessage `json:"records"`
+	Credits *CreditsResponse           `json:"credits,omitempty"`
 }
 
 type SearchResponse struct {
@@ -49,6 +50,25 @@ type NifApiResponse struct {
 	County     string   `json:"county"`
 	Parish     string   `json:"parish"`
 	RaciusLink string   `json:"racius"`
+}
+
+// Response wrapper that includes credits information
+type ApiResponseWithCredits struct {
+	Data    NifApiResponse   `json:"data"`
+	Credits *CreditsResponse `json:"credits,omitempty"`
+}
+
+type CreditsResponse struct {
+	Used string      `json:"used"`
+	Left CreditsLeft `json:"left"`
+}
+
+type CreditsLeft struct {
+	Month  int `json:"month"`
+	Day    int `json:"day"`
+	Hour   int `json:"hour"`
+	Minute int `json:"minute"`
+	Paid   int `json:"paid"`
 }
 
 type RateLimits struct {
