@@ -1,1 +1,1 @@
-{"Month":82,"Day":1,"Hour":1,"Minute":1,"LastUpdate":"2025-09-10T13:32:47.1763367+01:00"}
+{"Month":4,"Day":4,"Hour":3,"Minute":1,"LastUpdate":"2025-10-01T11:14:05.7041301+01:00"}

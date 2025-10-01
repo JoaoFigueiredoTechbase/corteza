@@ -139,16 +139,21 @@ func HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fullRecord, err := fetchFullInfo(ctx, best.Nif, payload.ApiKey)
+		record, credits, err := fetchFullInfoWithCredits(ctx, results[0].Nif, payload.ApiKey)
 		if err != nil {
-			log.Printf("ERROR: Failed to fetch full info for NIF %d: %v", best.Nif, err)
-			http.Error(w, "Failed to fetch complete information", http.StatusInternalServerError)
-			return
+			log.Printf("WARN: Could not fetch record with credits, falling back: %v", err)
+			record = results[0]          // fallback to parsed record
+			credits = &CreditsResponse{} // no credits available
 		}
 
-		log.Printf("INFO: Successfully retrieved full information for NIF: %d", fullRecord.Nif)
+		resp := ApiResponseWithCredits{
+			Data:    record,
+			Credits: credits,
+		}
+
+		log.Printf("INFO: Successfully retrieved full information for NIF: %d", resp.Data.Nif)
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(fullRecord); err != nil {
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			log.Printf("ERROR: Failed to encode full record: %v", err)
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		}
@@ -156,8 +161,23 @@ func HandleClientInformationSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("INFO: Returning %d records for NIF query", len(results))
+
+	// Fetch record + credits for the first result
+	record, credits, err := fetchFullInfoWithCredits(ctx, results[0].Nif, payload.ApiKey)
+	if err != nil {
+		log.Printf("WARN: Could not fetch record with credits, falling back: %v", err)
+		record = results[0]          // fallback to parsed record
+		credits = &CreditsResponse{} // no credits available
+	}
+
+	// Wrap record + credits in unified response
+	resp := ApiResponseWithCredits{
+		Data:    record,
+		Credits: credits,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(results[0]); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Printf("ERROR: Failed to encode response: %v", err)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}

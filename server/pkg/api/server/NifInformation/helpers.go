@@ -1,9 +1,12 @@
 package nifinformation
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -45,6 +48,11 @@ func makeAPIRequest(ctx context.Context, url string) (*ApiResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	// Log raw response
+	body, _ := io.ReadAll(resp.Body)
+	log.Printf("Raw API response: %s", string(body))
+	resp.Body = io.NopCloser(bytes.NewReader(body)) // Restore body for decoding
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
 	}
@@ -52,6 +60,12 @@ func makeAPIRequest(ctx context.Context, url string) (*ApiResponse, error) {
 	var apiResp ApiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return nil, fmt.Errorf("decoding JSON response: %w", err)
+	}
+
+	if apiResp.Credits == nil {
+		log.Println("WARN: API response contains no credits information")
+	} else {
+		log.Printf("INFO: Credits: %+v", apiResp.Credits)
 	}
 
 	return &apiResp, nil
@@ -207,6 +221,25 @@ func fetchFullInfo(ctx context.Context, nif int, apiKey string) (NifApiResponse,
 	}
 
 	return NifApiResponse{}, fmt.Errorf("no record found for NIF %d", nif)
+}
+
+func fetchFullInfoWithCredits(ctx context.Context, nif int, apiKey string) (NifApiResponse, *CreditsResponse, error) {
+	url := fmt.Sprintf("%s/?json=1&q=%d&key=%s", APIBaseURL, nif, apiKey)
+
+	apiResp, err := makeAPIRequest(ctx, url)
+	if err != nil {
+		return NifApiResponse{}, nil, fmt.Errorf("API request failed: %w", err)
+	}
+
+	for _, raw := range apiResp.Records {
+		record, err := parseRecord(raw)
+		if err != nil {
+			return NifApiResponse{}, nil, err
+		}
+		return record, apiResp.Credits, nil
+	}
+
+	return NifApiResponse{}, nil, fmt.Errorf("no record found for NIF %d", nif)
 }
 
 const usageFile = "usage.txt"
