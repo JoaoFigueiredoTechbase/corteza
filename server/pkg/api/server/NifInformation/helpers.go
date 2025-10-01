@@ -1,14 +1,16 @@
 package nifinformation
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
-	"os"
 	"regexp"
+	"strconv"
 	"strings"
-	"time"
 )
 
 func validateNif(nif string) bool {
@@ -17,6 +19,14 @@ func validateNif(nif string) bool {
 	}
 	matched, _ := regexp.MatchString(`^\d{9}$`, nif)
 	return matched
+}
+
+func parseNif(nifStr string) (int, error) {
+	nif, err := strconv.Atoi(nifStr)
+	if err != nil {
+		return 0, fmt.Errorf("falha ao converter NIF para inteiro: %w", err)
+	}
+	return nif, nil
 }
 
 func sanitizeQuery(query string) string {
@@ -45,6 +55,11 @@ func makeAPIRequest(ctx context.Context, url string) (*ApiResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	// Log raw response
+	body, _ := io.ReadAll(resp.Body)
+	log.Printf("Raw API response: %s", string(body))
+	resp.Body = io.NopCloser(bytes.NewReader(body)) // Restore body for decoding
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
 	}
@@ -52,6 +67,12 @@ func makeAPIRequest(ctx context.Context, url string) (*ApiResponse, error) {
 	var apiResp ApiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return nil, fmt.Errorf("decoding JSON response: %w", err)
+	}
+
+	if apiResp.Credits == nil {
+		log.Println("WARN: API response contains no credits information")
+	} else {
+		log.Printf("INFO: Credits: %+v", apiResp.Credits)
 	}
 
 	return &apiResp, nil
@@ -194,71 +215,56 @@ func parseRecord(raw json.RawMessage) (NifApiResponse, error) {
 	}, nil
 }
 
-func fetchFullInfo(ctx context.Context, nif int, apiKey string) (NifApiResponse, error) {
-	url := fmt.Sprintf("%s/?json=1&q=%d&key=%s", APIBaseURL, nif, apiKey)
+// const usageFile = "usage.txt"
 
-	apiResp, err := makeAPIRequest(ctx, url)
-	if err != nil {
-		return NifApiResponse{}, fmt.Errorf("API request failed: %w", err)
-	}
+// func loadUsage() (Usage, error) {
+// 	var u Usage
+// 	data, err := os.ReadFile(usageFile)
+// 	if err != nil {
+// 		if os.IsNotExist(err) {
+// 			return Usage{}, nil
+// 		}
+// 		return u, err
+// 	}
+// 	err = json.Unmarshal(data, &u)
+// 	return u, err
+// }
 
-	for _, raw := range apiResp.Records {
-		return parseRecord(raw)
-	}
+// func saveUsage(u Usage) error {
+// 	data, err := json.Marshal(u)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return os.WriteFile(usageFile, data, 0644)
+// }
 
-	return NifApiResponse{}, fmt.Errorf("no record found for NIF %d", nif)
-}
+// func checkAndUpdateQuota(u *Usage, limits RateLimits) bool {
+// 	now := time.Now()
 
-const usageFile = "usage.txt"
+// 	// Reset counters if time passed
+// 	if now.Month() != u.LastUpdate.Month() {
+// 		u.Month = 0
+// 	}
+// 	if now.YearDay() != u.LastUpdate.YearDay() {
+// 		u.Day = 0
+// 	}
+// 	if now.Hour() != u.LastUpdate.Hour() {
+// 		u.Hour = 0
+// 	}
+// 	if now.Minute() != u.LastUpdate.Minute() {
+// 		u.Minute = 0
+// 	}
 
-func loadUsage() (Usage, error) {
-	var u Usage
-	data, err := os.ReadFile(usageFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return Usage{}, nil
-		}
-		return u, err
-	}
-	err = json.Unmarshal(data, &u)
-	return u, err
-}
+// 	// Check limits
+// 	if u.Month >= limits.Month || u.Day >= limits.Day || u.Hour >= limits.Hour || u.Minute >= limits.Minute {
+// 		return false
+// 	}
 
-func saveUsage(u Usage) error {
-	data, err := json.Marshal(u)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(usageFile, data, 0644)
-}
-
-func checkAndUpdateQuota(u *Usage, limits RateLimits) bool {
-	now := time.Now()
-
-	// Reset counters if time passed
-	if now.Month() != u.LastUpdate.Month() {
-		u.Month = 0
-	}
-	if now.YearDay() != u.LastUpdate.YearDay() {
-		u.Day = 0
-	}
-	if now.Hour() != u.LastUpdate.Hour() {
-		u.Hour = 0
-	}
-	if now.Minute() != u.LastUpdate.Minute() {
-		u.Minute = 0
-	}
-
-	// Check limits
-	if u.Month >= limits.Month || u.Day >= limits.Day || u.Hour >= limits.Hour || u.Minute >= limits.Minute {
-		return false
-	}
-
-	// Increment counters
-	u.Month++
-	u.Day++
-	u.Hour++
-	u.Minute++
-	u.LastUpdate = now
-	return true
-}
+// 	// Increment counters
+// 	u.Month++
+// 	u.Day++
+// 	u.Hour++
+// 	u.Minute++
+// 	u.LastUpdate = now
+// 	return true
+// }

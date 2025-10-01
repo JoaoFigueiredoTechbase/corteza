@@ -141,8 +141,11 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 
 		r.Post("/api/transcription", OpenAI.HandleTranscription)
 		r.Post("/api/summary", OpenAI.HandleCallSummary)
-		r.Post("/api/client-information", nifinformation.HandleClientInformationSearch)
-		r.Post("/api/client-test", nifinformation.HandleTest)
+
+		clientService := nifinformation.NewNifClientService(nifinformation.APIBaseURL, nifinformation.APIRateLimit)
+		clientHandler := nifinformation.NewClientHandler(clientService)
+		r.Post("/api/client-information", clientHandler.HandleClientInformationSearch)
+		// r.Post("/api/client-test", nifinformation.HandleTest)
 		r.Post("/api/calculate-price", freepbx.HandleCalculatePrice)
 		r.Post("/api/phone-test", freepbx.HandlePhoneNumberTest)
 
