@@ -294,7 +294,7 @@ def scrape_products(email, senha):
                     print("[DEBUG] Launching browser", file=sys.stderr)
                     # Launch browser with optimized settings
                     browser = p.chromium.launch(
-                        headless=False,
+                        headless=True,
                         args=[
                             '--no-sandbox',
                             '--disable-dev-shm-usage',
