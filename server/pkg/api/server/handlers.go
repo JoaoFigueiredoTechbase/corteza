@@ -136,6 +136,7 @@ func activeRoutes(log *zap.Logger, mountable []func(r chi.Router), opts *options
 		// Before setting up routes, initialize the handler
 
 		r.Get("/api/sync/all", Yeastar.HandleSyncAllHTTP)
+		r.Get("/api/sync/not-calls", Yeastar.HandleSyncNoCalls)
 		r.Post("/api/map/cdr", Yeastar.HandleCdrMapTest)
 
 		r.Post("/api/transcription", OpenAI.HandleTranscription)
