@@ -184,6 +184,98 @@ def safe_is_checked(page, selector, timeout=3000):
     print(f"[DEBUG] Returning False for selector: {selector}", file=sys.stderr)
     return False
 
+def get_total_product_count(page):
+    """Extract total product count from the pagination info"""
+    try:
+        # Look for text like "1 - 5 de 208"
+        info_text = safe_get_text(page, "#DataTables_Table_0_info", timeout=5000)
+        print(f"[DEBUG] Pagination info text: {info_text}", file=sys.stderr)
+        
+        # Extract the total number (last number in the text)
+        match = re.search(r'de\s+(\d+)', info_text)
+        if match:
+            total = int(match.group(1))
+            print(f"[DEBUG] Total products found: {total}", file=sys.stderr)
+            return total
+    except Exception as e:
+        print(f"[DEBUG] Failed to extract total count: {e}", file=sys.stderr)
+    
+    return 0
+
+def set_page_size_to_max(page):
+    """Set the page size to 500 (maximum) to minimize pagination"""
+    try:
+        print("[DEBUG] Attempting to set page size to 500", file=sys.stderr)
+        
+        # Click on the dropdown (Chosen select)
+        page.click("#selXB5_chzn", timeout=5000)
+        print("[DEBUG] Clicked on page size dropdown", file=sys.stderr)
+        
+        # Wait for dropdown to open
+        time.sleep(0.5)
+        
+        # Click on the 500 option
+        page.click("#selXB5_chzn_o_5", timeout=5000)
+        print("[DEBUG] Selected 500 items per page", file=sys.stderr)
+        
+        # Wait for table to reload
+        page.wait_for_load_state('networkidle', timeout=10000)
+        time.sleep(1)
+        
+        print("[DEBUG] Page size set to 500 successfully", file=sys.stderr)
+        return True
+    except Exception as e:
+        print(f"[DEBUG] Failed to set page size: {e}", file=sys.stderr)
+        return False
+
+def has_next_page(page):
+    """Check if there's a next page available"""
+    try:
+        # Check if the next button is disabled
+        next_button = page.locator("#DataTables_Table_0_next")
+        if next_button.count() > 0:
+            classes = next_button.get_attribute("class")
+            is_disabled = "disabled" in classes
+            print(f"[DEBUG] Next button disabled: {is_disabled}", file=sys.stderr)
+            return not is_disabled
+    except Exception as e:
+        print(f"[DEBUG] Error checking next page: {e}", file=sys.stderr)
+    
+    return False
+
+def go_to_next_page(page):
+    """Navigate to the next page"""
+    try:
+        print("[DEBUG] Clicking next page button", file=sys.stderr)
+        page.click("#DataTables_Table_0_next a", timeout=5000)
+        page.wait_for_load_state('networkidle', timeout=10000)
+        time.sleep(1)
+        print("[DEBUG] Navigated to next page", file=sys.stderr)
+        return True
+    except Exception as e:
+        print(f"[DEBUG] Failed to go to next page: {e}", file=sys.stderr)
+        return False
+
+def extract_product_links_from_page(page):
+    """Extract all product links from the current page"""
+    links = []
+    try:
+        print("[DEBUG] Extracting product links from current page", file=sys.stderr)
+        a_elements = page.locator("table.tbl_artz tbody tr td a")
+        count = a_elements.count()
+        print(f"[DEBUG] Found {count} potential product links on this page", file=sys.stderr)
+        
+        for i in range(count):
+            href = a_elements.nth(i).get_attribute("href", timeout=2000)
+            if href and "FichaArtigo.php" in href:
+                links.append(href)
+        
+        print(f"[DEBUG] Extracted {len(links)} valid product links from this page", file=sys.stderr)
+    except Exception as e:
+        print(f"[ERROR] Failed to extract links from page: {str(e)}", file=sys.stderr)
+    
+    return links
+
 def scrape_products(email, senha):
     """Main scraping function with improved error handling"""
     base_url = "https://www.keyinvoice.com/"
@@ -254,18 +346,6 @@ def scrape_products(email, senha):
                         print(f"[ERROR] Failed to fill login form: {str(e)}", file=sys.stderr)
                         raise Exception("Failed to fill login form or login")
                     
-                    # Enter demo mode
-                    try:
-                        print("[DEBUG] Entering demo mode", file=sys.stderr)
-                        page.click('text=DEMO', timeout=5000)
-                        page.click('text=Utilizador Demo', timeout=5000)
-                        page.wait_for_load_state('networkidle', timeout=10000)
-                        time.sleep(1)  # Reduced sleep time
-                        print("[DEBUG] Demo mode activated", file=sys.stderr)
-                    except PlaywrightTimeoutError as e:
-                        print(f"[ERROR] Failed to enter demo mode: {str(e)}", file=sys.stderr)
-                        raise Exception("Failed to enter demo mode")
-                    
                     # Navigate to Tabelas section
                     try:
                         print("[DEBUG] Navigating to Tabelas", file=sys.stderr)
@@ -297,41 +377,53 @@ def scrape_products(email, senha):
                         print(f"[ERROR] Product table not found: {str(e)}", file=sys.stderr)
                         raise Exception("Failed to find product table")
                     
-                    # Get product links
-                    links = []
-                    try:
-                        print("[DEBUG] Extracting product links", file=sys.stderr)
-                        a_elements = page.locator("table.tbl_artz tbody tr td a")
-                        count = a_elements.count()
-                        print(f"[DEBUG] Found {count} potential product links", file=sys.stderr)
-                        
-                        for i in range(count):  # Limit to 50 products for performance
-                            href = a_elements.nth(i).get_attribute("href", timeout=2000)
-                            if href:
-                                links.append(href)
-                        
-                        print(f"[DEBUG] Extracted {len(links)} valid product links", file=sys.stderr)
-                    except Exception as e:
-                        print(f"[ERROR] Failed to extract links: {str(e)}", file=sys.stderr)
-                        raise Exception(f"Failed to extract product links: {str(e)}")
+                    total_products = get_total_product_count(page)
+                    print(f"[DEBUG] Total products to scrape: {total_products}", file=sys.stderr)
                     
-                    if not links:
+                    set_page_size_to_max(page)
+                    
+                    all_links = []
+                    page_number = 1
+                    
+                    while True:
+                        print(f"[DEBUG] Processing page {page_number}", file=sys.stderr)
+                        
+                        # Extract links from current page
+                        page_links = extract_product_links_from_page(page)
+                        all_links.extend(page_links)
+                        
+                        print(f"[DEBUG] Total links collected so far: {len(all_links)}", file=sys.stderr)
+                        
+                        # Check if there's a next page
+                        if has_next_page(page):
+                            if go_to_next_page(page):
+                                page_number += 1
+                            else:
+                                print("[DEBUG] Failed to navigate to next page, stopping", file=sys.stderr)
+                                break
+                        else:
+                            print("[DEBUG] No more pages available", file=sys.stderr)
+                            break
+                    
+                    print(f"[DEBUG] Finished collecting links from all pages. Total: {len(all_links)}", file=sys.stderr)
+                    
+                    if not all_links:
                         print("[ERROR] No product links found", file=sys.stderr)
                         raise Exception("No product links found")
                     
                     # Scrape individual products
                     products = []
                     failed_count = 0
-                    max_failures = min(len(links) // 2, 10)  # Allow up to half failures or 10, whichever is smaller
-                    print(f"[DEBUG] Starting to scrape {len(links)} products, max failures: {max_failures}", file=sys.stderr)
+                    max_failures = min(len(all_links) // 2, 50)  # Allow up to half failures or 50, whichever is smaller
+                    print(f"[DEBUG] Starting to scrape {len(all_links)} products, max failures: {max_failures}", file=sys.stderr)
                     
-                    for i, link in enumerate(links):
+                    for i, link in enumerate(all_links):
                         if failed_count > max_failures:
                             print(f"[DEBUG] Max failures ({max_failures}) reached, stopping", file=sys.stderr)
                             break
                             
                         try:
-                            print(f"[DEBUG] Processing product {i+1}/{len(links)}: {link}", file=sys.stderr)
+                            print(f"[DEBUG] Processing product {i+1}/{len(all_links)}: {link}", file=sys.stderr)
                             full_link = f"{demo_url}{link}"
                             page.goto(full_link, timeout=NAVIGATION_TIMEOUT, wait_until='domcontentloaded')
                             page.add_style_tag(content="* { all: unset !important; }")
