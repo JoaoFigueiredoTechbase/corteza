@@ -2,6 +2,7 @@ package Yeastar
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -463,4 +464,43 @@ func StartPeriodicSync() error {
 	}
 
 	return nil
+}
+
+func HandleCdrMapTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Decode the incoming JSON
+	var rawCDR CDR
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&rawCDR); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Map the CDR using your function
+	mappedCDR := mapCDR(rawCDR)
+
+	// Print the mapped structure to console
+	fmt.Println("=== Mapped CDR Structure ===")
+	prettyJSON, err := json.MarshalIndent(mappedCDR, "", "  ")
+	if err != nil {
+		log.Printf("Error formatting JSON: %v", err)
+	} else {
+		fmt.Println(string(prettyJSON))
+	}
+	fmt.Println("===========================")
+
+	// Return the mapped CDR as JSON response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(mappedCDR); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		return
+	}
 }

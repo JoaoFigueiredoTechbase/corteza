@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -72,32 +71,47 @@ func safeInt64Convert(value interface{}) int64 {
 	}
 }
 
-func extractCallNoteInfo(callNote interface{}) (noteText, noteType, noteDescription string) {
+func extractCallNoteInfo(callNote interface{}) (noteText string, dispositionTypes []string, remark string) {
 	if callNote == nil {
-		return "", "", ""
+		return "", nil, ""
 	}
 
 	switch v := callNote.(type) {
 	case string:
-		return v, "", ""
+		return v, nil, ""
 	case map[string]interface{}:
-		if remark, ok := v["remark"].(string); ok {
-			noteDescription = strings.TrimSpace(remark)
+		// Extract remark
+		if remarkStr, ok := v["remark"].(string); ok {
+			remark = strings.TrimSpace(remarkStr)
 		}
 
-		if dcl, ok := v["disposition_code_list"].([]interface{}); ok && len(dcl) > 0 {
-			if first, ok := dcl[0].(map[string]interface{}); ok {
-				if name, ok := first["name"].(string); ok {
-					noteType = strings.TrimSpace(name)
+		// Extract all disposition code names
+		if dcl, ok := v["disposition_code_list"].([]interface{}); ok {
+			dispositionTypes = make([]string, 0, len(dcl))
+
+			for _, item := range dcl {
+				if codeMap, ok := item.(map[string]interface{}); ok {
+					if name, ok := codeMap["name"].(string); ok {
+						dispositionTypes = append(dispositionTypes, strings.TrimSpace(name))
+					}
 				}
 			}
 		}
 
-		noteText = fmt.Sprintf("Type: %s, Description: %s", noteType, noteDescription)
-		return noteText, noteType, noteDescription
+		// Build combined note text
+		var parts []string
+		for i, typeName := range dispositionTypes {
+			parts = append(parts, fmt.Sprintf("Type%d: %s", i+1, typeName))
+		}
+		if remark != "" {
+			parts = append(parts, fmt.Sprintf("Remark: %s", remark))
+		}
+		noteText = strings.Join(parts, ", ")
+
+		return noteText, dispositionTypes, remark
 
 	default:
-		return "", "", ""
+		return "", nil, ""
 	}
 }
 
@@ -156,7 +170,7 @@ func mapQueue(raw QueueRaw) Queue {
 }
 
 func mapCDR(raw CDR) CDR {
-	noteText, noteType, noteDescription := extractCallNoteInfo(raw.CallNote)
+	noteText, dispositionTypes, remark := extractCallNoteInfo(raw.CallNote)
 
 	unixTimeStamp := safeInt64Convert(raw.Timestamp)
 	timeStampIso := time.Unix(unixTimeStamp, 0).UTC()
@@ -181,8 +195,8 @@ func mapCDR(raw CDR) CDR {
 		CallToName:          safeStringConvert(raw.CallToName),
 		CallID:              safeStringConvert(raw.CallID),
 		CallNote:            noteText,
-		CallNoteType:        noteType,
-		CallNoteDescription: noteDescription,
+		CallNoteType:        dispositionTypes,
+		CallNoteDescription: remark,
 		CallNoteID:          safeStringConvert(raw.CallNoteID),
 		EnbCallNote:         safeIntConvert(raw.EnbCallNote),
 		DID:                 safeStringConvert(raw.DID),
@@ -204,7 +218,7 @@ func mapCDR(raw CDR) CDR {
 		cdr.UID = "unknown"
 	}
 	if cdr.Disposition == "" {
-		cdr.Disposition = "UNKNOWN"
+		cdr.Disposition = "unknown"
 	}
 	if cdr.CallType == "" {
 		cdr.CallType = "unknown"
@@ -340,24 +354,24 @@ func mapQueueMembers(queue QueueRaw) []QueueMember {
 	return members
 }
 
-func dumpCDRsToFile(cdrs []CDR) error {
-	filename := fmt.Sprintf("cdrs_dump_%s.json", time.Now().Format("20060102_150405"))
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create dump file: %w", err)
-	}
-	defer file.Close()
+// func dumpCDRsToFile(cdrs []CDR) error {
+// 	filename := fmt.Sprintf("cdrs_dump_%s.json", time.Now().Format("20060102_150405"))
+// 	file, err := os.Create(filename)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to create dump file: %w", err)
+// 	}
+// 	defer file.Close()
 
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
+// 	encoder := json.NewEncoder(file)
+// 	encoder.SetIndent("", "  ")
 
-	if err := encoder.Encode(cdrs); err != nil {
-		return fmt.Errorf("failed to write CDRs to file: %w", err)
-	}
+// 	if err := encoder.Encode(cdrs); err != nil {
+// 		return fmt.Errorf("failed to write CDRs to file: %w", err)
+// 	}
 
-	fmt.Println("CDRs written to", filename)
-	return nil
-}
+// 	fmt.Println("CDRs written to", filename)
+// 	return nil
+// }
 
 func MergeRecordingsWithCDRs(recordings []Recording, cdrs []CDR) []CDR {
 	recMap := make(map[int]string)
