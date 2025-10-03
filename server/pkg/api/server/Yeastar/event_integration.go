@@ -58,6 +58,11 @@ func (yi *YeastarIntegration) Start(ctx context.Context, host string) error {
 	return nil
 }
 
+// GetEventMonitor method to satisfy interface requirements
+func (yi *YeastarIntegration) GetEventMonitor() *EventMonitor {
+	return yi.eventMonitor
+}
+
 // Middleware returns the middleware for handling Yeastar routes
 func (yi *YeastarIntegration) Middleware() func(chi.Router) {
 	return func(r chi.Router) {
@@ -88,6 +93,7 @@ func (yi *YeastarIntegration) handleEventStatus(w http.ResponseWriter, r *http.R
 		isRunning := yi.eventMonitor.IsRunning()
 		status["running"] = isRunning
 		status["connected"] = isRunning // Simplified assumption
+		status["queue"] = yi.eventMonitor.GetQueueMetrics()
 	} else {
 		yi.log.Warn("Event monitor is nil in status check")
 	}
