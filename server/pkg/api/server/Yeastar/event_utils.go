@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func verifyMessage(event map[string]interface{}) (map[string]interface{}, error) {
@@ -114,6 +115,23 @@ func sendEventToEndpoint(event interface{}, endpoint string) error {
 	}
 
 	return nil
+}
+
+func sendEventToEndpointWithRetry(event interface{}, endpoint string, maxRetries int) error {
+	backoff := time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		err := sendEventToEndpoint(event, endpoint)
+		if err == nil {
+			return nil
+		}
+
+		if i < maxRetries-1 {
+			time.Sleep(backoff)
+			backoff *= 2
+		}
+	}
+	return fmt.Errorf("failed after %d retries", maxRetries)
 }
 
 func cleanWhitespace(input string) string {

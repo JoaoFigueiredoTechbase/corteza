@@ -216,7 +216,10 @@ func syncCDRs(ctx context.Context, service *YeastarService) error {
 
 		batch := cdrs[i:end]
 		//batchNum := i/batchSize + 1
-		batchCtx, cancel := context.WithCancel(context.Background())
+		//batchCtx, cancel := context.WithCancel(context.Background())
+		//batchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		batchCtx, cancel := context.WithCancel(ctx)
+
 		defer cancel()
 
 		// if err := processBatchWithRetry(ctx, service, batch, batchNum, i+1, end); err != nil {
@@ -293,7 +296,9 @@ func syncNewestCDRs(ctx context.Context, service *YeastarService) error {
 		}
 
 		batch := cdrs[i:end]
-		batchCtx, cancel := context.WithCancel(context.Background())
+		//batchCtx, cancel := context.WithCancel(context.Background())
+		//batchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		batchCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
 		if err := service.SendDataToCorteza(batchCtx, "cdr", batch); err != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
@@ -13,6 +14,8 @@ type EventMonitor struct {
 	yeastarService   *YeastarService
 	webSocketService *WebSocketService
 	isRunning        bool
+	syncInProgress   atomic.Bool
+	eventBuffer      chan map[string]interface{}
 }
 
 var (

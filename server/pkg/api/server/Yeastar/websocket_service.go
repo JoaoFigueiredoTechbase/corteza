@@ -338,6 +338,16 @@ func (ws *WebSocketService) Listen(ctx context.Context) error {
 func (ws *WebSocketService) processEvent(event map[string]interface{}) error {
 	//log.Printf("[WebSocketService] Received event: %+v\n", event)
 
+	// if isSyncRunning() {
+	// 	select {
+	// 	case em.eventBuffer <- event:
+	// 		log.Println("Event buffered during sync")
+	// 		return nil
+	// 	default:
+	// 		log.Println("Event buffer full, processing immediately")
+	// 	}
+	// }
+
 	eventID, _ := event["type"].(float64)
 	sn, _ := event["sn"].(string)
 
