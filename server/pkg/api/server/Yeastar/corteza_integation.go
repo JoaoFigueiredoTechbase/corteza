@@ -6,14 +6,41 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"runtime"
+	"strconv"
+	"sync"
 	"time"
 )
 
 // CortezaClient handles communication with Corteza
 type CortezaClient struct {
-	client  *http.Client
-	baseURL string
+	client      *http.Client
+	baseURL     string
+	moduleLocks map[string]*sync.Mutex
+	locksMutex  sync.RWMutex
+}
+
+func (cc *CortezaClient) getModuleLock(moduleName string) *sync.Mutex {
+	cc.locksMutex.RLock()
+	lock, exists := cc.moduleLocks[moduleName]
+	cc.locksMutex.RUnlock()
+
+	if exists {
+		return lock
+	}
+
+	cc.locksMutex.Lock()
+	defer cc.locksMutex.Unlock()
+
+	if cc.moduleLocks == nil {
+		cc.moduleLocks = make(map[string]*sync.Mutex)
+	}
+
+	lock = &sync.Mutex{}
+	cc.moduleLocks[moduleName] = lock
+	return lock
 }
 
 // NewCortezaClient creates a new Corteza client
@@ -113,8 +140,27 @@ func (cc *CortezaClient) SaveToken(ctx context.Context, token *TokenResponse) er
 	return nil
 }
 
+func getGoroutineID() uint64 {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+	return n
+}
+
 func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data interface{}) error {
 	// fmt.Println("Starting SendData to Corteza")
+
+	lock := cc.getModuleLock(moduleName)
+	lock.Lock()
+	defer lock.Unlock()
+	start := time.Now()
+	log.Printf("[CORTEZA] SendData START - module: %s, goroutine: %d", moduleName, getGoroutineID())
+
+	defer func() {
+		log.Printf("[CORTEZA] SendData END - module: %s, duration: %v", moduleName, time.Since(start))
+	}()
 
 	// // Log base URL and module
 	// fmt.Printf("Corteza BaseURL: %s\n", cc.baseURL)
@@ -189,5 +235,11 @@ func (cc *CortezaClient) SendData(ctx context.Context, moduleName string, data i
 	}
 
 	fmt.Printf("Data for module '%s' stored successfully!\n", moduleName)
+
+	duration := time.Since(start)
+	if duration > 5*time.Second {
+		log.Printf("WARNING: SendData to %s took %v - possible collision", moduleName, duration)
+	}
+
 	return nil
 }

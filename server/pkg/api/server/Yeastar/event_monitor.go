@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
@@ -13,6 +14,8 @@ type EventMonitor struct {
 	yeastarService   *YeastarService
 	webSocketService *WebSocketService
 	isRunning        bool
+	syncInProgress   atomic.Bool
+	eventQueue       *EventQueue
 }
 
 var (
@@ -25,7 +28,13 @@ func NewEventMonitor(configManager *ConfigManager, tokenManager *TokenManager, c
 	log.Println("[EventMonitor] Initializing Yeastar and WebSocket services")
 
 	yeastarService := NewYeastarService(configManager, tokenManager, cortezaClient)
-	webSocketService := NewWebSocketService(configManager, tokenManager, cortezaClient)
+	
+	// Initialize event queue with configuration
+	queueConfig := DefaultEventQueueConfig()
+	eventQueue := NewEventQueue(queueConfig, cortezaClient)
+	
+	// Create websocket service and pass the event queue to it
+	webSocketService := NewWebSocketService(configManager, tokenManager, cortezaClient, eventQueue)
 
 	webSocketService.SetOnConnect(func() {
 		if err := cortezaClient.OnSocketConnect(); err != nil {
@@ -42,11 +51,8 @@ func NewEventMonitor(configManager *ConfigManager, tokenManager *TokenManager, c
 	return &EventMonitor{
 		yeastarService:   yeastarService,
 		webSocketService: webSocketService,
+		eventQueue:       eventQueue,
 	}
-}
-
-func (yi *YeastarIntegration) GetEventMonitor() *EventMonitor {
-	return yi.eventMonitor
 }
 
 func (em *EventMonitor) Start(ctx context.Context) error {
@@ -57,6 +63,13 @@ func (em *EventMonitor) Start(ctx context.Context) error {
 
 	log.Println("[EventMonitor] Starting Yeastar event monitor (with automatic retries)...")
 	em.isRunning = true
+
+	// Start event queue first
+	if err := em.eventQueue.Start(ctx); err != nil {
+		log.Printf("[EventMonitor] Failed to start event queue: %v", err)
+		em.isRunning = false
+		return err
+	}
 
 	go em.runMonitorLoop(ctx)
 
@@ -72,7 +85,8 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 	defer func() {
 		em.isRunning = false
 		em.webSocketService.Close()
-		log.Println("[EventMonitor] Monitor loop stopped, WebSocket closed")
+		em.eventQueue.Stop()
+		log.Println("[EventMonitor] Monitor loop stopped, WebSocket and queue closed")
 	}()
 
 	eventIDs := []int{
@@ -137,14 +151,12 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 					return
 				}
 
-				// Reset both auth failures and backoff after cooldown
 				authFailures = 0
 				backoff = initialBackoff
 				log.Println("[EventMonitor] Cooldown complete, retrying auth setup...")
 				continue
 			}
 
-			// Wait with exponential backoff for auth retries
 			if !em.waitWithContext(ctx, backoff) {
 				return
 			}
@@ -158,10 +170,10 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 			log.Printf("[EventMonitor] Token error: %v", err)
 
 			if errors.Is(err, ErrInvalidCredentials) {
-				log.Fatal("[EventMonitor] FATAL: Invalid credentials")
+				log.Printf("[EventMonitor] CRITICAL: Invalid credentials - cannot continue")
+				return
 			}
 
-			// Treat token errors similar to auth failures
 			authFailures++
 			if authFailures >= maxAuthRetries {
 				log.Printf("[EventMonitor] CRITICAL: Token validation failed %d times, entering %v cooldown",
@@ -261,7 +273,6 @@ func (em *EventMonitor) runMonitorLoop(ctx context.Context) {
 				continue
 			}
 		} else {
-			// Reset consecutive fails on successful operation
 			consecutiveFails = 0
 			backoff = initialBackoff
 		}
@@ -303,6 +314,8 @@ func (em *EventMonitor) Stop() error {
 		log.Printf("[EventMonitor] Error closing WebSocket: %v", err)
 	}
 
+	em.eventQueue.Stop()
+
 	em.isRunning = false
 	log.Println("[EventMonitor] Yeastar event monitor stopped successfully")
 	return nil
@@ -310,4 +323,30 @@ func (em *EventMonitor) Stop() error {
 
 func (em *EventMonitor) IsRunning() bool {
 	return em.isRunning
+}
+
+func (em *EventMonitor) GetQueueMetrics() map[string]interface{} {
+	if em.eventQueue == nil {
+		return map[string]interface{}{
+			"error": "event queue not initialized",
+		}
+	}
+
+	processed, errors, dropped, depth := em.eventQueue.GetMetrics()
+	
+	return map[string]interface{}{
+		"processed":   processed,
+		"errors":      errors,
+		"dropped":     dropped,
+		"queue_depth": depth,
+		"running":     em.eventQueue.IsRunning(),
+	}
+}
+
+func (em *EventMonitor) IsSyncInProgress() bool {
+	return em.syncInProgress.Load()
+}
+
+func (em *EventMonitor) SetSyncInProgress(inProgress bool) {
+	em.syncInProgress.Store(inProgress)
 }
