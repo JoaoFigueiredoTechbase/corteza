@@ -1,5 +1,7 @@
 package Yeastar
 
+import "time"
+
 type ExtensionRegistrationEvent struct {
 	TypeName     string  `json:"type_name"`
 	EventType    *string `json:"event_type,omitempty"`
@@ -7,6 +9,7 @@ type ExtensionRegistrationEvent struct {
 	Kind         *string `json:"kind,omitempty"`
 	Status       *string `json:"status,omitempty"`
 	RegisteredIP *string `json:"registered_ip,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type ExtensionCallStatusEvent struct {
@@ -15,6 +18,7 @@ type ExtensionCallStatusEvent struct {
 	SN        *string `json:"sn,omitempty"`
 	Extension *string `json:"extension,omitempty"`
 	Status    *string `json:"status,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type ExtensionPresenceStatusEvent struct {
@@ -22,6 +26,7 @@ type ExtensionPresenceStatusEvent struct {
 	EventType *string `json:"event_type,omitempty"`
 	Extension *string `json:"extension,omitempty"`
 	Status    *string `json:"status,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type CallStatusChangedEvent struct {
@@ -30,6 +35,7 @@ type CallStatusChangedEvent struct {
 	CallID    *string      `json:"call_id,omitempty"`
 	Reason    *string      `json:"reason,omitempty"`
 	Members   []CallMember `json:"members,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type CallEvent struct {
@@ -40,6 +46,7 @@ type CallEvent struct {
 	CallID      *string      `json:"call_id,omitempty"`
 	Reason      *string      `json:"reason"`
 	Members     []CallMember `json:"members,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type CallMember struct {
@@ -74,6 +81,7 @@ type NewCDREvent struct {
 	UID           *string `json:"uid,omitempty"`
 	CallNoteID    *string `json:"call_note_id,omitempty"`
 	EnbCallNote   *int    `json:"enb_call_note,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type SatisfactionEvent struct {
@@ -82,6 +90,7 @@ type SatisfactionEvent struct {
 	SN           *string `json:"sn,omitempty"`
 	CallID       *string `json:"call_id,omitempty"`
 	SurveyResult *string `json:"survey_result,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type UaCSTACallEvent struct {
@@ -92,6 +101,7 @@ type UaCSTACallEvent struct {
 	Extension *string `json:"extension,omitempty"`
 	CallID    *string `json:"call_id,omitempty"`
 	IPAddress *string `json:"ip_address,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type ExtensionConfigurationEvent struct {
@@ -100,6 +110,7 @@ type ExtensionConfigurationEvent struct {
 	Extension *string `json:"extension,omitempty"`
 	Option    *string `json:"option,omitempty"`
 	Agent     *Agent  `json:"agent,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type AgentAutoPauseEvent struct {
@@ -108,6 +119,7 @@ type AgentAutoPauseEvent struct {
 	QueueNumber *string    `json:"queue_number,omitempty"`
 	AgentNumber *string    `json:"agent_number,omitempty"`
 	Calls       []CallInfo `json:"calls,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type CallInfo struct {
@@ -123,18 +135,20 @@ type AgentRingingTimeoutEvent struct {
 	AgentNumber  *string `json:"agent_number,omitempty"`
 	CallerNumber *string `json:"caller_number,omitempty"`
 	CallID       *string `json:"call_id,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type CallNoteStatusEvent struct {
-	TypeName   string  `json:"type_name"`
-	EventType  *string `json:"event_type,omitempty"`
-	Display    *int    `json:"display,omitempty"`
-	Trigger    *int    `json:"trigger_call_note_popup,omitempty"`
-	SipCallID  *string `json:"sip_call_id,omitempty"`
-	CallNoteID *string `json:"call_note_id,omitempty"`
-	GroupID    *string `json:"group_id,omitempty"`
-	ExtNum     *string `json:"ext_num,omitempty"`
-	Channel    *string `json:"channel,omitempty"`
+	TypeName   string    `json:"type_name"`
+	EventType  *string   `json:"event_type,omitempty"`
+	Display    *int      `json:"display,omitempty"`
+	Trigger    *int      `json:"trigger_call_note_popup,omitempty"`
+	SipCallID  *string   `json:"sip_call_id,omitempty"`
+	CallNoteID *string   `json:"call_note_id,omitempty"`
+	GroupID    *string   `json:"group_id,omitempty"`
+	ExtNum     *string   `json:"ext_num,omitempty"`
+	Channel    *string   `json:"channel,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }
 
 type AgentStatusChangedEvent struct {
@@ -145,4 +159,5 @@ type AgentStatusChangedEvent struct {
 	AgentNumber *string `json:"agent_number,omitempty"`
 	Status      *string `json:"status,omitempty"`
 	Reason      *string `json:"reason,omitempty"`
+	EventTime  time.Time `json:"eventTime"`
 }

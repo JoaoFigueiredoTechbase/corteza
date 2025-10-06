@@ -1,6 +1,9 @@
 package Yeastar
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 func mapToExtensionRegistration(events map[string]interface{}, msg map[string]interface{}) *ExtensionRegistrationEvent {
 	return &ExtensionRegistrationEvent{
@@ -10,6 +13,7 @@ func mapToExtensionRegistration(events map[string]interface{}, msg map[string]in
 		Kind:         getStringPointer(msg, "kind"),
 		Status:       getStringPointer(msg, "status"),
 		RegisteredIP: getStringPointer(msg, "registered_ip"),
+		EventTime:    time.Now(),
 	}
 }
 
@@ -20,6 +24,7 @@ func mapToExtensionCallStatus(events map[string]interface{}, msg map[string]inte
 		SN:        getStringPointer(events, "sn"),
 		Extension: getStringPointer(msg, "extension"),
 		Status:    getStringPointer(msg, "status"),
+		EventTime: time.Now(),
 	}
 }
 
@@ -29,6 +34,7 @@ func mapToExtensionPresenceStatus(events map[string]interface{}, msg map[string]
 		EventType: getStringPointer(events, "type"),
 		Extension: getStringPointer(msg, "extension"),
 		Status:    getStringPointer(msg, "status"),
+		EventTime: time.Now(),
 	}
 }
 
@@ -63,6 +69,7 @@ func mapToNewCDR(events map[string]interface{}, msg map[string]interface{}) *New
 		UID:           getStringPointer(msg, "uid"),
 		CallNoteID:    getStringPointer(msg, "call_note_id"),
 		EnbCallNote:   getIntPointer(msg, "enb_call_note"),
+		EventTime:     time.Now(),
 	}
 }
 
@@ -81,6 +88,7 @@ func mapToCallEvent(events map[string]interface{}, msg map[string]interface{}, t
 		CallID:      getStringPointer(msg, "call_id"),
 		Reason:      getStringPointer(msg, "reason"),
 		Members:     processMembers(msg),
+		EventTime:   time.Now(),
 	}
 }
 
@@ -91,6 +99,7 @@ func mapToSatisfaction(events map[string]interface{}, msg map[string]interface{}
 		SN:           getStringPointer(events, "sn"),
 		CallID:       getStringPointer(msg, "call_id"),
 		SurveyResult: getStringPointer(msg, "survey_result"),
+		EventTime:    time.Now(),
 	}
 }
 
@@ -113,6 +122,7 @@ func mapToExtensionConfiguration(events map[string]interface{}, msg map[string]i
 		Extension: getStringPointer(msg, "ext_number"),
 		Option:    getStringPointer(msg, "option"),
 		Agent:     agent,
+		EventTime: time.Now(),
 	}
 }
 
@@ -123,6 +133,7 @@ func mapToAgentAutoPause(events map[string]interface{}, msg map[string]interface
 		QueueNumber: getStringPointer(msg, "queue_number"),
 		AgentNumber: getStringPointer(msg, "agent_number"),
 		Calls:       processCalls(msg),
+		EventTime:   time.Now(),
 	}
 }
 
@@ -134,6 +145,7 @@ func mapToAgentRingingTimeout(events map[string]interface{}, msg map[string]inte
 		AgentNumber:  getStringPointer(msg, "agent_number"),
 		CallerNumber: getStringPointer(msg, "caller_number"),
 		CallID:       getStringPointer(msg, "call_id"),
+		EventTime:    time.Now(),
 	}
 }
 
@@ -148,6 +160,7 @@ func mapToCallNoteStatus(events map[string]interface{}, msg map[string]interface
 		GroupID:    getStringPointer(msg, "group_id"),
 		ExtNum:     getStringPointer(msg, "ext_num"),
 		Channel:    getStringPointer(msg, "channel"),
+		EventTime:  time.Now(),
 	}
 }
 
@@ -160,6 +173,7 @@ func mapToAgentStatusChanged(events map[string]interface{}, msg map[string]inter
 		AgentNumber: getStringPointer(msg, "agent_number"),
 		Status:      getStringPointer(msg, "status"),
 		Reason:      getStringPointer(msg, "reason"),
+		EventTime:   time.Now(),
 	}
 }
 
